@@ -1,7 +1,7 @@
 import { Events } from "bf6-portal-utils/events";
 import { log, safe, willLogDebug } from "./util/log";
 import { TURRETS, HQ_TARGETS, HQ_GATES, isConfigured, TurretDef } from "./objids";
-import { TURRET_HIT_RADIUS_M, HQ_HIT_RADIUS_M, RAY_MAX_DIST_M, RAY_START_OFFSET_M, RAY_MIN_HIT_DIST_M, RORSCH_TRACE } from "./config";
+import { TURRET_HIT_RADIUS_M, HQ_HIT_RADIUS_M, RAY_MAX_DIST_M, RAY_START_OFFSET_M, RAY_MIN_HIT_DIST_M, RORSCH_TRACE, RORSCH_CHARGE_MS } from "./config";
 import { isRorschInHand } from "./weapons";
 import { isBotPid } from "./bots";
 import { teamIdOf } from "./util/roster";
@@ -9,15 +9,7 @@ import {
     destroyTurret, hitHq, turretIsDestroyed, losOpenFor, turretDistSq, turretResolvedAt
 } from "./turrets";
 import { Vectors } from "bf6-portal-utils/vectors";
-import { ammoStep, AmmoResult } from "./rorschshot";
-
-// Rorsch ammo as one number. Magazine + reserve, so a discharge always lowers it
-// even if the engine refills the magazine from the reserve in the same tick.
-// Tier 0: GetInventoryMagazineAmmo / GetInventoryAmmo (player, InventorySlots).
-function rorschAmmo(p: mod.Player): number {
-    return mod.GetInventoryMagazineAmmo(p, mod.InventorySlots.PrimaryWeapon)
-        + mod.GetInventoryAmmo(p, mod.InventorySlots.PrimaryWeapon);
-}
+import { holdStep, HoldResult, HoldState } from "./rorschshot";
 
 interface PendingRay {
     pid: number;
@@ -26,35 +18,36 @@ interface PendingRay {
 }
 
 const inFlight: { [pid: number]: PendingRay } = {};
-// Per-player Rorsch ammo baseline while in an HQ fire zone; see rorschshot.ts
-// for why the shot is the ammo drop, not IsFiring.
-const lastAmmo: { [pid: number]: number | undefined } = {};
-// Last trace line per player, so the trace only logs on change.
-const lastTrace: { [pid: number]: string } = {};
+// Per-player trigger hold while in an HQ fire zone with the Rorsch; see
+// rorschshot.ts for why the shot is a timed hold.
+const hold: { [pid: number]: HoldState } = {};
+// RORSCH_TRACE only: last IsReloading value, to log its edges.
+const wasReloading: { [pid: number]: boolean } = {};
+// RORSCH_TRACE only: time of the last Rorsch press, kept past release.
+const lastPressMs: { [pid: number]: number } = {};
 
-// Diagnostic: while in a fire zone with the Rorsch, log IsFiring and the
-// magazine/reserve of every weapon/gadget slot whenever any of them changes.
-// Shows which value actually moves when the Rorsch discharges.
-const TRACE_SLOTS: mod.InventorySlots[] = [
-    mod.InventorySlots.PrimaryWeapon, mod.InventorySlots.SecondaryWeapon,
-    mod.InventorySlots.GadgetOne, mod.InventorySlots.GadgetTwo,
-    mod.InventorySlots.ClassGadget, mod.InventorySlots.MiscGadget
-];
-const TRACE_NAMES: string[] = ["pri", "sec", "g1", "g2", "cls", "misc"];
+// Diagnostic, one cheap soldier-state read per tick for players in a fire zone
+// with the Rorsch. Logs when IsReloading turns on, with the time since the
+// press, to test whether the reload marks the actual shot.
+function traceReload(p: mod.Player, pid: number, nowMs: number): void {
+    let reloading: boolean;
+    try {
+        reloading = mod.GetSoldierState(p, mod.SoldierStateBool.IsReloading);
+    } catch (e) {
+        return;
+    }
+    if (reloading && wasReloading[pid] !== true) {
+        const pressed: number | undefined = lastPressMs[pid];
+        log("nuke", "TRACE pid=" + pid + " IsReloading ON "
+            + (pressed === undefined ? "(no press seen)" : "+" + String(nowMs - pressed) + "ms after press"));
+    }
+    wasReloading[pid] = reloading;
+}
 
-function traceRorsch(p: mod.Player, pid: number): void {
-    safe("nuke.trace", () => {
-        let line: string = "fire=" + String(mod.GetSoldierState(p, mod.SoldierStateBool.IsFiring));
-        for (let i: number = 0; i < TRACE_SLOTS.length; i++) {
-            line = line + " " + TRACE_NAMES[i] + "="
-                + String(mod.GetInventoryMagazineAmmo(p, TRACE_SLOTS[i])) + "/"
-                + String(mod.GetInventoryAmmo(p, TRACE_SLOTS[i]));
-        }
-        if (lastTrace[pid] !== line) {
-            lastTrace[pid] = line;
-            log("nuke", "TRACE pid=" + pid + " " + line);
-        }
-    });
+function forgetHold(pid: number): void {
+    delete hold[pid];
+    delete wasReloading[pid];
+    delete lastPressMs[pid];
 }
 const gateOccupants: { [gateId: number]: number[] } = {};
 const gateHandles: { [gateId: number]: mod.AreaTrigger } = {};
@@ -80,7 +73,7 @@ export function initNuke(): void {
         gateHandles[g] = trigger;
         gates++;
     }
-    log("nuke", "ready: Rorsch-gated, ammo-drop discharge, one ray per player, gates="
+    log("nuke", "ready: Rorsch-gated, timed hold (charge), one ray per player, gates="
         + String(gates) + "/" + String(HQ_GATES.length));
 }
 
@@ -349,40 +342,48 @@ function probe(): void {
             // every player who is not standing in an HQ gate without a single
             // mod.* FFI call. This is the whole point of the reorder.
             if (!nearEnemyBase(pid)) {
-                // Forget the ammo baseline, so tracking restarts on zone entry.
-                delete lastAmmo[pid];
-                delete lastTrace[pid];
+                // A hold that started outside the zone restarts on entry.
+                forgetHold(pid);
                 continue;
             }
-            // Inside a fire zone. The shot is decided by the Rorsch's ammo
-            // dropping, never by IsFiring (see rorschshot.ts).
-            if (!isRorschInHand(p)) {
-                logNukeOnce(pid, "noRorsch");
-                delete lastAmmo[pid];
-                continue;
-            }
-            if (RORSCH_TRACE) {
-                traceRorsch(p, pid);
-            }
-            let ammo: number;
+            let firing: boolean = false;
             try {
-                ammo = rorschAmmo(p);
+                firing = mod.GetSoldierState(p, mod.SoldierStateBool.IsFiring);
             } catch (e) {
                 continue;
             }
-            const before: number | undefined = lastAmmo[pid];
-            const r: AmmoResult = ammoStep(before, ammo);
-            lastAmmo[pid] = r.next;
-            if (before === undefined) {
-                logNukeOnce(pid, "armed");
-                log("nuke", "ARMED pid=" + pid + " in fire zone with Rorsch, ammo=" + String(ammo));
-                continue;
+            const nowMs: number = Date.now();
+            const st: HoldState | undefined = hold[pid];
+            if (firing && st === undefined) {
+                // New press: check the weapon once per press, not per tick.
+                if (!isRorschInHand(p)) {
+                    logNukeOnce(pid, "noRorsch");
+                    hold[pid] = { pressMs: nowMs, shot: true };
+                    continue;
+                }
+                logNukeOnce(pid, "charging");
+                lastPressMs[pid] = nowMs;
+                log("nuke", "PRESS pid=" + pid + " charging, shot counts after "
+                    + String(RORSCH_CHARGE_MS) + "ms held");
+            }
+            if (RORSCH_TRACE) {
+                traceReload(p, pid, nowMs);
+            }
+            const r: HoldResult = holdStep(st, firing, nowMs, RORSCH_CHARGE_MS);
+            if (r.next === undefined) {
+                delete hold[pid];
+                if (st !== undefined && !st.shot) {
+                    log("nuke", "RELEASED pid=" + pid + " after "
+                        + String(nowMs - st.pressMs) + "ms - no shot");
+                }
+            } else {
+                hold[pid] = r.next;
             }
             if (!r.fire) {
                 continue;
             }
             logNukeOnce(pid, "fired");
-            log("nuke", "DISCHARGE pid=" + pid + " ammo " + String(before) + " -> " + String(ammo) + " - casting ray");
+            log("nuke", "SHOT pid=" + pid + " held " + String(nowMs - (st === undefined ? nowMs : st.pressMs)) + "ms - casting ray");
             shootRay(p);
         }
     });
@@ -418,8 +419,7 @@ export function configureNukeEvents(): void {
         safe("nuke.gate.leave", () => {
             onGateLeave(pid);
             delete inFlight[pid];
-            delete lastAmmo[pid];
-            delete lastTrace[pid];
+            forgetHold(pid);
             delete deployed[pid];
         });
     });
@@ -432,8 +432,7 @@ export function configureNukeEvents(): void {
         safe("nuke.undeployed", () => {
             const pid: number = mod.GetObjId(p);
             deployed[pid] = false;
-            delete lastAmmo[pid];
-            delete lastTrace[pid];
+            forgetHold(pid);
             delete inFlight[pid];
         });
     });

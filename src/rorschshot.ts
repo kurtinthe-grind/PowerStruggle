@@ -1,25 +1,37 @@
-// Rorsch discharge detection, kept free of mod.* so scripts/test-rorsch.js can
+// Rorsch shot detection, kept free of mod.* so scripts/test-rorsch.js can
 // unit-test it in node.
 //
-// The Rorsch charges for about a second while fire is held, then discharges
-// once; the player must release and press again for the next shot. IsFiring
-// cannot be the shot signal: it goes true at the PRESS, and the 2026-10-01
-// playtest showed a hold being seen without any discharge inside it. The shot
-// is the tick the weapon's ammo (magazine + reserve) drops, tracked for as long
-// as the player is in an HQ fire zone with the Rorsch.
+// The Rorsch charges for about a second while fire is held, then fires once;
+// the player must release and press again for the next shot.
+//
+// Evidence from the 2026-10-01 playtest, do not re-try these:
+//   - IsFiring is true for the WHOLE hold (2-4 s), so its rising edge is the
+//     press, not the shot.
+//   - GetInventoryMagazineAmmo / GetInventoryAmmo never change for the Rorsch
+//     in any slot, and the MiscGadget slot throws GetAmmoRequest every call.
+//
+// So a shot is a press held continuously for chargeMs, counted once per press.
+// Wall-clock time, not ticks, so lag or a skipped probe tick cannot stretch it.
 
-export interface AmmoResult {
-    // Baseline for the next tick (undefined until a valid reading).
-    next: number | undefined;
+export interface HoldState {
+    pressMs: number;
+    shot: boolean;
+}
+
+export interface HoldResult {
+    next: HoldState | undefined;
     fire: boolean;
 }
 
-export function ammoStep(last: number | undefined, ammo: number): AmmoResult {
-    if (ammo < 0) {
-        return { next: last, fire: false };
+export function holdStep(st: HoldState | undefined, firing: boolean, nowMs: number, chargeMs: number): HoldResult {
+    if (!firing) {
+        return { next: undefined, fire: false };
     }
-    if (last !== undefined && ammo < last) {
-        return { next: ammo, fire: true };
+    if (st === undefined) {
+        return { next: { pressMs: nowMs, shot: false }, fire: false };
     }
-    return { next: ammo, fire: false };
+    if (st.shot || nowMs - st.pressMs < chargeMs) {
+        return { next: st, fire: false };
+    }
+    return { next: { pressMs: st.pressMs, shot: true }, fire: true };
 }
