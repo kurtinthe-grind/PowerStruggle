@@ -112,6 +112,8 @@ to the Portal web editor together with the map export.
 - [**bf6-portal-bots-brain**](https://github.com/nikgodda/bf6-portal-bots-brain/tree/main)
   by nikgodda: ideas behind the bot AI, in particular handing a shot bot to the
   combat AI for a short time and steering bot-driven vehicles toward an objective.
+- [**bf6-portal-ui-preview**](https://github.com/nadorjozsef/bf6-portal-ui-preview)
+  by nadorjozsef: used to preview the HUD and buy menu layouts during development.
 
 ## License
 
