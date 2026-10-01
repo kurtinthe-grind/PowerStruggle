@@ -2663,8 +2663,8 @@ function onOngoingGlobal(): void {
         syncBunkerOwners();
     }
     // The Rorsch probe is the most expensive per-frame item. Skipping it costs
-    // one sample: the shot is a wall-clock timed hold (rorschshot.ts), so a
-    // skipped tick only delays the ray by one tick, but a release and re-press
+    // one sample: the shot is the IsFiring falling edge (rorschshot.ts), so a
+    // skipped tick delays the ray by one tick, and a discharge and re-press
     // that both fall inside skipped ticks merge into one hold.
     if (healthFactor() >= 0.7) {
         tickNukeProbe();

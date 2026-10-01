@@ -64,13 +64,14 @@ export const RAY_MAX_DIST_M: number = 900;
 export const RAY_START_OFFSET_M: number = 2.5;
 // Ignore impacts closer than this; they are the player's own geometry.
 export const RAY_MIN_HIT_DIST_M: number = 3.0;
-// How long fire must be held before the Rorsch counts as having fired. The
-// Rorsch charges ~1 s, then fires once per press. Tune this if rays land
-// before or after the real beam.
-export const RORSCH_CHARGE_MS: number = 1000;
-// Diagnostic: log IsReloading turning on (with ms since press) while a player is
-// in an HQ fire zone, to test whether the reload marks the real shot. One soldier-
-// state read per tick per player in a fire zone. Set false once settled.
+// The Rorsch shot is the moment IsFiring turns off after a full charge (see
+// rorschshot.ts). Measured 2026-10-01: the discharge lands 2200-2212 ms after
+// the press. A release shorter than this is a cancelled charge, no shot. Kept
+// below the measured charge so tick jitter cannot drop a real shot.
+export const RORSCH_MIN_CHARGE_MS: number = 2100;
+// Diagnostic: log the active slot at each press, both IsReloading edges and
+// every ray outcome while a player is in an HQ fire zone. One soldier-state read
+// per tick per player in a fire zone. Set false once settled.
 export const RORSCH_TRACE: boolean = true;
 export const POWER_LEVEL_REQUIRED: number = 100;
 

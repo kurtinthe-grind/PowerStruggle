@@ -1,7 +1,7 @@
 import { Events } from "bf6-portal-utils/events";
 import { log, safe, willLogDebug } from "./util/log";
 import { TURRETS, HQ_TARGETS, HQ_GATES, isConfigured, TurretDef } from "./objids";
-import { TURRET_HIT_RADIUS_M, HQ_HIT_RADIUS_M, RAY_MAX_DIST_M, RAY_START_OFFSET_M, RAY_MIN_HIT_DIST_M, RORSCH_TRACE, RORSCH_CHARGE_MS } from "./config";
+import { TURRET_HIT_RADIUS_M, HQ_HIT_RADIUS_M, RAY_MAX_DIST_M, RAY_START_OFFSET_M, RAY_MIN_HIT_DIST_M, RORSCH_TRACE, RORSCH_MIN_CHARGE_MS } from "./config";
 import { isRorschInHand } from "./weapons";
 import { isBotPid } from "./bots";
 import { teamIdOf } from "./util/roster";
@@ -22,7 +22,7 @@ interface PendingRay {
 
 const inFlight: { [pid: number]: PendingRay } = {};
 // Per-player trigger hold while in an HQ fire zone with the Rorsch; see
-// rorschshot.ts for why the shot is a timed hold.
+// rorschshot.ts for why the shot is the IsFiring falling edge after a charge.
 const hold: { [pid: number]: HoldState } = {};
 // RORSCH_TRACE only: last IsReloading value, to log its edges.
 const wasReloading: { [pid: number]: boolean } = {};
@@ -104,7 +104,7 @@ export function initNuke(): void {
         gateHandles[g] = trigger;
         gates++;
     }
-    log("nuke", "ready: Rorsch-gated, timed hold (charge), one ray per player, gates="
+    log("nuke", "ready: Rorsch-gated, ray on discharge (IsFiring off after charge), one ray per player, gates="
         + String(gates) + "/" + String(HQ_GATES.length));
 }
 
@@ -400,39 +400,35 @@ function probe(): void {
                     if (RORSCH_TRACE) {
                         log("nuke", "PRESS pid=" + pid + " ignored - Rorsch not carried, " + traceSlot(p));
                     }
-                    hold[pid] = { pressMs: nowMs, shot: true };
+                    hold[pid] = { pressMs: nowMs, ignored: true };
                     continue;
                 }
                 logNukeOnce(pid, "charging");
                 lastPressMs[pid] = nowMs;
-                log("nuke", "PRESS pid=" + pid + " charging, shot counts after "
-                    + String(RORSCH_CHARGE_MS) + "ms held"
+                log("nuke", "PRESS pid=" + pid + " charging, discharge counts after "
+                    + String(RORSCH_MIN_CHARGE_MS) + "ms held"
                     + (RORSCH_TRACE ? ", " + traceSlot(p) : ""));
+            }
+            const r: HoldResult = holdStep(st, firing, nowMs, RORSCH_MIN_CHARGE_MS);
+            if (r.next === undefined) {
+                delete hold[pid];
+            } else {
+                hold[pid] = r.next;
+            }
+            if (r.fire) {
+                // Cast first, in the same tick the discharge is seen; the logs
+                // and the reload trace come after so they add no latency.
+                shootRay(p);
+                logNukeOnce(pid, "fired");
+                log("nuke", "SHOT pid=" + pid + " discharge after "
+                    + String(nowMs - (st === undefined ? nowMs : st.pressMs)) + "ms - ray cast");
+            } else if (r.next === undefined && st !== undefined && !st.ignored) {
+                log("nuke", "RELEASED pid=" + pid + " after "
+                    + String(nowMs - st.pressMs) + "ms - charge cancelled, no shot");
             }
             if (RORSCH_TRACE) {
                 traceReload(p, pid, nowMs, firing);
             }
-            const r: HoldResult = holdStep(st, firing, nowMs, RORSCH_CHARGE_MS);
-            if (r.next === undefined) {
-                delete hold[pid];
-                if (st !== undefined && !st.shot) {
-                    log("nuke", "RELEASED pid=" + pid + " after "
-                        + String(nowMs - st.pressMs) + "ms - no shot");
-                } else if (RORSCH_TRACE && st !== undefined && lastPressMs[pid] === st.pressMs) {
-                    // Rorsch holds only: a parked non-Rorsch press never sets
-                    // lastPressMs, so its pressMs cannot match.
-                    log("nuke", "RELEASED pid=" + pid + " after "
-                        + String(nowMs - st.pressMs) + "ms - after shot");
-                }
-            } else {
-                hold[pid] = r.next;
-            }
-            if (!r.fire) {
-                continue;
-            }
-            logNukeOnce(pid, "fired");
-            log("nuke", "SHOT pid=" + pid + " held " + String(nowMs - (st === undefined ? nowMs : st.pressMs)) + "ms - casting ray");
-            shootRay(p);
         }
     });
 }

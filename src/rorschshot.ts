@@ -1,21 +1,22 @@
 // Rorsch shot detection, kept free of mod.* so scripts/test-rorsch.js can
 // unit-test it in node.
 //
-// The Rorsch charges for about a second while fire is held, then fires once;
-// the player must release and press again for the next shot.
-//
-// Evidence from the 2026-10-01 playtest, do not re-try these:
-//   - IsFiring is true for the WHOLE hold (2-4 s), so its rising edge is the
-//     press, not the shot.
+// Evidence from the 2026-10-01 playtests, do not re-try these:
 //   - GetInventoryMagazineAmmo / GetInventoryAmmo never change for the Rorsch
 //     in any slot, and the MiscGadget slot throws GetAmmoRequest every call.
+//   - IsFiring's rising edge is the trigger press, not the shot.
+//   - A fixed timer after the press (1 s) cast the ray ~1.2 s before the beam.
 //
-// So a shot is a press held continuously for chargeMs, counted once per press.
-// Wall-clock time, not ticks, so lag or a skipped probe tick cannot stretch it.
+// What the 15:20 trace showed: IsFiring goes false 2200-2212 ms after the press
+// on every shot, even with the trigger still held, and IsReloading follows. A
+// release at 1644 ms got no reload, i.e. no shot. So the discharge is the
+// IsFiring falling edge after a full charge; a shorter hold is a cancelled
+// charge. Wall-clock time, not ticks, so lag cannot stretch or shrink a hold.
 
 export interface HoldState {
     pressMs: number;
-    shot: boolean;
+    // A press that must never count, e.g. made with another weapon.
+    ignored: boolean;
 }
 
 export interface HoldResult {
@@ -23,15 +24,12 @@ export interface HoldResult {
     fire: boolean;
 }
 
-export function holdStep(st: HoldState | undefined, firing: boolean, nowMs: number, chargeMs: number): HoldResult {
-    if (!firing) {
+export function holdStep(st: HoldState | undefined, firing: boolean, nowMs: number, minChargeMs: number): HoldResult {
+    if (firing) {
+        return { next: st === undefined ? { pressMs: nowMs, ignored: false } : st, fire: false };
+    }
+    if (st === undefined || st.ignored) {
         return { next: undefined, fire: false };
     }
-    if (st === undefined) {
-        return { next: { pressMs: nowMs, shot: false }, fire: false };
-    }
-    if (st.shot || nowMs - st.pressMs < chargeMs) {
-        return { next: st, fire: false };
-    }
-    return { next: { pressMs: st.pressMs, shot: true }, fire: true };
+    return { next: undefined, fire: nowMs - st.pressMs >= minChargeMs };
 }

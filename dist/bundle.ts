@@ -1335,13 +1335,14 @@ export const RAY_MAX_DIST_M: number = 900;
 export const RAY_START_OFFSET_M: number = 2.5;
 // Ignore impacts closer than this; they are the player's own geometry.
 export const RAY_MIN_HIT_DIST_M: number = 3.0;
-// How long fire must be held before the Rorsch counts as having fired. The
-// Rorsch charges ~1 s, then fires once per press. Tune this if rays land
-// before or after the real beam.
-export const RORSCH_CHARGE_MS: number = 1000;
-// Diagnostic: log IsReloading turning on (with ms since press) while a player is
-// in an HQ fire zone, to test whether the reload marks the real shot. One soldier-
-// state read per tick per player in a fire zone. Set false once settled.
+// The Rorsch shot is the moment IsFiring turns off after a full charge (see
+// rorschshot.ts). Measured 2026-10-01: the discharge lands 2200-2212 ms after
+// the press. A release shorter than this is a cancelled charge, no shot. Kept
+// below the measured charge so tick jitter cannot drop a real shot.
+export const RORSCH_MIN_CHARGE_MS: number = 2100;
+// Diagnostic: log the active slot at each press, both IsReloading edges and
+// every ray outcome while a player is in an HQ fire zone. One soldier-state read
+// per tick per player in a fire zone. Set false once settled.
 export const RORSCH_TRACE: boolean = true;
 export const POWER_LEVEL_REQUIRED: number = 100;
 
@@ -11125,21 +11126,22 @@ export function debugWeaponReport(player: mod.Player): string {
 // Rorsch shot detection, kept free of mod.* so scripts/test-rorsch.js can
 // unit-test it in node.
 //
-// The Rorsch charges for about a second while fire is held, then fires once;
-// the player must release and press again for the next shot.
-//
-// Evidence from the 2026-10-01 playtest, do not re-try these:
-//   - IsFiring is true for the WHOLE hold (2-4 s), so its rising edge is the
-//     press, not the shot.
+// Evidence from the 2026-10-01 playtests, do not re-try these:
 //   - GetInventoryMagazineAmmo / GetInventoryAmmo never change for the Rorsch
 //     in any slot, and the MiscGadget slot throws GetAmmoRequest every call.
+//   - IsFiring's rising edge is the trigger press, not the shot.
+//   - A fixed timer after the press (1 s) cast the ray ~1.2 s before the beam.
 //
-// So a shot is a press held continuously for chargeMs, counted once per press.
-// Wall-clock time, not ticks, so lag or a skipped probe tick cannot stretch it.
+// What the 15:20 trace showed: IsFiring goes false 2200-2212 ms after the press
+// on every shot, even with the trigger still held, and IsReloading follows. A
+// release at 1644 ms got no reload, i.e. no shot. So the discharge is the
+// IsFiring falling edge after a full charge; a shorter hold is a cancelled
+// charge. Wall-clock time, not ticks, so lag cannot stretch or shrink a hold.
 
 export interface HoldState {
     pressMs: number;
-    shot: boolean;
+    // A press that must never count, e.g. made with another weapon.
+    ignored: boolean;
 }
 
 export interface HoldResult {
@@ -11147,17 +11149,14 @@ export interface HoldResult {
     fire: boolean;
 }
 
-export function holdStep(st: HoldState | undefined, firing: boolean, nowMs: number, chargeMs: number): HoldResult {
-    if (!firing) {
+export function holdStep(st: HoldState | undefined, firing: boolean, nowMs: number, minChargeMs: number): HoldResult {
+    if (firing) {
+        return { next: st === undefined ? { pressMs: nowMs, ignored: false } : st, fire: false };
+    }
+    if (st === undefined || st.ignored) {
         return { next: undefined, fire: false };
     }
-    if (st === undefined) {
-        return { next: { pressMs: nowMs, shot: false }, fire: false };
-    }
-    if (st.shot || nowMs - st.pressMs < chargeMs) {
-        return { next: st, fire: false };
-    }
-    return { next: { pressMs: st.pressMs, shot: true }, fire: true };
+    return { next: undefined, fire: nowMs - st.pressMs >= minChargeMs };
 }
 
 
@@ -11184,7 +11183,7 @@ interface PendingRay {
 
 const inFlight: { [pid: number]: PendingRay } = {};
 // Per-player trigger hold while in an HQ fire zone with the Rorsch; see
-// rorschshot.ts for why the shot is a timed hold.
+// rorschshot.ts for why the shot is the IsFiring falling edge after a charge.
 const hold: { [pid: number]: HoldState } = {};
 // RORSCH_TRACE only: last IsReloading value, to log its edges.
 const wasReloading: { [pid: number]: boolean } = {};
@@ -11266,7 +11265,7 @@ export function initNuke(): void {
         gateHandles[g] = trigger;
         gates++;
     }
-    log("nuke", "ready: Rorsch-gated, timed hold (charge), one ray per player, gates="
+    log("nuke", "ready: Rorsch-gated, ray on discharge (IsFiring off after charge), one ray per player, gates="
         + String(gates) + "/" + String(HQ_GATES.length));
 }
 
@@ -11562,39 +11561,35 @@ function probe(): void {
                     if (RORSCH_TRACE) {
                         log("nuke", "PRESS pid=" + pid + " ignored - Rorsch not carried, " + traceSlot(p));
                     }
-                    hold[pid] = { pressMs: nowMs, shot: true };
+                    hold[pid] = { pressMs: nowMs, ignored: true };
                     continue;
                 }
                 logNukeOnce(pid, "charging");
                 lastPressMs[pid] = nowMs;
-                log("nuke", "PRESS pid=" + pid + " charging, shot counts after "
-                    + String(RORSCH_CHARGE_MS) + "ms held"
+                log("nuke", "PRESS pid=" + pid + " charging, discharge counts after "
+                    + String(RORSCH_MIN_CHARGE_MS) + "ms held"
                     + (RORSCH_TRACE ? ", " + traceSlot(p) : ""));
+            }
+            const r: HoldResult = holdStep(st, firing, nowMs, RORSCH_MIN_CHARGE_MS);
+            if (r.next === undefined) {
+                delete hold[pid];
+            } else {
+                hold[pid] = r.next;
+            }
+            if (r.fire) {
+                // Cast first, in the same tick the discharge is seen; the logs
+                // and the reload trace come after so they add no latency.
+                shootRay(p);
+                logNukeOnce(pid, "fired");
+                log("nuke", "SHOT pid=" + pid + " discharge after "
+                    + String(nowMs - (st === undefined ? nowMs : st.pressMs)) + "ms - ray cast");
+            } else if (r.next === undefined && st !== undefined && !st.ignored) {
+                log("nuke", "RELEASED pid=" + pid + " after "
+                    + String(nowMs - st.pressMs) + "ms - charge cancelled, no shot");
             }
             if (RORSCH_TRACE) {
                 traceReload(p, pid, nowMs, firing);
             }
-            const r: HoldResult = holdStep(st, firing, nowMs, RORSCH_CHARGE_MS);
-            if (r.next === undefined) {
-                delete hold[pid];
-                if (st !== undefined && !st.shot) {
-                    log("nuke", "RELEASED pid=" + pid + " after "
-                        + String(nowMs - st.pressMs) + "ms - no shot");
-                } else if (RORSCH_TRACE && st !== undefined && lastPressMs[pid] === st.pressMs) {
-                    // Rorsch holds only: a parked non-Rorsch press never sets
-                    // lastPressMs, so its pressMs cannot match.
-                    log("nuke", "RELEASED pid=" + pid + " after "
-                        + String(nowMs - st.pressMs) + "ms - after shot");
-                }
-            } else {
-                hold[pid] = r.next;
-            }
-            if (!r.fire) {
-                continue;
-            }
-            logNukeOnce(pid, "fired");
-            log("nuke", "SHOT pid=" + pid + " held " + String(nowMs - (st === undefined ? nowMs : st.pressMs)) + "ms - casting ray");
-            shootRay(p);
         }
     });
 }
@@ -14603,8 +14598,8 @@ function onOngoingGlobal(): void {
         syncBunkerOwners();
     }
     // The Rorsch probe is the most expensive per-frame item. Skipping it costs
-    // one sample: the shot is a wall-clock timed hold (rorschshot.ts), so a
-    // skipped tick only delays the ray by one tick, but a release and re-press
+    // one sample: the shot is the IsFiring falling edge (rorschshot.ts), so a
+    // skipped tick delays the ray by one tick, and a discharge and re-press
     // that both fall inside skipped ticks merge into one hold.
     if (healthFactor() >= 0.7) {
         tickNukeProbe();
