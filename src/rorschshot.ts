@@ -3,36 +3,23 @@
 //
 // The Rorsch charges for about a second while fire is held, then discharges
 // once; the player must release and press again for the next shot. IsFiring
-// goes true at the PRESS, so it cannot be the shot signal. The discharge is the
-// moment the weapon's ammo (magazine + reserve) drops during a hold.
+// cannot be the shot signal: it goes true at the PRESS, and the 2026-10-01
+// playtest showed a hold being seen without any discharge inside it. The shot
+// is the tick the weapon's ammo (magazine + reserve) drops, tracked for as long
+// as the player is in an HQ fire zone with the Rorsch.
 
-export interface HoldState {
-    // Ammo seen at the start of this hold, or the latest higher value.
-    baseline: number;
-    // This hold has already produced its one shot.
-    shot: boolean;
-}
-
-export interface HoldResult {
-    next: HoldState | undefined;
+export interface AmmoResult {
+    // Baseline for the next tick (undefined until a valid reading).
+    next: number | undefined;
     fire: boolean;
 }
 
-export function holdStep(st: HoldState | undefined, firing: boolean, ammo: number): HoldResult {
-    if (!firing) {
-        return { next: undefined, fire: false };
+export function ammoStep(last: number | undefined, ammo: number): AmmoResult {
+    if (ammo < 0) {
+        return { next: last, fire: false };
     }
-    if (st === undefined) {
-        return { next: { baseline: ammo, shot: false }, fire: false };
+    if (last !== undefined && ammo < last) {
+        return { next: ammo, fire: true };
     }
-    if (st.shot) {
-        return { next: st, fire: false };
-    }
-    if (ammo < st.baseline) {
-        return { next: { baseline: ammo, shot: true }, fire: true };
-    }
-    if (ammo > st.baseline) {
-        return { next: { baseline: ammo, shot: false }, fire: false };
-    }
-    return { next: st, fire: false };
+    return { next: ammo, fire: false };
 }

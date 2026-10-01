@@ -61,6 +61,10 @@ export const RAY_MAX_DIST_M: number = 900;
 export const RAY_START_OFFSET_M: number = 2.5;
 // Ignore impacts closer than this; they are the player's own geometry.
 export const RAY_MIN_HIT_DIST_M: number = 3.0;
+// Diagnostic: log IsFiring + every slot's magazine/reserve whenever they change
+// while a player is in an HQ fire zone with the Rorsch. Set false once the
+// discharge signal is confirmed in game.
+export const RORSCH_TRACE: boolean = true;
 export const POWER_LEVEL_REQUIRED: number = 100;
 
 // ---- Bots: custom AI_Spawner objective players (no UI, no buy, no nuke) ----

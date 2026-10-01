@@ -1,7 +1,7 @@
 // Unit test for the Rorsch discharge detector in src/rorschshot.ts.
-// The Rorsch charges for ~1 s while fire is held, then discharges once; the
-// player must release and press again to fire the next shot. A shot is the
-// moment ammo (magazine + reserve) drops during a hold.
+// A shot is the tick the Rorsch's ammo (magazine + reserve) drops while the
+// player is in an HQ fire zone. IsFiring is NOT used to decide: the 2026-10-01
+// playtest showed a press being seen but never a discharge inside the hold.
 const fs = require("fs");
 const path = require("path");
 const ts = require("typescript");
@@ -10,7 +10,7 @@ const src = fs.readFileSync(path.join(__dirname, "..", "src", "rorschshot.ts"), 
 const js = ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
 const m = { exports: {} };
 new Function("module", "exports", js)(m, m.exports);
-const { holdStep } = m.exports;
+const { ammoStep } = m.exports;
 
 let failed = 0;
 function eq(label, got, want) {
@@ -19,41 +19,33 @@ function eq(label, got, want) {
     console.log((ok ? "  ok   " : "  FAIL ") + label + " -> " + JSON.stringify(got) + (ok ? "" : " (want " + JSON.stringify(want) + ")"));
 }
 
-// Feed a sequence of [firing, ammo] ticks, return the tick indices that fire.
-function run(ticks) {
-    let st = undefined;
+// Feed a sequence of ammo readings, return the tick indices that fire.
+function run(seq) {
+    let last = undefined;
     const shots = [];
-    ticks.forEach(([firing, ammo], i) => {
-        const r = holdStep(st, firing, ammo);
-        st = r.next;
+    seq.forEach((ammo, i) => {
+        const r = ammoStep(last, ammo);
+        last = r.next;
         if (r.fire) shots.push(i);
     });
     return shots;
 }
-const hold = (n, ammo) => Array.from({ length: n }, () => [true, ammo]);
+const same = (n, a) => Array.from({ length: n }, () => a);
 
-console.log("press alone does not fire (charge-up):");
-eq("hold 20 ticks, ammo unchanged", run(hold(20, 9)), []);
-
-console.log("fires on the tick ammo drops, once:");
-eq("charge then discharge", run([...hold(30, 9), ...hold(10, 8)]), [30]);
-
-console.log("released before discharge -> no shot:");
-eq("press, release", run([...hold(15, 9), [false, 9], [false, 9]]), []);
-
-console.log("holding after discharge never fires again:");
-eq("discharge, keep holding, mag reload changes ammo",
-    run([...hold(30, 9), ...hold(5, 8), ...hold(5, 9), ...hold(5, 8)]), [30]);
-
-console.log("second press fires the second shot:");
-eq("two separate presses",
-    run([...hold(30, 9), [true, 8], [false, 8], ...hold(30, 8), [true, 7]]), [30, 62]);
-
-console.log("ammo rising mid-hold (pickup/reload) re-baselines, does not fire:");
-eq("rise then drop", run([...hold(5, 7), ...hold(5, 9), [true, 8]]), [10]);
-
-console.log("not firing clears state:");
-eq("idle", holdStep(undefined, false, 9), { next: undefined, fire: false });
+console.log("first reading only sets the baseline:");
+eq("entering zone", run([9]), []);
+console.log("charging (ammo unchanged) never fires:");
+eq("30 ticks at 9", run(same(30, 9)), []);
+console.log("a drop fires exactly once:");
+eq("9 x30 then 8 x10", run([...same(30, 9), ...same(10, 8)]), [30]);
+console.log("two discharges fire twice:");
+eq("9 -> 8 -> 7", run([...same(5, 9), ...same(5, 8), ...same(5, 7)]), [5, 10]);
+console.log("ammo rising (pickup/resupply) does not fire:");
+eq("7 -> 9", run([...same(5, 7), ...same(5, 9)]), []);
+console.log("mag->reserve reload transfer keeps the sum, no fire:");
+eq("sum constant", run(same(10, 8)), []);
+console.log("negative/invalid reading is ignored and does not move the baseline:");
+eq("9, -1, 9", run([9, -1, 9]), []);
 
 if (failed > 0) { console.log(failed + " FAILED"); process.exit(1); }
 console.log("ALL CHECKS PASSED");
