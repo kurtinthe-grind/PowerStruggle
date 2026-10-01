@@ -45,7 +45,8 @@ import {
 import { playersFromIds, playersOnCapturePoint, teamIdOf } from "./util/roster";
 import { initEnergy, energyMultiplier } from "./energy";
 import { initFactory, factoryOwner, tickCharge, onCharge } from "./factory";
-import { initTurrets, configureTurretEvents } from "./turrets";
+import { initTurrets, configureTurretEvents, onHqHit } from "./turrets";
+import { hqHpPercent } from "./winner";
 import { initSlots, pickSpawner, SpawnChoice } from "./slots";
 import { factoryBuildings, isConfigured } from "./objids";
 import { initNuke, configureNukeEvents, tickNukeProbe } from "./nuke";
@@ -1585,7 +1586,9 @@ function stateSetPower(team: number, value: number): void {
     log("state", "power t" + team + " " + before + " -> " + after);
 }
 
-function stateSetBase(team: number, hp: number): void {
+// silent: skip the generic "baseHit" feed line. Real HQ hits pass true because
+// turrets.ts already sends the defender/attacker notifications for them.
+function stateSetBase(team: number, hp: number, silent: boolean = false): void {
     if (team !== 1 && team !== 2) {
         return;
     }
@@ -1596,7 +1599,7 @@ function stateSetBase(team: number, hp: number): void {
     }
     baseVal[team] = after;
     repaintTeamBars();
-    if (after < before) {
+    if (after < before && !silent) {
         pushTeamFeed(team, "baseHit", after, 100);
     }
     log("state", "base t" + team + " " + before + " -> " + after);
@@ -2262,8 +2265,11 @@ function renderFeedChip(prefix: string, slot: number, key: string, a0: string | 
           col = FEED_GRN;
       } else if (key === "protoYours" || key === "siteYours" || key === "capStarted" || key === "bunkerYours") {
           col = FEED_BLU;
-      } else if (key === "killZone" || key === "capContested" || key === "hqHit") {
+      } else if (key === "killZone" || key === "capContested" || key === "hqHit" || key === "hqFoeCritical") {
           col = FEED_YEL;
+          icon = "warn";
+      } else if (key === "hqUnderAttack" || key === "hqCritical") {
+          col = FEED_RED;
           icon = "warn";
       } else if (key === "winT1" || key === "winT2" || key === "losOpen") {
           col = FEED_GRN;
@@ -2271,7 +2277,8 @@ function renderFeedChip(prefix: string, slot: number, key: string, a0: string | 
       }
 
       let msg: mod.Message = mod.Message(key);
-      if (key === "baseHit" || key === "hqHit") {
+      if (key === "baseHit" || key === "hqHit" || key === "hqUnderAttack"
+          || key === "hqCritical" || key === "hqFoeCritical") {
           msg = mod.Message(key, a0, a1);
       } else if (key === "prestigeUp" || key === "buyAvailable" || key === "capStarted" || key === "capDone"
           || key === "bunkerYours" || key === "bunkerFoe" || key === "bunkerLost"
@@ -2299,6 +2306,7 @@ function renderFeedChip(prefix: string, slot: number, key: string, a0: string | 
 
 const FEED_LANE_HIGH: string[] = [
     "nukeReady", "nukeFoeReady", "protoYours", "protoFoe", "baseHit",
+    "hqHit", "hqUnderAttack", "hqCritical", "hqFoeCritical",
     "bunkerYours", "bunkerFoe", "bunkerLost", "losOpen", "turretDestroyed"
 ];
 const COOLDOWN_FRAMES: number = 90;
@@ -2985,6 +2993,11 @@ onAward((p: mod.Player, _kind: AwardKind, prestige: number) => {
 // 0.25s settle here does the same and makes the engine-event path and the
 // 30-frame syncBunkerOwners path behave identically.
 const BUNKER_SETTLE_MS: number = 250;
+
+// Real HQ damage drives the HUD's HQ health (100 -> 67 -> 33 -> 0 at 3 hits).
+onHqHit((base: number, hits: number, required: number) => {
+    stateSetBase(base, hqHpPercent(hits, required), true);
+});
 
 onCaptured((def, owner, occupants) => {
       if (def.kind === "energy") {

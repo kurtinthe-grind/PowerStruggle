@@ -54,7 +54,7 @@ export const TURRET_CLUSTER_REQ: number = 3;
 export const TURRET_HIT_RADIUS_M: number = 12;
 
 export const HQ_HIT_RADIUS_M: number = 100;
-export const HQ_HITS_REQUIRED: number = 2;
+export const HQ_HITS_REQUIRED: number = 3;
 
 export const RAY_MAX_DIST_M: number = 900;
 // Push the ray origin past the soldier's own body so it cannot self-hit.

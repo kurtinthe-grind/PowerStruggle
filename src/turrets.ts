@@ -1,12 +1,12 @@
 import { Events } from "bf6-portal-utils/events";
 import { Timers } from "bf6-portal-utils/timers";
-import { log, safe, logAdmin, willLogDebug } from "./util/log";
+import { log, safe, logAdmin, willLogDebug, invokeSubscriber } from "./util/log";
 import { TURRETS, HQ_EXPLOSION, isConfigured, TurretDef } from "./objids";
 import { TURRET_WARNING_SECS, TURRET_CLUSTER_REQ, HQ_HITS_REQUIRED } from "./config";
 import { teamIdOf } from "./util/roster";
 import { playSfxAll, playSfxTeam } from "./audio";
 import { notifyTeam } from "./notify";
-import { winnerForDestroyedBase, winMessageKey } from "./winner";
+import { winnerForDestroyedBase, winMessageKey, hqHitKeys, HqHitKeys } from "./winner";
 import { Vectors } from "bf6-portal-utils/vectors";
 
 const turretByZone: { [zoneId: number]: TurretDef } = {};
@@ -19,6 +19,15 @@ const losOpen: { [base: string]: boolean } = {};
 
 let hqHp: number[] = [0, 0, 0];
 let matchOver: boolean = false;
+
+// HQ damage listeners: (base, hits, required). index.ts uses this to drive the
+// HUD's HQ health, which turrets.ts cannot reach directly.
+export type HqHitListener = (base: number, hits: number, required: number) => void;
+const hqHitListeners: HqHitListener[] = [];
+
+export function onHqHit(fn: HqHitListener): void {
+    hqHitListeners.push(fn);
+}
 
 export function initTurrets(): void {
     let zones: number = 0;
@@ -325,7 +334,18 @@ export function hitHq(base: number): boolean {
     }
     hqHp[base] = (hqHp[base] || 0) + 1;
     playSfxAll("hqHit", 0.9);
-    notifyTeam(base, "hqHit", hqHp[base], 0);
+    const hits: number = hqHp[base];
+    for (const fn of hqHitListeners) {
+        invokeSubscriber(fn, base, hits, HQ_HITS_REQUIRED, undefined, "turrets.hqHit");
+    }
+    // base owns the HQ, so the attackers are the other team. The final hit is
+    // announced by endMatchFor instead (keys === null).
+    const keys: HqHitKeys | null = hqHitKeys(hits, HQ_HITS_REQUIRED);
+    if (keys !== null) {
+        const left: number = HQ_HITS_REQUIRED - hits;
+        notifyTeam(base, keys.defender, left, HQ_HITS_REQUIRED);
+        notifyTeam(winnerForDestroyedBase(base), keys.attacker, left, HQ_HITS_REQUIRED);
+    }
     log("turrets", "HQ base " + base + " hit " + String(hqHp[base]) + "/" + String(HQ_HITS_REQUIRED));
     if (hqHp[base] >= HQ_HITS_REQUIRED) {
         matchOver = true;

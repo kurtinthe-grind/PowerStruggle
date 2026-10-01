@@ -1325,7 +1325,7 @@ export const TURRET_CLUSTER_REQ: number = 3;
 export const TURRET_HIT_RADIUS_M: number = 12;
 
 export const HQ_HIT_RADIUS_M: number = 100;
-export const HQ_HITS_REQUIRED: number = 2;
+export const HQ_HITS_REQUIRED: number = 3;
 
 export const RAY_MAX_DIST_M: number = 900;
 // Push the ray origin past the soldier's own body so it cannot self-hit.
@@ -10368,6 +10368,34 @@ export function winMessageKey(winner: number): string {
     return winner === 1 ? "winT1" : "winT2";
 }
 
+// HQ health shown on the HUD, as a whole percent. 3 required hits paint
+// 100 -> 67 -> 33 -> 0.
+export function hqHpPercent(hits: number, required: number): number {
+    if (required <= 0 || hits >= required) {
+        return 0;
+    }
+    return Math.round(100 * (required - hits) / required);
+}
+
+export interface HqHitKeys {
+    defender: string;
+    attacker: string;
+}
+
+// Feed keys for a non-final HQ hit. Defenders are told their HQ is under
+// attack, attackers that the enemy HQ took a hit; with one hit left both get
+// the critical variant. The final hit returns null: the win message covers it.
+export function hqHitKeys(hits: number, required: number): HqHitKeys | null {
+    const left: number = required - hits;
+    if (left <= 0) {
+        return null;
+    }
+    if (left === 1) {
+        return { defender: "hqCritical", attacker: "hqFoeCritical" };
+    }
+    return { defender: "hqUnderAttack", attacker: "hqHit" };
+}
+
 
 // --- SOURCE: src\turrets.ts ---
 
@@ -10391,6 +10419,15 @@ const losOpen: { [base: string]: boolean } = {};
 
 let hqHp: number[] = [0, 0, 0];
 let matchOver: boolean = false;
+
+// HQ damage listeners: (base, hits, required). index.ts uses this to drive the
+// HUD's HQ health, which turrets.ts cannot reach directly.
+export type HqHitListener = (base: number, hits: number, required: number) => void;
+const hqHitListeners: HqHitListener[] = [];
+
+export function onHqHit(fn: HqHitListener): void {
+    hqHitListeners.push(fn);
+}
 
 export function initTurrets(): void {
     let zones: number = 0;
@@ -10697,7 +10734,18 @@ export function hitHq(base: number): boolean {
     }
     hqHp[base] = (hqHp[base] || 0) + 1;
     playSfxAll("hqHit", 0.9);
-    notifyTeam(base, "hqHit", hqHp[base], 0);
+    const hits: number = hqHp[base];
+    for (const fn of hqHitListeners) {
+        invokeSubscriber(fn, base, hits, HQ_HITS_REQUIRED, undefined, "turrets.hqHit");
+    }
+    // base owns the HQ, so the attackers are the other team. The final hit is
+    // announced by endMatchFor instead (keys === null).
+    const keys: HqHitKeys | null = hqHitKeys(hits, HQ_HITS_REQUIRED);
+    if (keys !== null) {
+        const left: number = HQ_HITS_REQUIRED - hits;
+        notifyTeam(base, keys.defender, left, HQ_HITS_REQUIRED);
+        notifyTeam(winnerForDestroyedBase(base), keys.attacker, left, HQ_HITS_REQUIRED);
+    }
     log("turrets", "HQ base " + base + " hit " + String(hqHp[base]) + "/" + String(HQ_HITS_REQUIRED));
     if (hqHp[base] >= HQ_HITS_REQUIRED) {
         matchOver = true;
@@ -11766,6 +11814,7 @@ export function locationById(id: string): StrategicLocation | undefined {
 // Cost: one Uint32Array(100) and a 1 Hz timer that early-returns when no one is
 // pending. Not combined with multi-click-detector, which would multiply the
 // synthetic event across its own subscribers.
+
 
 
 
@@ -13323,7 +13372,9 @@ function stateSetPower(team: number, value: number): void {
     log("state", "power t" + team + " " + before + " -> " + after);
 }
 
-function stateSetBase(team: number, hp: number): void {
+// silent: skip the generic "baseHit" feed line. Real HQ hits pass true because
+// turrets.ts already sends the defender/attacker notifications for them.
+function stateSetBase(team: number, hp: number, silent: boolean = false): void {
     if (team !== 1 && team !== 2) {
         return;
     }
@@ -13334,7 +13385,7 @@ function stateSetBase(team: number, hp: number): void {
     }
     baseVal[team] = after;
     repaintTeamBars();
-    if (after < before) {
+    if (after < before && !silent) {
         pushTeamFeed(team, "baseHit", after, 100);
     }
     log("state", "base t" + team + " " + before + " -> " + after);
@@ -14000,8 +14051,11 @@ function renderFeedChip(prefix: string, slot: number, key: string, a0: string | 
           col = FEED_GRN;
       } else if (key === "protoYours" || key === "siteYours" || key === "capStarted" || key === "bunkerYours") {
           col = FEED_BLU;
-      } else if (key === "killZone" || key === "capContested" || key === "hqHit") {
+      } else if (key === "killZone" || key === "capContested" || key === "hqHit" || key === "hqFoeCritical") {
           col = FEED_YEL;
+          icon = "warn";
+      } else if (key === "hqUnderAttack" || key === "hqCritical") {
+          col = FEED_RED;
           icon = "warn";
       } else if (key === "winT1" || key === "winT2" || key === "losOpen") {
           col = FEED_GRN;
@@ -14009,7 +14063,8 @@ function renderFeedChip(prefix: string, slot: number, key: string, a0: string | 
       }
 
       let msg: mod.Message = mod.Message(key);
-      if (key === "baseHit" || key === "hqHit") {
+      if (key === "baseHit" || key === "hqHit" || key === "hqUnderAttack"
+          || key === "hqCritical" || key === "hqFoeCritical") {
           msg = mod.Message(key, a0, a1);
       } else if (key === "prestigeUp" || key === "buyAvailable" || key === "capStarted" || key === "capDone"
           || key === "bunkerYours" || key === "bunkerFoe" || key === "bunkerLost"
@@ -14037,6 +14092,7 @@ function renderFeedChip(prefix: string, slot: number, key: string, a0: string | 
 
 const FEED_LANE_HIGH: string[] = [
     "nukeReady", "nukeFoeReady", "protoYours", "protoFoe", "baseHit",
+    "hqHit", "hqUnderAttack", "hqCritical", "hqFoeCritical",
     "bunkerYours", "bunkerFoe", "bunkerLost", "losOpen", "turretDestroyed"
 ];
 const COOLDOWN_FRAMES: number = 90;
@@ -14723,6 +14779,11 @@ onAward((p: mod.Player, _kind: AwardKind, prestige: number) => {
 // 0.25s settle here does the same and makes the engine-event path and the
 // 30-frame syncBunkerOwners path behave identically.
 const BUNKER_SETTLE_MS: number = 250;
+
+// Real HQ damage drives the HUD's HQ health (100 -> 67 -> 33 -> 0 at 3 hits).
+onHqHit((base: number, hits: number, required: number) => {
+    stateSetBase(base, hqHpPercent(hits, required), true);
+});
 
 onCaptured((def, owner, occupants) => {
       if (def.kind === "energy") {
