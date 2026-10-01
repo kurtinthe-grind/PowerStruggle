@@ -1726,11 +1726,10 @@ export namespace PerformanceStats {
 // before re-creating. The module README also says OngoingGlobal where the code
 // uses OnTickStart; that is cosmetic, they are the same channel.
 //
-// A second, deliberate choice: dt in onOngoingGlobal is still a fixed 1/60 even
-// though the engine measures nearer 30 Hz, so every frame-denominated TTL and the
-// charge rate run at roughly half wall-clock speed. Correcting that is a
-// balance change (CHARGE_BASE_SECONDS would go from an effective ~600 s to a
-// real 300 s) and is held for an owner decision, not made here.
+// dt: onOngoingGlobal now drives the charge tick from spotDeltaMs() (clamped
+// to 1/240..1/10 s), so CHARGE_BASE_SECONDS is real seconds. Constants still
+// counted in frames (COOLDOWN_FRAMES, frameNo % 30, feed TTLs) follow the
+// engine's ~30 Hz tick, not 60.
 
 // Warnings are routed through logAdmin, which is capped at two
 // SendPortalLogToAdmin calls per tick. performance-stats is never rate-limited
