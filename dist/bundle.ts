@@ -11110,6 +11110,47 @@ export function debugWeaponReport(player: mod.Player): string {
 }
 
 
+// --- SOURCE: src\rorschshot.ts ---
+// Rorsch discharge detection, kept free of mod.* so scripts/test-rorsch.js can
+// unit-test it in node.
+//
+// The Rorsch charges for about a second while fire is held, then discharges
+// once; the player must release and press again for the next shot. IsFiring
+// goes true at the PRESS, so it cannot be the shot signal. The discharge is the
+// moment the weapon's ammo (magazine + reserve) drops during a hold.
+
+export interface HoldState {
+    // Ammo seen at the start of this hold, or the latest higher value.
+    baseline: number;
+    // This hold has already produced its one shot.
+    shot: boolean;
+}
+
+export interface HoldResult {
+    next: HoldState | undefined;
+    fire: boolean;
+}
+
+export function holdStep(st: HoldState | undefined, firing: boolean, ammo: number): HoldResult {
+    if (!firing) {
+        return { next: undefined, fire: false };
+    }
+    if (st === undefined) {
+        return { next: { baseline: ammo, shot: false }, fire: false };
+    }
+    if (st.shot) {
+        return { next: st, fire: false };
+    }
+    if (ammo < st.baseline) {
+        return { next: { baseline: ammo, shot: true }, fire: true };
+    }
+    if (ammo > st.baseline) {
+        return { next: { baseline: ammo, shot: false }, fire: false };
+    }
+    return { next: st, fire: false };
+}
+
+
 // --- SOURCE: src\nuke.ts ---
 
 
@@ -11121,6 +11162,15 @@ export function debugWeaponReport(player: mod.Player): string {
 
 
 
+
+// Rorsch ammo as one number. Magazine + reserve, so a discharge always lowers it
+// even if the engine refills the magazine from the reserve in the same tick.
+// Tier 0: GetInventoryMagazineAmmo / GetInventoryAmmo (player, InventorySlots).
+function rorschAmmo(p: mod.Player): number {
+    return mod.GetInventoryMagazineAmmo(p, mod.InventorySlots.PrimaryWeapon)
+        + mod.GetInventoryAmmo(p, mod.InventorySlots.PrimaryWeapon);
+}
+
 interface PendingRay {
     pid: number;
     team: number;
@@ -11128,7 +11178,9 @@ interface PendingRay {
 }
 
 const inFlight: { [pid: number]: PendingRay } = {};
-const wasFiring: { [pid: number]: boolean } = {};
+// Per-player trigger hold. Present only while fire is held near an enemy HQ;
+// see rorschshot.ts for why the shot is the ammo drop, not the press.
+const hold: { [pid: number]: HoldState } = {};
 const gateOccupants: { [gateId: number]: number[] } = {};
 const gateHandles: { [gateId: number]: mod.AreaTrigger } = {};
 const playerGate: { [pid: number]: number } = {};
@@ -11422,9 +11474,9 @@ function probe(): void {
             // every player who is not standing in an HQ gate without a single
             // mod.* FFI call. This is the whole point of the reorder.
             if (!nearEnemyBase(pid)) {
-                // Re-arm the rising edge so holding fire on gate entry still
-                // counts as a shot.
-                wasFiring[pid] = false;
+                // Drop any hold, so a charge that started outside the gate is
+                // tracked afresh from the moment the player is inside it.
+                delete hold[pid];
                 continue;
             }
             let firing: boolean = false;
@@ -11433,16 +11485,44 @@ function probe(): void {
             } catch (e) {
                 continue;
             }
-            const was: boolean = wasFiring[pid] === true;
-            wasFiring[pid] = firing;
-            if (!firing || was) {
+            if (!firing) {
+                delete hold[pid];
                 continue;
             }
-            if (!isRorschInHand(p)) {
-                logNukeOnce(pid, "noRorsch");
+            const st: HoldState | undefined = hold[pid];
+            if (st === undefined) {
+                // Trigger pressed: the Rorsch only starts charging here. Check the
+                // weapon once per press; a non-Rorsch hold is parked as already
+                // shot so it never reads ammo or fires until released.
+                if (!isRorschInHand(p)) {
+                    logNukeOnce(pid, "noRorsch");
+                    hold[pid] = { baseline: 0, shot: true };
+                    continue;
+                }
+            } else if (st.shot) {
+                // This press has already fired; the Rorsch needs a new press.
+                continue;
+            }
+            let ammo: number;
+            try {
+                ammo = rorschAmmo(p);
+            } catch (e) {
+                continue;
+            }
+            const r: HoldResult = holdStep(st, true, ammo);
+            hold[pid] = r.next as HoldState;
+            if (st === undefined) {
+                logNukeOnce(pid, "charging");
+                if (willLogDebug()) {
+                    log("nuke", "PRESS pid=" + pid + " ammo=" + String(ammo) + " (charging, no ray yet)");
+                }
+                continue;
+            }
+            if (!r.fire) {
                 continue;
             }
             logNukeOnce(pid, "fired");
+            log("nuke", "DISCHARGE pid=" + pid + " ammo " + String(st.baseline) + " -> " + String(ammo) + " - casting ray");
             shootRay(p);
         }
     });
@@ -11478,7 +11558,7 @@ export function configureNukeEvents(): void {
         safe("nuke.gate.leave", () => {
             onGateLeave(pid);
             delete inFlight[pid];
-            delete wasFiring[pid];
+            delete hold[pid];
             delete deployed_2[pid];
         });
     });
@@ -11491,7 +11571,7 @@ export function configureNukeEvents(): void {
         safe("nuke.undeployed", () => {
             const pid: number = mod.GetObjId(p);
             deployed_2[pid] = false;
-            delete wasFiring[pid];
+            delete hold[pid];
             delete inFlight[pid];
         });
     });
@@ -14436,8 +14516,8 @@ function onOngoingGlobal(): void {
         syncBunkerOwners();
     }
     // The Rorsch probe is the most expensive per-frame item. Skipping it costs
-    // at most one IsFiring sample, and held fire re-arms on the next tick
-    // because wasFiring only advances inside the probe.
+    // one sample: the discharge is detected as an ammo drop against the hold's
+    // baseline, so a skipped tick only delays the ray by one tick.
     if (healthFactor() >= 0.7) {
         tickNukeProbe();
     }
