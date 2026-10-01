@@ -55,6 +55,12 @@ export const CHARGE_UNLOCK_100: number = 100;
 export const TURRET_WARNING_SECS: number = 3;
 export const TURRET_CLUSTER_REQ: number = 3;
 export const TURRET_HIT_RADIUS_M: number = 12;
+// Upright cylinder around each turret base for the Rorsch path test (RayCast
+// passes through the AA turrets). Sized from the 17:38 playtest: shots aimed
+// at a turret passed 2.3-6 m from its axis at 6-14 m above its base.
+export const TURRET_RAY_RADIUS_M: number = 7;
+export const TURRET_RAY_BELOW_M: number = 3;
+export const TURRET_RAY_ABOVE_M: number = 16;
 
 export const HQ_HIT_RADIUS_M: number = 100;
 export const HQ_HITS_REQUIRED: number = 3;

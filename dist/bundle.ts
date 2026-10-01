@@ -1326,6 +1326,12 @@ export const CHARGE_UNLOCK_100: number = 100;
 export const TURRET_WARNING_SECS: number = 3;
 export const TURRET_CLUSTER_REQ: number = 3;
 export const TURRET_HIT_RADIUS_M: number = 12;
+// Upright cylinder around each turret base for the Rorsch path test (RayCast
+// passes through the AA turrets). Sized from the 17:38 playtest: shots aimed
+// at a turret passed 2.3-6 m from its axis at 6-14 m above its base.
+export const TURRET_RAY_RADIUS_M: number = 7;
+export const TURRET_RAY_BELOW_M: number = 3;
+export const TURRET_RAY_ABOVE_M: number = 16;
 
 export const HQ_HIT_RADIUS_M: number = 100;
 export const HQ_HITS_REQUIRED: number = 3;
@@ -10532,6 +10538,11 @@ function cacheTurretPos(index: number, t: TurretDef): void {
 export function turretResolvedAt(index: number): boolean {
     return turretResolved[index] === true;
 }
+// One cached coordinate of the turret base: axis 0 = x, 1 = y, 2 = z.
+export function turretCoord(index: number, axis: number): number {
+    return turretXYZ[index * 3 + axis];
+}
+
 export function turretDistSq(
     index: number,
     px: number,
@@ -11122,6 +11133,68 @@ export function debugWeaponReport(player: mod.Player): string {
 }
 
 
+// --- SOURCE: src\raygeom.ts ---
+// Ray geometry for the Rorsch turret test, kept free of mod.* so
+// scripts/test-raygeom.js can unit-test it in node.
+//
+// mod.RayCast passes straight through the stationary AA turrets (17:38 log:
+// rays aimed at them carried on to the HQ or the sky), so a turret cannot be
+// found from the ray's hit point. Instead the ray's path is tested against an
+// upright cylinder around the turret's base.
+
+// True when the segment start + dir * [0, len] passes through the vertical
+// cylinder of the given radius around (cx, cz), spanning cy - below to
+// cy + above. dir must be normalised.
+export function rayThroughUpright(
+    sx: number, sy: number, sz: number,
+    dx: number, dy: number, dz: number,
+    len: number,
+    cx: number, cy: number, cz: number,
+    radius: number, below: number, above: number
+): boolean {
+    // Horizontal part: the s range where the ray is within radius of the axis.
+    const ox: number = sx - cx;
+    const oz: number = sz - cz;
+    const a: number = dx * dx + dz * dz;
+    const c: number = ox * ox + oz * oz - radius * radius;
+    let s0: number;
+    let s1: number;
+    if (a < 1e-9) {
+        // Straight up or down: inside the circle for the whole ray, or never.
+        if (c > 0) {
+            return false;
+        }
+        s0 = 0;
+        s1 = len;
+    } else {
+        const b: number = ox * dx + oz * dz;
+        const disc: number = b * b - a * c;
+        if (disc < 0) {
+            return false;
+        }
+        const root: number = Math.sqrt(disc);
+        s0 = (-b - root) / a;
+        s1 = (-b + root) / a;
+    }
+    if (s0 < 0) {
+        s0 = 0;
+    }
+    if (s1 > len) {
+        s1 = len;
+    }
+    if (s0 > s1) {
+        return false;
+    }
+    // Vertical part: y is linear in s, so the highest and lowest points of that
+    // stretch are its ends.
+    const y0: number = sy + dy * s0;
+    const y1: number = sy + dy * s1;
+    const lo: number = y0 < y1 ? y0 : y1;
+    const hi: number = y0 < y1 ? y1 : y0;
+    return hi >= cy - below && lo <= cy + above;
+}
+
+
 // --- SOURCE: src\rorschshot.ts ---
 // Rorsch shot detection, kept free of mod.* so scripts/test-rorsch.js can
 // unit-test it in node.
@@ -11172,6 +11245,7 @@ export function holdStep(st: HoldState | undefined, firing: boolean, nowMs: numb
 
 
 
+
 interface PendingRay {
     pid: number;
     team: number;
@@ -11179,6 +11253,8 @@ interface PendingRay {
     // Wall-clock cast time, so a ray that never reports back is visible in
     // the RORSCH_TRACE "RAY skipped" line.
     castMs: number;
+    // Normalised ray direction, set at cast, for the turret path test.
+    dir: Vectors.Vector3 | undefined;
 }
 
 const inFlight: { [pid: number]: PendingRay } = {};
@@ -11367,7 +11443,8 @@ function shootRay(p: mod.Player): void {
     const eye: mod.Vector = aim !== undefined
         ? mod.CreateVector(aim.ex, aim.ey, aim.ez)
         : mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition);
-    inFlight[pid] = { pid: pid, team: team, start: Vectors.toVector3(eye), castMs: Date.now() };
+    const pendingRay: PendingRay = { pid: pid, team: team, start: Vectors.toVector3(eye), castMs: Date.now(), dir: undefined };
+    inFlight[pid] = pendingRay;
     safe("nuke.cast", () => {
         const facing: mod.Vector = aim !== undefined
             ? mod.CreateVector(aim.fx, aim.fy, aim.fz)
@@ -11380,6 +11457,7 @@ function shootRay(p: mod.Player): void {
         mod.RayCast(p, start, end);
         const e3: Vectors.Vector3 = Vectors.toVector3(eye);
         const f3: Vectors.Vector3 = Vectors.toVector3(facing);
+        pendingRay.dir = f3;
         if (RORSCH_TRACE || willLogDebug()) {
             // After the cast, so the extra read adds no latency: the facing on
             // the discharge tick itself, to measure the kick the snapshot avoids.
@@ -11457,6 +11535,41 @@ function dist(a: Vectors.Vector3, b: Vectors.Vector3): number {
 // Radius squared, computed once, so the hot loop never squares a literal.
 const TURRET_HIT_RADIUS_SQ: number = TURRET_HIT_RADIUS_M * TURRET_HIT_RADIUS_M;
 
+// Destroys every live enemy turret the ray hit. len is how far the ray got from
+// the eye (to the hit point, or its full length on a miss), so a wall in front
+// of a turret still shields it. Two tests, either is enough:
+//   - path: the ray crossed the upright cylinder around the turret. RayCast
+//     itself passes through the AA turrets, so this is the main test.
+//   - point: the ray's hit point landed within TURRET_HIT_RADIUS_M of the
+//     turret base, e.g. the ground at its foot. The original test, kept so
+//     nothing that destroyed a turret before stops doing so.
+function checkTurrets(ray: PendingRay, len: number, hit: Vectors.Vector3 | undefined): void {
+    const d: Vectors.Vector3 | undefined = ray.dir;
+    for (let ti: number = 0; ti < TURRETS.length; ti++) {
+        const t: TurretDef = TURRETS[ti];
+        if (!isConfigured(t.zoneId) || turretIsDestroyed(t.emplId) || t.base === ray.team) {
+            continue;
+        }
+        if (!turretResolvedAt(ti)) {
+            continue;
+        }
+        // Cached coordinates, no mod.* calls in this loop.
+        const byPath: boolean = d !== undefined && rayThroughUpright(
+            ray.start.x, ray.start.y, ray.start.z, d.x, d.y, d.z, len,
+            turretCoord(ti, 0), turretCoord(ti, 1), turretCoord(ti, 2),
+            TURRET_RAY_RADIUS_M, TURRET_RAY_BELOW_M, TURRET_RAY_ABOVE_M);
+        const byPoint: boolean = hit !== undefined
+            && turretDistSq(ti, hit.x, hit.y, hit.z) <= TURRET_HIT_RADIUS_SQ;
+        if (byPath || byPoint) {
+            if (RORSCH_TRACE || willLogDebug()) {
+                log("nuke", "turret " + t.emplId + " hit by "
+                    + (byPath && byPoint ? "path+point" : byPath ? "path" : "point"));
+            }
+            destroyTurret(t.emplId);
+        }
+    }
+}
+
 function resolveHit(p: mod.Player, point: mod.Vector): void {
     const pid: number = mod.GetObjId(p);
     const ray: PendingRay | undefined = inFlight[pid];
@@ -11481,36 +11594,7 @@ function resolveHit(p: mod.Player, point: mod.Vector): void {
             + " at " + String(hit.x) + "," + String(hit.y) + "," + String(hit.z));
     }
 
-    // One pass destroys and measures. The old second loop omitted the
-    // turretIsDestroyed guard, so the log kept reporting already-destroyed
-    // turrets as the nearest live one.
-    let nearest: string = "none";
-    let nearestSq: number = -1;
-    for (let ti: number = 0; ti < TURRETS.length; ti++) {
-        const t: TurretDef = TURRETS[ti];
-        if (!isConfigured(t.zoneId) || turretIsDestroyed(t.emplId) || t.base === team) {
-            continue;
-        }
-        if (!turretResolvedAt(ti)) {
-            continue;
-        }
-        // Cached coordinates: this is the whole point of the snapshot. The old
-        // path resolved a fresh mod.Vector per turret per hit, sixteen times a
-        // ray, and that dominated the hit cost.
-        const sq: number = turretDistSq(ti, hit.x, hit.y, hit.z);
-        if (sq <= TURRET_HIT_RADIUS_SQ) {
-            destroyTurret(t.emplId);
-        }
-        if (nearestSq < 0 || sq < nearestSq) {
-            nearestSq = sq;
-            nearest = String(t.emplId);
-        }
-    }
-    if (nearestSq >= 0 && willLogDebug()) {
-        // sqrt only here, where a metre value is actually shown.
-        log("nuke", "nearest enemy turret " + nearest + " @ "
-            + String(Math.sqrt(nearestSq).toFixed(1)) + "m");
-    }
+    checkTurrets(ray, travelled, hit);
 
     for (const base of [1, 2]) {
         if (base === team) {
@@ -11657,10 +11741,21 @@ export function configureNukeEvents(): void {
     });
     Events.OnRayCastMissed.subscribe((p: mod.Player) => {
         const pid: number = mod.GetObjId(p);
-        if (RORSCH_TRACE && inFlight[pid] !== undefined) {
+        const ray: PendingRay | undefined = inFlight[pid];
+        delete inFlight[pid];
+        if (ray === undefined) {
+            return;
+        }
+        if (RORSCH_TRACE) {
             log("nuke", "RAY miss pid=" + pid + " - nothing hit within " + String(RAY_MAX_DIST_M) + "m");
         }
-        delete inFlight[pid];
+        // A ray aimed at a turret against the sky misses everything, because
+        // RayCast passes through the turret; the path test still finds it.
+        if (ray.team === 1 || ray.team === 2) {
+            safe("nuke.miss", () => {
+                checkTurrets(ray, RAY_START_OFFSET_M + RAY_MAX_DIST_M, undefined);
+            });
+        }
     });
     Events.OnPlayerEnterAreaTrigger.subscribe((p: mod.Player, at: mod.AreaTrigger) => {
         safe("nuke.gate.enter", () => { onGateEnter(p, at); });

@@ -120,6 +120,11 @@ function cacheTurretPos(index: number, t: TurretDef): void {
 export function turretResolvedAt(index: number): boolean {
     return turretResolved[index] === true;
 }
+// One cached coordinate of the turret base: axis 0 = x, 1 = y, 2 = z.
+export function turretCoord(index: number, axis: number): number {
+    return turretXYZ[index * 3 + axis];
+}
+
 export function turretDistSq(
     index: number,
     px: number,
