@@ -11240,6 +11240,7 @@ function forgetHold(pid: number): void {
     delete wasReloading[pid];
     delete lastPressMs[pid];
     delete reloadOnMs[pid];
+    delete chargeAim[pid];
 }
 const gateOccupants: { [gateId: number]: number[] } = {};
 const gateHandles: { [gateId: number]: mod.AreaTrigger } = {};
@@ -11357,13 +11358,20 @@ function shootRay(p: mod.Player): void {
         return;
     }
     const team: number = teamIdOf(p);
+    // Aim from the last charging tick, before the discharge kick; the live read
+    // is only a fallback for a shot with no captured aim.
+    const aim: Aim | undefined = chargeAim[pid];
+    delete chargeAim[pid];
     // EyePosition is one FFI call and is needed both for the inFlight origin and
     // for the ray start, so it is read exactly once.
-    const eye: mod.Vector = mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition);
+    const eye: mod.Vector = aim !== undefined
+        ? mod.CreateVector(aim.ex, aim.ey, aim.ez)
+        : mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition);
     inFlight[pid] = { pid: pid, team: team, start: Vectors.toVector3(eye), castMs: Date.now() };
     safe("nuke.cast", () => {
-        const facing: mod.Vector = mod.Normalize(
-            mod.GetSoldierState(p, mod.SoldierStateVector.GetFacingDirection));
+        const facing: mod.Vector = aim !== undefined
+            ? mod.CreateVector(aim.fx, aim.fy, aim.fz)
+            : mod.Normalize(mod.GetSoldierState(p, mod.SoldierStateVector.GetFacingDirection));
         // Start ahead of the soldier. A ray originating at the eye position hits
         // the player's own body/weapon ~0.24 m out (see the 03:29 log), so the
         // hit point never came near a turret and nothing was ever destroyed.
@@ -11373,11 +11381,45 @@ function shootRay(p: mod.Player): void {
         const e3: Vectors.Vector3 = Vectors.toVector3(eye);
         const f3: Vectors.Vector3 = Vectors.toVector3(facing);
         if (RORSCH_TRACE || willLogDebug()) {
+            // After the cast, so the extra read adds no latency: the facing on
+            // the discharge tick itself, to measure the kick the snapshot avoids.
+            const live: Vectors.Vector3 = Vectors.toVector3(mod.Normalize(
+                mod.GetSoldierState(p, mod.SoldierStateVector.GetFacingDirection)));
             log("nuke", "CAST pid=" + pid + " team=" + team + " from "
                 + String(e3.x) + "," + String(e3.y) + "," + String(e3.z)
-                + " dir " + String(f3.x) + "," + String(f3.y) + "," + String(f3.z));
+                + " dir " + String(f3.x) + "," + String(f3.y) + "," + String(f3.z)
+                + (aim !== undefined ? " (charge aim)" : " (live aim, none captured)")
+                + " dischargeTickDirY=" + String(live.y));
         }
     });
+}
+
+// Aim captured on every tick the Rorsch is charging, used for the shot. By the
+// tick the discharge is seen, the weapon's kick has already pitched the view
+// up: the 16:32 log shows every turret shot ~0.06 (3.5 deg) higher than the
+// line to the turret while the yaw was exact, so rays passed over the turrets.
+// Plain numbers, so no engine handle is held across ticks.
+interface Aim {
+    ex: number;
+    ey: number;
+    ez: number;
+    fx: number;
+    fy: number;
+    fz: number;
+}
+
+const chargeAim: { [pid: number]: Aim } = {};
+
+function captureAim(p: mod.Player, pid: number): void {
+    try {
+        const e: Vectors.Vector3 = Vectors.toVector3(
+            mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition));
+        const f: Vectors.Vector3 = Vectors.toVector3(mod.Normalize(
+            mod.GetSoldierState(p, mod.SoldierStateVector.GetFacingDirection)));
+        chargeAim[pid] = { ex: e.x, ey: e.y, ez: e.z, fx: f.x, fy: f.y, fz: f.z };
+    } catch (e) {
+        // Keep the previous tick's aim, if any.
+    }
 }
 
 // Hot-path comparisons use distanceSquared so they skip the sqrt. dist() is
@@ -11575,6 +11617,9 @@ function probe(): void {
                 delete hold[pid];
             } else {
                 hold[pid] = r.next;
+                if (!r.next.ignored) {
+                    captureAim(p, pid);
+                }
             }
             if (r.fire) {
                 // Cast first, in the same tick the discharge is seen; the logs
