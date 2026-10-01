@@ -1038,7 +1038,7 @@ points = PackedVector2Array(-18.242065, -21.613173, -22.414185, -12.709429, -23.
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.6093445, -4.0036793)
 script = ExtResource("17_7cyrp")
 ObjId = 3100
-IconStringKey = "Prototype Factory"
+IconStringKey = "PrototypeFactory"
 iconColor = [1.0, 1.0, 0.5]
 iconImagePicker = 10
 metadata/_custom_type_script = "uid://bssxr2ucvxqjx"
@@ -1178,7 +1178,7 @@ height = 8.0
 [node name="WorldIconWarFactory2" type="Node3D" parent="AreaTriggerWarFactory2/PolygonVolumeWarFactory2" unique_id=684466940]
 script = ExtResource("17_7cyrp")
 ObjId = 4101
-IconStringKey = "War Factory"
+IconStringKey = "WarFactory2"
 iconColor = [0.5, 1.0, 1.0]
 iconImagePicker = 14
 metadata/_custom_type_script = "uid://bssxr2ucvxqjx"
@@ -1189,12 +1189,12 @@ ObjId = 4203
 
 [node name="VehicleSpawnerWarFactory2_2" parent="AreaTriggerWarFactory2/PolygonVolumeWarFactory2" unique_id=2117681320 instance=ExtResource("15_a428v")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.18133545, 0.48675537, 0.6564331)
-ObjId = 4203
+ObjId = 4204
 VehicleType = 17
 
 [node name="VehicleSpawnerWarFactory2_3" parent="AreaTriggerWarFactory2/PolygonVolumeWarFactory2" unique_id=33615532 instance=ExtResource("15_a428v")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.086487, 0.6444473, -2.5621643)
-ObjId = 4204
+ObjId = 4205
 VehicleType = 4
 
 [node name="AreaTriggerNavalFactory1" type="Node3D" parent="." unique_id=2025612486 node_paths=PackedStringArray("Area")]
@@ -1211,8 +1211,7 @@ height = 10.0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.8034134, 0)
 script = ExtResource("17_7cyrp")
 ObjId = 6100
-IconStringKey = "Naval Factory "
-iconTextVisible = true
+IconStringKey = "NavalFactory1"
 iconColor = [1.0, 0.5, 1.0]
 iconImagePicker = 13
 metadata/_custom_type_script = "uid://bssxr2ucvxqjx"
@@ -1242,7 +1241,7 @@ height = 10.0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.8034134, 0)
 script = ExtResource("17_7cyrp")
 ObjId = 6101
-IconStringKey = "Naval Factory"
+IconStringKey = "NavalFactory2"
 iconColor = [1.0, 0.5, 1.0]
 iconImagePicker = 13
 metadata/_custom_type_script = "uid://bssxr2ucvxqjx"
@@ -1271,7 +1270,7 @@ height = 4.0
 [node name="WorldIconAviationFactory" type="Node3D" parent="AreaTriggerAviationFactory/PolygonVolumeAviationFactory" unique_id=2070969369]
 script = ExtResource("17_7cyrp")
 ObjId = 5100
-IconStringKey = "Aviation Factory"
+IconStringKey = "AviationFactory"
 iconColor = [1.0, 0.25, 1.0]
 iconImagePicker = 1
 metadata/_custom_type_script = "uid://bssxr2ucvxqjx"
@@ -1288,7 +1287,7 @@ VehicleType = 7
 
 [node name="VehicleSpawnerAviationFactory_3" parent="AreaTriggerAviationFactory/PolygonVolumeAviationFactory" unique_id=1737579793 instance=ExtResource("15_a428v")]
 transform = Transform3D(0.99791, 0.054872237, 0.03412763, -0.055117145, 0.9984602, 0.006276757, -0.033730663, -0.008144645, 0.99939775, -20.082336, 0.4515915, 46.800293)
-ObjId = 5201
+ObjId = 5202
 VehicleType = 19
 
 [node name="CombatArea" parent="." unique_id=1180727077 node_paths=PackedStringArray("CombatVolume") instance=ExtResource("4_ckqcm")]
@@ -1296,9 +1295,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -440.7832, 104.214905, 67.721
 CombatVolume = NodePath("Infantry Area")
 
 [node name="Infantry Area" parent="CombatArea" unique_id=744142196 instance=ExtResource("2_1jmrs")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -292.88782, -3.7149506, -43.183495)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -292.88782, -105.57451, -43.183495)
 points = PackedVector2Array(-887.8821, 16.205124, -883.13855, -291.0927, -818.8978, -649.29395, -618.7527, -799.0815, -375.70325, -886.63965, -129.6347, -870.03375, 91.80603, -839.7679, 254.6253, -798.1914, 374.83862, -655.6929, 551.316, -382.0226, 691.0588, -104.400345, 718.0756, 111.735146, 699.3488, 362.21066, 603.7244, 694.7224, 668.78723, 955.3833, 478.50677, 1168.5676, 243.31497, 1332.8652, -84.40521, 1384.4263, -410.55835, 1357.2468, -736.61145, 1122.2579, -884.42786, 744.1921, -912.473, 325.53293)
-height = 200.0
+height = 400.0
 color = Color(0.55, 0.75, 0.95, 0.42)
 
 [node name="T1_HQ" parent="." unique_id=392046016 node_paths=PackedStringArray("HQArea", "InfantrySpawns") instance=ExtResource("41_7fka6")]
@@ -1701,11 +1700,11 @@ VehicleType = 7
 P_AutoSpawnEnabled = true
 
 [node name="AI_Spawner_T_1_1" parent="." unique_id=788830891 instance=ExtResource("47_8kg5p")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -560.53796, 102.28317, 720.77026)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -577.4364, 102.28317, 684.295)
 ObjId = 8000
 
 [node name="AI_Spawner_T_1_2" parent="." unique_id=327219237 instance=ExtResource("47_8kg5p")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -632.78925, 102.28317, 720.77026)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -632.78925, 102.28317, 685.40356)
 ObjId = 8001
 
 [node name="AI_Spawner_T_2_1" parent="." unique_id=6175979 instance=ExtResource("47_8kg5p")]

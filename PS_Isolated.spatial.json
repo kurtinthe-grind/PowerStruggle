@@ -7481,7 +7481,7 @@
             "name": "WorldIconPrototypeFactory",
             "type": "WorldIcon",
             "ObjId": 3100,
-            "IconStringKey": "Prototype Factory",
+            "IconStringKey": "PrototypeFactory",
             "iconColor": [
                 1.0,
                 1.0,
@@ -8467,7 +8467,7 @@
             "name": "WorldIconWarFactory2",
             "type": "WorldIcon",
             "ObjId": 4101,
-            "IconStringKey": "War Factory",
+            "IconStringKey": "WarFactory2",
             "iconColor": [
                 0.5,
                 1.0,
@@ -8525,7 +8525,7 @@
         },
         {
             "name": "VehicleSpawnerWarFactory2_2",
-            "ObjId": 4203,
+            "ObjId": 4204,
             "VehicleType": "M2Bradley",
             "type": "VehicleSpawner",
             "right": {
@@ -8552,7 +8552,7 @@
         },
         {
             "name": "VehicleSpawnerWarFactory2_3",
-            "ObjId": 4204,
+            "ObjId": 4205,
             "VehicleType": "Gepard",
             "type": "VehicleSpawner",
             "right": {
@@ -8640,8 +8640,7 @@
             "name": "WorldIconNavalFactory1",
             "type": "WorldIcon",
             "ObjId": 6100,
-            "IconStringKey": "Naval Factory ",
-            "iconTextVisible": true,
+            "IconStringKey": "NavalFactory1",
             "iconColor": [
                 1.0,
                 0.5,
@@ -8788,7 +8787,7 @@
             "name": "WorldIconNavalFactory2",
             "type": "WorldIcon",
             "ObjId": 6101,
-            "IconStringKey": "Naval Factory",
+            "IconStringKey": "NavalFactory2",
             "iconColor": [
                 1.0,
                 0.5,
@@ -8935,7 +8934,7 @@
             "name": "WorldIconAviationFactory",
             "type": "WorldIcon",
             "ObjId": 5100,
-            "IconStringKey": "Aviation Factory",
+            "IconStringKey": "AviationFactory",
             "iconColor": [
                 1.0,
                 0.25,
@@ -9021,7 +9020,7 @@
         },
         {
             "name": "VehicleSpawnerAviationFactory_3",
-            "ObjId": 5201,
+            "ObjId": 5202,
             "VehicleType": "UH60_Pax",
             "type": "VehicleSpawner",
             "right": {
@@ -9085,116 +9084,116 @@
             ],
             "type": "PolygonVolume",
             "id": "CombatArea/Infantry Area",
-            "height": 200,
+            "height": 400,
             "points": [
                 {
                     "x": -1621.55312,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": 40.742639
                 },
                 {
                     "x": -1616.80957,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": -266.555185
                 },
                 {
                     "x": -1552.56882,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": -624.756435
                 },
                 {
                     "x": -1352.42372,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": -774.543985
                 },
                 {
                     "x": -1109.37427,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": -862.102135
                 },
                 {
                     "x": -863.30572,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": -845.496235
                 },
                 {
                     "x": -641.86499,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": -815.230385
                 },
                 {
                     "x": -479.04572,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": -773.653885
                 },
                 {
                     "x": -358.8324,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": -631.155385
                 },
                 {
                     "x": -182.35502,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": -357.485085
                 },
                 {
                     "x": -42.61222,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": -79.86283
                 },
                 {
                     "x": -15.59542,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": 136.272661
                 },
                 {
                     "x": -34.32222,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": 386.748175
                 },
                 {
                     "x": -129.94662,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": 719.259915
                 },
                 {
                     "x": -64.88379,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": 979.920815
                 },
                 {
                     "x": -255.16425,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": 1193.105115
                 },
                 {
                     "x": -490.35605,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": 1357.402715
                 },
                 {
                     "x": -818.07623,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": 1408.963815
                 },
                 {
                     "x": -1144.22937,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": 1381.784315
                 },
                 {
                     "x": -1470.28247,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": 1146.795415
                 },
                 {
                     "x": -1618.09888,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": 768.729615
                 },
                 {
                     "x": -1646.14402,
-                    "y": 100.4999544,
+                    "y": -1.359605,
                     "z": 350.070445
                 }
             ]
@@ -11228,9 +11227,9 @@
                 "z": 1
             },
             "position": {
-                "x": -560.53796,
+                "x": -577.4364,
                 "y": 102.28317,
-                "z": 720.77026
+                "z": 684.295
             },
             "id": "AI_Spawner_T_1_1"
         },
@@ -11256,7 +11255,7 @@
             "position": {
                 "x": -632.78925,
                 "y": 102.28317,
-                "z": 720.77026
+                "z": 685.40356
             },
             "id": "AI_Spawner_T_1_2"
         },

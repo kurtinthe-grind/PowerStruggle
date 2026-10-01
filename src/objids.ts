@@ -41,11 +41,11 @@ export const PROTO_FACTORY: AreaBuildingDef[] = [
 
 export const WAR_FACTORY: AreaBuildingDef[] = [
     { id: "war1", kind: "war", areaTriggerId: 4000, worldIconId: 4100, vehicleSpawnerId: 4200, vehicleSpawnerIds: [4200, 4201, 4202], factoryName: "War Factory 1" },
-    { id: "war2", kind: "war", areaTriggerId: 4001, worldIconId: 4101, vehicleSpawnerId: 4204, vehicleSpawnerIds: [4204], factoryName: "War Factory 2" }
+    { id: "war2", kind: "war", areaTriggerId: 4001, worldIconId: 4101, vehicleSpawnerId: 4203, vehicleSpawnerIds: [4203, 4204, 4205], factoryName: "War Factory 2" }
 ];
 
 export const AIR_FACTORY: AreaBuildingDef[] = [
-    { id: "air1", kind: "air", areaTriggerId: 5000, worldIconId: 5100, vehicleSpawnerId: 5200, vehicleSpawnerIds: [5200, 5201], factoryName: "Aviation Factory" }
+    { id: "air1", kind: "air", areaTriggerId: 5000, worldIconId: 5100, vehicleSpawnerId: 5200, vehicleSpawnerIds: [5200, 5201, 5202], factoryName: "Aviation Factory" }
 ];
 
 export const NAVAL_FACTORY: AreaBuildingDef[] = [
@@ -70,8 +70,6 @@ export const HQ_GATES: number[] = [7500, 7501];
 export const HQ_OBJIDS: number[] = [1, 2];
 
 export const DEFERRED_SLOTS: { what: string; note: string }[] = [
-    { what: "war2.vehicleSpawnerIds[0]", note: "duplicate ObjId 4203 - left unbound, war2 uses 4204 only" },
-    { what: "air1.vehicleSpawnerIds[2]", note: "duplicate ObjId 5201 - air1 binds 5200 and 5201 only" }
 ];
 
 export function isConfigured(objId: number): boolean {
