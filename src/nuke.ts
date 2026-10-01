@@ -15,6 +15,9 @@ interface PendingRay {
     pid: number;
     team: number;
     start: Vectors.Vector3;
+    // Wall-clock cast time, so a ray that never reports back is visible in
+    // the RORSCH_TRACE "RAY skipped" line.
+    castMs: number;
 }
 
 const inFlight: { [pid: number]: PendingRay } = {};
@@ -25,29 +28,57 @@ const hold: { [pid: number]: HoldState } = {};
 const wasReloading: { [pid: number]: boolean } = {};
 // RORSCH_TRACE only: time of the last Rorsch press, kept past release.
 const lastPressMs: { [pid: number]: number } = {};
+// RORSCH_TRACE only: when IsReloading last turned on, to time the reload.
+const reloadOnMs: { [pid: number]: number } = {};
+
+function sincePress(pid: number, nowMs: number): string {
+    const pressed: number | undefined = lastPressMs[pid];
+    return pressed === undefined ? "(no press seen)" : "+" + String(nowMs - pressed) + "ms after press";
+}
 
 // Diagnostic, one cheap soldier-state read per tick for players in a fire zone
-// with the Rorsch. Logs when IsReloading turns on, with the time since the
-// press, to test whether the reload marks the actual shot.
-function traceReload(p: mod.Player, pid: number, nowMs: number): void {
+// with the Rorsch. Logs both IsReloading edges with the time since the press
+// and the trigger state, to test whether the reload marks the actual shot and
+// whether IsFiring drops during the reload while the trigger is still held.
+function traceReload(p: mod.Player, pid: number, nowMs: number, firing: boolean): void {
     let reloading: boolean;
     try {
         reloading = mod.GetSoldierState(p, mod.SoldierStateBool.IsReloading);
     } catch (e) {
         return;
     }
-    if (reloading && wasReloading[pid] !== true) {
-        const pressed: number | undefined = lastPressMs[pid];
-        log("nuke", "TRACE pid=" + pid + " IsReloading ON "
-            + (pressed === undefined ? "(no press seen)" : "+" + String(nowMs - pressed) + "ms after press"));
+    const was: boolean = wasReloading[pid] === true;
+    if (reloading && !was) {
+        reloadOnMs[pid] = nowMs;
+        log("nuke", "TRACE pid=" + pid + " IsReloading ON " + sincePress(pid, nowMs)
+            + " firing=" + String(firing));
+    } else if (!reloading && was) {
+        const on: number | undefined = reloadOnMs[pid];
+        log("nuke", "TRACE pid=" + pid + " IsReloading OFF after "
+            + (on === undefined ? "?" : String(nowMs - on)) + "ms, " + sincePress(pid, nowMs)
+            + " firing=" + String(firing));
     }
     wasReloading[pid] = reloading;
+}
+
+// RORSCH_TRACE only, read once per press: which inventory slot is active.
+// isRorschInHand is HasEquipment, which is true whenever the Rorsch is carried,
+// so this shows whether a press came from the Rorsch or from another weapon.
+function traceSlot(p: mod.Player): string {
+    try {
+        return "slot pri=" + String(mod.IsInventorySlotActive(p, mod.InventorySlots.PrimaryWeapon))
+            + " sec=" + String(mod.IsInventorySlotActive(p, mod.InventorySlots.SecondaryWeapon))
+            + " misc=" + String(mod.IsInventorySlotActive(p, mod.InventorySlots.MiscGadget));
+    } catch (e) {
+        return "slot read threw " + String(e);
+    }
 }
 
 function forgetHold(pid: number): void {
     delete hold[pid];
     delete wasReloading[pid];
     delete lastPressMs[pid];
+    delete reloadOnMs[pid];
 }
 const gateOccupants: { [gateId: number]: number[] } = {};
 const gateHandles: { [gateId: number]: mod.AreaTrigger } = {};
@@ -153,14 +184,22 @@ function nearEnemyBase(pid: number): boolean {
 
 function shootRay(p: mod.Player): void {
     const pid: number = mod.GetObjId(p);
-    if (pid < 0 || inFlight[pid] !== undefined) {
+    if (pid < 0) {
+        return;
+    }
+    const pending: PendingRay | undefined = inFlight[pid];
+    if (pending !== undefined) {
+        if (RORSCH_TRACE) {
+            log("nuke", "RAY skipped pid=" + pid + " - previous ray still in flight ("
+                + String(Date.now() - pending.castMs) + "ms)");
+        }
         return;
     }
     const team: number = teamIdOf(p);
     // EyePosition is one FFI call and is needed both for the inFlight origin and
     // for the ray start, so it is read exactly once.
     const eye: mod.Vector = mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition);
-    inFlight[pid] = { pid: pid, team: team, start: Vectors.toVector3(eye) };
+    inFlight[pid] = { pid: pid, team: team, start: Vectors.toVector3(eye), castMs: Date.now() };
     safe("nuke.cast", () => {
         const facing: mod.Vector = mod.Normalize(
             mod.GetSoldierState(p, mod.SoldierStateVector.GetFacingDirection));
@@ -172,7 +211,7 @@ function shootRay(p: mod.Player): void {
         mod.RayCast(p, start, end);
         const e3: Vectors.Vector3 = Vectors.toVector3(eye);
         const f3: Vectors.Vector3 = Vectors.toVector3(facing);
-        if (willLogDebug()) {
+        if (RORSCH_TRACE || willLogDebug()) {
             log("nuke", "CAST pid=" + pid + " team=" + team + " from "
                 + String(e3.x) + "," + String(e3.y) + "," + String(e3.z)
                 + " dir " + String(f3.x) + "," + String(f3.y) + "," + String(f3.z));
@@ -229,12 +268,12 @@ function resolveHit(p: mod.Player, point: mod.Vector): void {
     const hit: Vectors.Vector3 = Vectors.toVector3(point);
     const travelled: number = dist(ray.start, hit);
     if (travelled < RAY_MIN_HIT_DIST_M) {
-        if (willLogDebug()) {
-        log("nuke", "HIT ignored (self) pid=" + pid + " dist=" + String(travelled.toFixed(2)));
-    }
+        if (RORSCH_TRACE || willLogDebug()) {
+            log("nuke", "HIT ignored (self) pid=" + pid + " dist=" + String(travelled.toFixed(2)));
+        }
         return;
     }
-    if (willLogDebug()) {
+    if (RORSCH_TRACE || willLogDebug()) {
         log("nuke", "HIT pid=" + pid + " team=" + team + " dist=" + String(travelled.toFixed(1))
             + " at " + String(hit.x) + "," + String(hit.y) + "," + String(hit.z));
     }
@@ -358,16 +397,20 @@ function probe(): void {
                 // New press: check the weapon once per press, not per tick.
                 if (!isRorschInHand(p)) {
                     logNukeOnce(pid, "noRorsch");
+                    if (RORSCH_TRACE) {
+                        log("nuke", "PRESS pid=" + pid + " ignored - Rorsch not carried, " + traceSlot(p));
+                    }
                     hold[pid] = { pressMs: nowMs, shot: true };
                     continue;
                 }
                 logNukeOnce(pid, "charging");
                 lastPressMs[pid] = nowMs;
                 log("nuke", "PRESS pid=" + pid + " charging, shot counts after "
-                    + String(RORSCH_CHARGE_MS) + "ms held");
+                    + String(RORSCH_CHARGE_MS) + "ms held"
+                    + (RORSCH_TRACE ? ", " + traceSlot(p) : ""));
             }
             if (RORSCH_TRACE) {
-                traceReload(p, pid, nowMs);
+                traceReload(p, pid, nowMs, firing);
             }
             const r: HoldResult = holdStep(st, firing, nowMs, RORSCH_CHARGE_MS);
             if (r.next === undefined) {
@@ -375,6 +418,11 @@ function probe(): void {
                 if (st !== undefined && !st.shot) {
                     log("nuke", "RELEASED pid=" + pid + " after "
                         + String(nowMs - st.pressMs) + "ms - no shot");
+                } else if (RORSCH_TRACE && st !== undefined && lastPressMs[pid] === st.pressMs) {
+                    // Rorsch holds only: a parked non-Rorsch press never sets
+                    // lastPressMs, so its pressMs cannot match.
+                    log("nuke", "RELEASED pid=" + pid + " after "
+                        + String(nowMs - st.pressMs) + "ms - after shot");
                 }
             } else {
                 hold[pid] = r.next;
@@ -407,6 +455,9 @@ export function configureNukeEvents(): void {
     });
     Events.OnRayCastMissed.subscribe((p: mod.Player) => {
         const pid: number = mod.GetObjId(p);
+        if (RORSCH_TRACE && inFlight[pid] !== undefined) {
+            log("nuke", "RAY miss pid=" + pid + " - nothing hit within " + String(RAY_MAX_DIST_M) + "m");
+        }
         delete inFlight[pid];
     });
     Events.OnPlayerEnterAreaTrigger.subscribe((p: mod.Player, at: mod.AreaTrigger) => {
