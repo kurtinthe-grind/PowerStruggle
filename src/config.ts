@@ -5,6 +5,9 @@ export const PRESTIGE_STEP: number = 250;
 // message at the call site, so leaving them on costs a string build per event
 // even when nobody reads it. Flip to true to diagnose, then flip back.
 export const LOG_DEBUG: boolean = false;
+// Debug: every item on the buy menu WEAPONS tab costs 0 prestige, so the Rorsch
+// and the other test weapons are always available. Set false for real matches.
+export const WEAPONS_TAB_FREE: boolean = true;
 export const POWER_MILESTONES: number[] = [50, 75, 100];
 export const ART_BUDGET: number = 32;
 export const SITE_LETTER: string[] = ["A", "B", "C"];

@@ -26,7 +26,7 @@ import {
     MENU_TAB_PRESS, MENU_TAB_HOVER, P_RING,
     colorFor, lighten
 } from "./ui/palette";
-import { PRESTIGE_STEP, POWER_MILESTONES, ART_BUDGET, SITE_LETTER } from "./config";
+import { PRESTIGE_STEP, POWER_MILESTONES, ART_BUDGET, SITE_LETTER, WEAPONS_TAB_FREE } from "./config";
 import {
     powerVal, baseVal, dbgMe, siteState, pPrestige,
     getProtoOwner, setProtoOwner
@@ -790,6 +790,19 @@ const TABS_DATA: PshTab[] = [
           ],
       },
 ];
+
+// The WEAPONS tab is a debug tab. Its only gate is the prestige cost (the
+// factory check applies to FACTORY_TAB alone), so zeroing the costs here makes
+// it fully available without capturing anything. Done once at load, before any
+// menu is built, so the cell styling, the afford check and the charge all agree.
+const WEAPONS_TAB: number = 0;
+if (WEAPONS_TAB_FREE) {
+    for (const sec of TABS_DATA[WEAPONS_TAB].sections) {
+        for (const item of sec.items) {
+            item.cost = 0;
+        }
+    }
+}
 
 const FACTORY_TAB: number = 5;
 const activeFactoryKind: { [id: number]: string } = {};

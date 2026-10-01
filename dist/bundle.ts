@@ -1276,6 +1276,9 @@ export const PRESTIGE_STEP: number = 250;
 // message at the call site, so leaving them on costs a string build per event
 // even when nobody reads it. Flip to true to diagnose, then flip back.
 export const LOG_DEBUG: boolean = false;
+// Debug: every item on the buy menu WEAPONS tab costs 0 prestige, so the Rorsch
+// and the other test weapons are always available. Set false for real matches.
+export const WEAPONS_TAB_FREE: boolean = true;
 export const POWER_MILESTONES: number[] = [50, 75, 100];
 export const ART_BUDGET: number = 32;
 export const SITE_LETTER: string[] = ["A", "B", "C"];
@@ -12676,6 +12679,19 @@ const TABS_DATA: PshTab[] = [
           ],
       },
 ];
+
+// The WEAPONS tab is a debug tab. Its only gate is the prestige cost (the
+// factory check applies to FACTORY_TAB alone), so zeroing the costs here makes
+// it fully available without capturing anything. Done once at load, before any
+// menu is built, so the cell styling, the afford check and the charge all agree.
+const WEAPONS_TAB: number = 0;
+if (WEAPONS_TAB_FREE) {
+    for (const sec of TABS_DATA[WEAPONS_TAB].sections) {
+        for (const item of sec.items) {
+            item.cost = 0;
+        }
+    }
+}
 
 const FACTORY_TAB: number = 5;
 const activeFactoryKind: { [id: number]: string } = {};
