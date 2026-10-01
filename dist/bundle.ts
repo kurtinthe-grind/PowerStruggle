@@ -1381,9 +1381,13 @@ export const BOT_MAX_PATH_M: number = 500;
 // Arrival radius: inside this the bot is treated as on the objective and the
 // capture system takes over, no further MoveTo needed.
 export const BOT_ARRIVE_M: number = 8;
-// Failed MoveTo handling: defend-in-place retries before re-picking.
-export const BOT_RETRY_LIMIT: number = 2;
-export const BOT_FAIL_COOLDOWN_MS: number = 15000;
+// How long a bot avoids an objective it could not reach (MoveTo failed, or it
+// stalled on the way). Per bot, and kept across respawns: the 18:48 playtest
+// showed recycled bots walking straight back to the same unreachable bunker.
+export const BOT_FAIL_COOLDOWN_MS: number = 90000;
+// A MoveTo failure reported this soon after a new behavior was issued is the
+// engine cancelling the previous move, not a real failure.
+export const BOT_FAIL_GRACE_MS: number = 1500;
 // Zero means issue a behavior only when the intent changes (dirty-check).
 // Raised from 0 to 8: with a pure dirty-check a bot whose behavior silently
 // expired never re-issued anything and wedged in place permanently.
@@ -1410,18 +1414,35 @@ export const BOT_STUCK_STRIKES: number = 3;
 // other off it. Each bot nudges its own target by up to this radius, seeded from
 // its player id so the offset is stable across sweeps.
 export const BOT_SPREAD_M: number = 18;
-// How strongly a bot avoids an already-crowded objective. Expressed in metres
-// and squared-distance weighted in pickObjective: each bot already standing on
-// a point counts as this much extra distance, so the 13th bot walks to the next
-// point instead of piling onto the 12 that are there.
-export const BOT_CROWD_PENALTY_M: number = 22;
-
-// Role split. A bot whose player id mod BOT_ROLE_MOD equals its team id is a
-// dedicated factory guard, which for a 24 bot team is 4 of every 6 ids - so
-// roughly the 3-4 guards per team asked for, with no extra spawn pass. Ids are
-// stable for a soldier's whole life, so a guard stays a guard instead of
-// flipping roles between sweeps.
-export const BOT_ROLE_MOD: number = 6;
+// Objective scoring (src/botscore.ts). Each think a bot scores every objective
+// and takes the best; there are no fixed roles. Score =
+//   base x kind weight - distance / BOT_SCORE_DIST_M - crowd x claims^2
+//   + stick (current target) + jitter (stable per bot).
+// Bases: attack anything not ours; defend an owned point with at least
+// BOT_THREAT_MIN enemies near it (plus per uncovered threat); hold a safe owned
+// point (low, and zero once held longer than BOT_ROAM_MS, which is the roam).
+// Claims count every bot that picked the objective, walking or standing, which
+// is what splits the team up.
+export const BOT_W_ATTACK: number = 10;
+export const BOT_W_DEFEND: number = 10;
+export const BOT_W_PER_THREAT: number = 3;
+export const BOT_W_HOLD: number = 3;
+export const BOT_W_CROWD: number = 0.15;
+export const BOT_W_STICK: number = 1.5;
+export const BOT_W_JITTER: number = 0.5;
+export const BOT_SCORE_DIST_M: number = 100;
+export const BOT_THREAT_MIN: number = 2;
+// Kind weights, indexed by botobjectives OBJ_* (bunker, energy, proto, war,
+// air, naval).
+export const BOT_KIND_WEIGHT: number[] = [1.2, 1.2, 1.1, 1.0, 0.9, 0.8];
+// Combat interrupt: a bot shot by an enemy hands over to the engine's own
+// combat AI (AIBattlefieldBehavior) for this long, then resumes its objective.
+// Idea from bf6-portal-bots-brain (BattleSensor, 10 s TTL).
+export const BOT_BATTLE_MS: number = 10000;
+// One line per team every BOT_TRACE_MS showing where the bots are going, plus a
+// line per give-up, boarding and eject. Diagnostic; set false once tuned.
+export const BOT_TRACE: boolean = true;
+export const BOT_TRACE_MS: number = 15000;
 
 // Roaming. A bot that reached a safely-held objective used to sit on it for the
 // rest of the match. Every BOT_ROAM_MS it is told to relocate to a different
@@ -1430,22 +1451,37 @@ export const BOT_ROLE_MOD: number = 6;
 // stacking on one flag.
 export const BOT_ROAM_MS: number = 22000;
 
-// Reactive defence. botobjectives.pickDefendObjective considers owned objectives
-// with enemies inside this radius, and sends a bot across when a point is
-// under-defended. The pressure count itself comes from PlayerLocations, which
-// answers it from cached positions at no FFI cost, so this radius is the only
-// tuning knob.
-export const BOT_THREAT_REACH_M: number = 220;
+// Enemy pressure radius around an owned objective, for the DEFEND score. Read
+// from PlayerLocations' cached positions, no FFI. Was 220 m for the old
+// picker; that marks half the map as threatened once fighting starts.
+export const BOT_THREAT_REACH_M: number = 90;
 
-// Vehicles. mod.AllVehicles() is a list FFI, so the candidate scan runs once
-// per BOT_VEHICLE_SCAN_MS for the whole team instead of once per bot per sweep.
-// Only bots whose id mod BOT_VEHICLE_MOD equals their team try to board, and
-// only a vehicle with fewer than BOT_VEHICLE_FREE_SEATS occupants is taken, so
-// a parked tank is not stripped by every bot in the area at once.
+// Vehicles (existing ones only). mod.AllVehicles() is a list FFI, so the
+// candidate scan runs once per BOT_VEHICLE_SCAN_MS for the whole population.
+// A bot on foot whose attack target is more than BOT_VEHICLE_MIN_TRIP_M away
+// walks to a free vehicle within BOT_VEHICLE_RADIUS_M (one bot per vehicle per
+// scan) and is seated once within BOT_VEHICLE_SEAT_M, or gives up after
+// BOT_VEHICLE_APPROACH_MS. Only vehicles with fewer than BOT_VEHICLE_FREE_SEATS
+// occupants are candidates.
 export const BOT_VEHICLE_SCAN_MS: number = 3000;
 export const BOT_VEHICLE_RADIUS_M: number = 60;
-export const BOT_VEHICLE_MOD: number = 4;
 export const BOT_VEHICLE_FREE_SEATS: number = 2;
+export const BOT_VEHICLE_MIN_TRIP_M: number = 150;
+export const BOT_VEHICLE_SEAT_M: number = 4;
+export const BOT_VEHICLE_APPROACH_MS: number = 20000;
+// Seated bots: ejected when the vehicle moved less than BOT_VEHICLE_STUCK_M in
+// BOT_VEHICLE_STUCK_MS (CustomConquest V15 pattern), after BOT_VEHICLE_MAX_MS
+// in one vehicle, or (drivers) within BOT_VEHICLE_DISMOUNT_M of the objective.
+export const BOT_VEHICLE_STUCK_MS: number = 15000;
+export const BOT_VEHICLE_STUCK_M: number = 3;
+export const BOT_VEHICLE_MAX_MS: number = 120000;
+export const BOT_VEHICLE_DISMOUNT_M: number = 35;
+// Driver steering (bf6-portal-bots-brain trick, unverified on this map): exit,
+// re-seat in seat 0, then AIDefendPositionBehavior on the objective so the
+// vehicle AI drives there. If the driver has not closed BOT_DRIVE_PROGRESS_M on
+// the objective within BOT_DRIVE_CHECK_MS it falls back to AIBattlefieldBehavior.
+export const BOT_DRIVE_CHECK_MS: number = 20000;
+export const BOT_DRIVE_PROGRESS_M: number = 20;
 
 // Radius used to spot vehicles already parked on a factory's spawner slots.
 export const VEHICLE_SLOT_RADIUS_M: number = 25;
@@ -3142,6 +3178,10 @@ export function configureBuildingEvents(): void {
 
 
 const deployed: { [defId: string]: boolean } = {};
+// Last deploying state logged per bunker. enableDeploying runs on every player
+// join (refreshSpawnAvailability), which logged 3 identical lines per bot join;
+// now a line is written only when the state changes.
+const loggedDeploying: { [defId: string]: boolean } = {};
 
 function enableDeploying(def: BunkerDef, on: boolean): void {
     if (!isConfigured(def.capturePointId)) {
@@ -3154,7 +3194,10 @@ function enableDeploying(def: BunkerDef, on: boolean): void {
     }
     try {
         mod.EnableCapturePointDeploying(cp, on);
-        log("spawns", def.id + " deploying=" + String(on));
+        if (loggedDeploying[def.id] !== on) {
+            loggedDeploying[def.id] = on;
+            log("spawns", def.id + " deploying=" + String(on));
+        }
     } catch (e) {
         log("spawns", def.id + " enable failed: " + String(e));
     }
@@ -8264,7 +8307,142 @@ export namespace InterleavedVectors {
 }
 
 
+// --- SOURCE: src\botscore.ts ---
+// Bot objective scoring, kept free of mod.* so scripts/test-botscore.js can
+// unit-test it in node.
+//
+// Every think, a bot scores every objective and takes the best. There are no
+// fixed roles: attacking, defending and holding all come out of the same score.
+//
+// Evidence from the 2026-10-01 18:48 playtest: the old picker penalised
+// crowding only by bots standing inside a trigger, which is zero at game start,
+// so every bot on a team walked to the same nearest objective. The crowd term
+// here counts claims - bots that have picked the objective, including the ones
+// still walking there.
+
+export const JOB_HOLD: number = 0;
+export const JOB_ATTACK: number = 1;
+export const JOB_DEFEND: number = 2;
+
+// One objective as seen by one team. claims and pressure are for that team.
+export interface ScoreObjective {
+    x: number;
+    y: number;
+    z: number;
+    owner: number;
+    // Kind weight, e.g. bunkers worth more than a naval factory.
+    weight: number;
+    // Bots of this team that have this objective as their target.
+    claims: number;
+    // Enemy players near the objective.
+    pressure: number;
+}
+
+export interface ScoreBot {
+    pid: number;
+    team: number;
+    x: number;
+    y: number;
+    z: number;
+    // Current target index, or -1.
+    cur: number;
+    // When the current target was picked.
+    sinceMs: number;
+    // Objectives this bot could not reach, with the time the ban lifts.
+    failUntil: { [obj: number]: number };
+}
+
+export interface ScoreParams {
+    wAttack: number;
+    wDefend: number;
+    wPerThreat: number;
+    wHold: number;
+    wCrowd: number;
+    wStick: number;
+    wJitter: number;
+    distM: number;
+    maxPathM: number;
+    roamMs: number;
+    threatMin: number;
+}
+
+export interface ScorePick {
+    obj: number;
+    job: number;
+}
+
+// Stable per-bot, per-objective tie breaker in [-1, 1], so bots that spawn on
+// the same spot do not all make the same choice.
+function jitter(pid: number, idx: number): number {
+    const h: number = ((pid * 2654435761 + idx * 40503) >>> 0) % 10007;
+    return (h / 10007) * 2 - 1;
+}
+
+export function pickBest(objs: ScoreObjective[], bot: ScoreBot, nowMs: number, P: ScoreParams): ScorePick {
+    const maxSq: number = P.maxPathM * P.maxPathM;
+    let best: number = -1;
+    let bestJob: number = JOB_HOLD;
+    let bestScore: number = 0;
+    // Used only when roaming leaves nothing else: keep holding where we are.
+    let fallback: number = -1;
+    for (let i: number = 0; i < objs.length; i++) {
+        const o: ScoreObjective = objs[i];
+        const until: number | undefined = bot.failUntil[i];
+        if (until !== undefined && nowMs < until) {
+            continue;
+        }
+        const dx: number = o.x - bot.x;
+        const dy: number = o.y - bot.y;
+        const dz: number = o.z - bot.z;
+        const dSq: number = dx * dx + dy * dy + dz * dz;
+        if (dSq > maxSq) {
+            continue;
+        }
+        // The bot's own claim on its current target is not crowding.
+        let claims: number = o.claims - (i === bot.cur ? 1 : 0);
+        if (claims < 0) {
+            claims = 0;
+        }
+        let job: number;
+        let base: number;
+        if (o.owner !== bot.team) {
+            job = JOB_ATTACK;
+            base = P.wAttack;
+        } else if (o.pressure >= P.threatMin) {
+            job = JOB_DEFEND;
+            const need: number = o.pressure - claims;
+            // Covered points still count, but far less than one that needs help.
+            base = need > 0 ? P.wDefend + P.wPerThreat * need : P.wDefend * 0.4;
+        } else {
+            job = JOB_HOLD;
+            base = P.wHold;
+            if (i === bot.cur && nowMs - bot.sinceMs > P.roamMs) {
+                // Held long enough: move on, the way CQ's AI_Scouting rotates
+                // bots between points instead of parking them.
+                fallback = i;
+                continue;
+            }
+        }
+        const score: number = base * o.weight
+            - Math.sqrt(dSq) / P.distM
+            - P.wCrowd * claims * claims
+            + (i === bot.cur ? P.wStick : 0)
+            + jitter(bot.pid, i) * P.wJitter;
+        if (best < 0 || score > bestScore) {
+            best = i;
+            bestJob = job;
+            bestScore = score;
+        }
+    }
+    if (best < 0 && fallback >= 0) {
+        return { obj: fallback, job: JOB_HOLD };
+    }
+    return { obj: best, job: bestJob };
+}
+
+
 // --- SOURCE: src\botobjectives.ts ---
+
 
 
 
@@ -8608,171 +8786,103 @@ export function objectiveState(idx: number, team: number): number {
     return isContested(idx) ? OBJ_DEFEND : OBJ_HOLD;
 }
 
-// Nearest objective by role priority: contested-ours, then nearest not-ours
-// within pathing range, then nearest safely-ours. All squared distances, one
-// sqrt nowhere. Returns -1 when nothing is in range.
-//
-// Occupancy is folded into the comparison as a squared-distance penalty so a
-// bot prefers a slightly further but empty point over piling onto a point that
-// already has a dozen bots standing on it. That penalty is what stops the whole
-// team funnelling through one doorway and then shoving each other off the flag.
-export function pickObjective(team: number, x: number, y: number, z: number): number {
+// Squared distance from a point to an objective anchor. Zero FFI.
+export function distSqTo(idx: number, x: number, y: number, z: number): number {
     scratch.x = x;
-    scratch.y = y;
-    scratch.z = z;
-    const maxD: number = BOT_MAX_PATH_M * BOT_MAX_PATH_M;
-    let defend: number = -1;
-    let defendD: number = 0;
-    let attack: number = -1;
-    let attackD: number = 0;
-    let hold: number = -1;
-    let holdD: number = 0;
-    for (let i: number = 0; i < objCount; i++) {
-        const d: number = InterleavedVectors.sliceToVectorDistanceSquared(objPos, i, scratch);
-        if (d > maxD) {
-            continue;
-        }
-        // Crowding penalty, in squared-metre units: each bot already standing
-        // there is worth BOT_CROWD_PENALTY_M of extra "distance".
-        const occ: number = occupancy(i);
-        const cost: number = d + occ * occ * BOT_CROWD_PENALTY_M * BOT_CROWD_PENALTY_M;
-        const st: number = objectiveState(i, team);
-        if (st === OBJ_DEFEND) {
-            if (defend < 0 || cost < defendD) {
-                defend = i;
-                defendD = cost;
-            }
-        } else if (st === OBJ_ATTACK) {
-            if (attack < 0 || cost < attackD) {
-                attack = i;
-                attackD = cost;
-            }
-        } else {
-            if (hold < 0 || cost < holdD) {
-                hold = i;
-                holdD = cost;
-            }
-        }
-    }
-    if (defend >= 0) {
-        return defend;
-    }
-    if (attack >= 0) {
-        return attack;
-    }
-    return hold;
-}
-
-export function distSqTo(idx: number, x: number, y: number, z: number): number {    scratch.x = x;
     scratch.y = y;
     scratch.z = z;
     return InterleavedVectors.sliceToVectorDistanceSquared(objPos, idx, scratch);
 }
 
-// Guard assignment target. A bot picked as a factory guard has no other job, so
-// it needs the nearest prototype factory its team actually owns. A playtest
-// showed generic picks parking guards in the prototype factory by accident and
-// then never moving them again, which is exactly the reported behaviour, so the
-// role is now explicit and the brain sticks to it. Returns -1 when the team owns
-// no prototype factory, which lets the guard fall back to normal picking.
-export function pickGuardObjective(team: number, x: number, y: number, z: number): number {
-    scratch.x = x;
-    scratch.y = y;
-    scratch.z = z;
-    let best: number = -1;
-    let bestD: number = 0;
-    for (let i: number = 0; i < objCount; i++) {
-        if (objKind[i] !== OBJ_PROTO || objOwner[i] !== team) {
-            continue;
-        }
-        const d: number = InterleavedVectors.sliceToVectorDistanceSquared(objPos, i, scratch);
-        if (best < 0 || d < bestD) {
-            best = i;
-            bestD = d;
-        }
+// Claims ledger: which objective each bot has picked, counted per team. This is
+// what spreads the population. The old picker penalised crowding only by bots
+// standing inside a trigger, which is zero at game start, so the whole team
+// walked to the same nearest point (18:48 playtest). Claims include bots still
+// walking there. Zero FFI.
+const claimOf: { [pid: number]: number } = {};
+const claimTeam: { [pid: number]: number } = {};
+const claimCount: number[][] = [[], [], []];
+
+export function claimsOn(idx: number, team: number): number {
+    if (team !== 1 && team !== 2) {
+        return 0;
     }
-    return best;
+    const c: number | undefined = claimCount[team][idx];
+    return c === undefined ? 0 : c;
 }
 
-// Roaming target. This is CustomConquest V15 AI_Scouting reduced to what the bot
-// already has: pick another objective within range and walk there, instead of
-// holding the first one it reached for the rest of the match. exclude is the
-// objective the bot is already on, so a roam always produces a new destination
-// and the brain's dirty-check sees a changed intent. Owned points are preferred
-// over enemy ones, since a roam is about circulating, not about rotating the
-// whole team into a single attack.
-export function pickRoamObjective(
-    team: number, x: number, y: number, z: number, exclude: number
-): number {
-    scratch.x = x;
-    scratch.y = y;
-    scratch.z = z;
-    const maxD: number = BOT_MAX_PATH_M * BOT_MAX_PATH_M;
-    let own: number = -1;
-    let ownD: number = 0;
-    let any: number = -1;
-    let anyD: number = 0;
-    for (let i: number = 0; i < objCount; i++) {
-        if (i === exclude) {
-            continue;
-        }
-        const d: number = InterleavedVectors.sliceToVectorDistanceSquared(objPos, i, scratch);
-        if (d > maxD) {
-            continue;
-        }
-        if (any < 0 || d < anyD) {
-            any = i;
-            anyD = d;
-        }
-        if (objOwner[i] === team && (own < 0 || d < ownD)) {
-            own = i;
-            ownD = d;
-        }
+function setClaims(idx: number, team: number, n: number): void {
+    claimCount[team][idx] = n;
+    // Keep the score snapshot live, so bots thinking later in the same sweep
+    // already see this claim.
+    const o: ScoreObjective | undefined = snap[team][idx];
+    if (o !== undefined) {
+        o.claims = n;
     }
-    return own >= 0 ? own : any;
 }
 
-// Which owned objective most needs help right now: enemies inside the threat
-// radius of a point we still own. Returns -1 when nothing is threatened, or when
-// the most pressured point is already busier with defenders than it is with
-// attackers, which is the case where sending one more bot across makes it worse.
-//
-// Pure map reads plus one PlayerLocations sphere query, so this is safe to call
-// from a bot think.
-export function pickDefendObjective(
-    team: number, x: number, y: number, z: number
-): number {
-    scratch.x = x;
-    scratch.y = y;
-    scratch.z = z;
-    const reachSq: number = BOT_THREAT_REACH_M * BOT_THREAT_REACH_M;
-    let best: number = -1;
-    let bestScore: number = 0;
-    for (let i: number = 0; i < objCount; i++) {
-        if (objOwner[i] !== team) {
-            continue;
-        }
-        const d: number = InterleavedVectors.sliceToVectorDistanceSquared(objPos, i, scratch);
-        if (d > reachSq) {
-            continue;
-        }
-        const defenders: number = occupancy(i);
-        const pressure: number = enemyPressure(i, team, BOT_THREAT_REACH_M);
-        // Two enemies minimum, and strictly more attackers than defenders.
-        // Without both gates a single enemy loitering near a flag would pull
-        // half the team off what it is doing, because the reach radius is
-        // deliberately wide.
-        if (pressure < 2 || defenders >= pressure) {
-            continue;
-        }
-        // Under-defended by margin, and nearer is better on a tie.
-        const score: number = pressure - defenders;
-        if (best < 0 || score > bestScore) {
-            best = i;
-            bestScore = score;
-        }
+export function releaseClaim(pid: number): void {
+    const prev: number | undefined = claimOf[pid];
+    if (prev === undefined) {
+        return;
     }
-    return best;
+    const team: number = claimTeam[pid];
+    const c: number = claimsOn(prev, team);
+    setClaims(prev, team, c > 0 ? c - 1 : 0);
+    delete claimOf[pid];
+    delete claimTeam[pid];
+}
+
+export function claimObjective(pid: number, team: number, idx: number): void {
+    if (claimOf[pid] === idx && claimTeam[pid] === team) {
+        return;
+    }
+    releaseClaim(pid);
+    if (idx < 0 || idx >= objCount || (team !== 1 && team !== 2)) {
+        return;
+    }
+    claimOf[pid] = idx;
+    claimTeam[pid] = team;
+    setClaims(idx, team, claimsOn(idx, team) + 1);
+}
+
+// Per-team score snapshot handed to botscore.pickBest. Positions and weights are
+// set once; owner and pressure are refreshed once per sweep (refreshScoreSnapshot),
+// claims are kept live by the ledger above. The objects are reused, so a think
+// allocates nothing.
+const snap: ScoreObjective[][] = [[], [], []];
+
+export function refreshScoreSnapshot(team: number): void {
+    if (team !== 1 && team !== 2) {
+        return;
+    }
+    const arr: ScoreObjective[] = snap[team];
+    for (let i: number = 0; i < objCount; i++) {
+        let o: ScoreObjective | undefined = arr[i];
+        if (o === undefined) {
+            const k: number = objKind[i];
+            const w: number | undefined = BOT_KIND_WEIGHT[k];
+            o = {
+                x: objPos[i * 3], y: objPos[i * 3 + 1], z: objPos[i * 3 + 2],
+                owner: 0, weight: w === undefined ? 1 : w, claims: 0, pressure: 0
+            };
+            arr[i] = o;
+        }
+        o.owner = objOwner[i];
+        o.claims = claimsOn(i, team);
+        o.pressure = enemyPressure(i, team, BOT_THREAT_REACH_M);
+    }
+}
+
+export function scoreSnapshot(team: number): ScoreObjective[] {
+    return snap[team === 2 ? 2 : 1];
+}
+
+// Short label for trace lines: "bunker1", "site2", ...
+export function objectiveLabel(idx: number): string {
+    const k: string = objectiveKey(idx);
+    const at: number = k.indexOf(":");
+    return at >= 0 ? k.substring(at + 1) : k;
 }
 
 // How many bots currently stand on an objective. Used to spread a crowd across
@@ -8912,75 +9022,107 @@ function configureBotObjectiveEvents(): void {
 
 
 
-// Per-bot intent state. The brain issues a behavior only when the intent
-// changes (or when BOT_REISSUE_SWEEPS elapses, if persistence tests demand
-// it) - never on a fixed re-issue loop. This is the opposite of the official
-// PortalPerformanceExample, which re-issues AIMoveToBehavior every 50 ms.
 
-export const BOT_ROLE_FIGHT: number = 0;
-export const BOT_ROLE_GUARD: number = 1;
+// Per-bot intent. Every think scores all objectives (botscore.pickBest) and the
+// brain issues a behavior only when the intent changes, or every
+// BOT_REISSUE_SWEEPS sweeps so a silently expired behavior cannot wedge a bot.
+// There are no fixed roles: attack, defend and hold all come from the score.
 
 export interface BotMind {
+    // JOB_* of the last issued behavior, -1 for none.
     state: number;
+    // Objective index of the last issued behavior, -1 for none.
     obj: number;
     speed: number;
     age: number;
-    retries: number;
-    role: number;
-    // When the current objective was picked, so a holding bot can be told to
-    // relocate once it has been sitting there long enough.
+    // When the current hold started (or the objective was picked), for roaming.
     since: number;
-    failUntil: { [obj: number]: number };
+    // When the last behavior was issued, so a MoveTo failure caused by the engine
+    // cancelling the previous move is not counted as a real failure.
+    issuedAt: number;
+    // Combat interrupt end time, 0 when not fighting.
+    battleUntil: number;
 }
 
-// Role is derived from the player id, not stored and shuffled, so it is stable
-// across the whole life of a soldier: a guard does not become a fighter after a
-// respawn cycle, and the same handful of ids per team always takes the guard
-// slots. The prototype factory is the objective guards are pinned to, which is
-// what stops 3-4 bots from wandering off and leaves the rest of the team free to
-// roam and attack.
-export function roleOf(pid: number, team: number): number {
-    return pid % BOT_ROLE_MOD === team ? BOT_ROLE_GUARD : BOT_ROLE_FIGHT;
+export function newMind(): BotMind {
+    return { state: -1, obj: -1, speed: -1, age: 0, since: 0, issuedAt: 0, battleUntil: 0 };
 }
 
-export function newMind(pid: number, team: number): BotMind {
-    return {
-        state: -1, obj: -1, speed: -1, age: 0, retries: 0,
-        role: roleOf(pid, team), since: 0, failUntil: {}
-    };
-}
+// Objectives each bot could not reach, with the time the ban lifts. Module level
+// and keyed by pid, so it survives forgetBot: a recycled bot comes back with the
+// same pid (18:48 log) and must not walk straight back to the same bunker.
+const failMemory: { [pid: number]: { [obj: number]: number } } = {};
 
-// A failed MoveTo stamps the objective as untouchable for a while, then the
-// bot re-picks around it. After BOT_RETRY_LIMIT consecutive failures the bot
-// holds the nearest safely-owned point instead of wedging itself.
-export function noteMoveFailed(mind: BotMind, nowMs: number): void {
-    mind.retries++;
-    if (mind.obj >= 0) {
-        mind.failUntil[mind.obj] = nowMs + BOT_FAIL_COOLDOWN_MS;
+function failMapOf(pid: number): { [obj: number]: number } {
+    let m: { [obj: number]: number } | undefined = failMemory[pid];
+    if (m === undefined) {
+        m = {};
+        failMemory[pid] = m;
     }
-    if (mind.retries > BOT_RETRY_LIMIT) {
-        mind.retries = 0;
-        // Force a re-pick next think by clearing the recorded intent.
-        mind.state = -1;
-        mind.obj = -1;
-        mind.speed = -1;
-    }
-    if (willLogDebug()) {
-        log("botbrain", "move failed obj=" + mind.obj + " retries=" + mind.retries);
-    }
+    return m;
 }
 
-export function noteMoveSucceeded(mind: BotMind): void {
-    mind.retries = 0;
+// Forget the current intent so the next think re-picks from scratch.
+export function clearIntent(pid: number, mind: BotMind): void {
+    mind.state = -1;
+    mind.obj = -1;
+    mind.speed = -1;
+    mind.age = 0;
+    releaseClaim(pid);
 }
 
-function failedRecently(mind: BotMind, obj: number, nowMs: number): boolean {
-    const until: number | undefined = mind.failUntil[obj];
-    return until !== undefined && nowMs < until;
+// This bot gives up on an objective for BOT_FAIL_COOLDOWN_MS and re-picks.
+export function giveUp(pid: number, mind: BotMind, nowMs: number, reason: string): void {
+    const obj: number = mind.obj;
+    if (obj >= 0) {
+        failMapOf(pid)[obj] = nowMs + BOT_FAIL_COOLDOWN_MS;
+        if (BOT_TRACE) {
+            log("bots", "pid=" + pid + " gives up on " + objectiveLabel(obj) + " for "
+                + String(BOT_FAIL_COOLDOWN_MS / 1000) + "s (" + reason + ")");
+        }
+    }
+    clearIntent(pid, mind);
 }
+
+// OnAIMoveToFailed: the engine stopped trying to reach the destination. Only
+// an attack walk counts, and not within the grace window after a new behavior,
+// where the "failure" is the previous move being replaced.
+export function noteMoveFailed(pid: number, mind: BotMind, nowMs: number): void {
+    if (mind.state !== JOB_ATTACK || nowMs - mind.issuedAt < BOT_FAIL_GRACE_MS) {
+        return;
+    }
+    giveUp(pid, mind, nowMs, "moveFailed");
+}
+
+// Combat interrupt (idea from bf6-portal-bots-brain's BattleSensor): a bot shot
+// by an enemy hands over to the engine's own combat AI for BOT_BATTLE_MS, then
+// thinkBot re-issues its objective.
+export function enterBattle(p: mod.Player, mind: BotMind, nowMs: number): void {
+    if (mind.battleUntil <= nowMs) {
+        mod.AIBattlefieldBehavior(p);
+    }
+    mind.battleUntil = nowMs + BOT_BATTLE_MS;
+}
+
+export function inBattle(mind: BotMind, nowMs: number): boolean {
+    return mind.battleUntil > nowMs;
+}
+
+const PARAMS: ScoreParams = {
+    wAttack: BOT_W_ATTACK, wDefend: BOT_W_DEFEND, wPerThreat: BOT_W_PER_THREAT,
+    wHold: BOT_W_HOLD, wCrowd: BOT_W_CROWD, wStick: BOT_W_STICK, wJitter: BOT_W_JITTER,
+    distM: BOT_SCORE_DIST_M, maxPathM: BOT_MAX_PATH_M, roamMs: BOT_ROAM_MS,
+    threatMin: BOT_THREAT_MIN
+};
+
+// Reused for every think, never stored.
+const botScratch: ScoreBot = { pid: 0, team: 0, x: 0, y: 0, z: 0, cur: -1, sinceMs: 0, failUntil: {} };
 
 function issueAttack(p: mod.Player, vec: mod.Vector, sprint: boolean): void {
-    mod.AIMoveToBehavior(p, vec);
+    // Validated: the engine walks to the nearest navmesh point near the target,
+    // which is what the official CustomBT template uses for scouting. Plain
+    // MoveTo into a bunker with bad navmesh left bots standing outside forever.
+    mod.AIValidatedMoveToBehavior(p, vec);
     mod.AISetMoveSpeed(p, sprint ? mod.MoveSpeed.Sprint : mod.MoveSpeed.InvestigateRun);
 }
 
@@ -8994,134 +9136,85 @@ function issueHold(p: mod.Player, vec: mod.Vector): void {
     mod.AISetMoveSpeed(p, mod.MoveSpeed.Patrol);
 }
 
-// One think step. Returns true when a behavior was issued, false when the
-// standing intent already covers the situation. nowMs is Date.now() from the
-// sweep driver, used only for fail-stamp expiry. pid is passed in because the
-// sweep driver already holds it, and re-reading it here cost one FFI per bot per
-// sweep for a value the caller has in hand.
+// One think step. Returns true when a behavior was issued.
 export function thinkBot(
     p: mod.Player, pid: number, team: number,
     x: number, y: number, z: number,
     mind: BotMind, nowMs: number
 ): boolean {
-    // Already standing on an objective we own: hold it. The capture sim does
-    // the rest, no MoveTo required. This is the cheapest possible outcome -
-    // a refreshOwners + set lookup, zero FFI.
-    const cur: number = onObjective(pid);
-    let wantState: number = -1;
-    let wantObj: number = -1;
-    let roaming: boolean = false;
-    if (mind.role === BOT_ROLE_GUARD) {
-        // Guards do not roam and do not chase. They own the factory, so the only
-        // thing that can pull them off it is losing it.
-        const guard: number = pickGuardObjective(team, x, y, z);
-        if (guard >= 0) {
-            if (cur === guard) {
-                wantState = objectiveState(guard, team) === OBJ_ATTACK ? OBJ_ATTACK : OBJ_HOLD;
-                wantObj = guard;
-            } else if (guard === mind.obj) {
-                // Already walking to the factory; leave the intent alone.
-                wantState = mind.state;
-                wantObj = mind.obj;
-            } else {
-                wantState = OBJ_ATTACK;
-                wantObj = guard;
-            }
-        }
+    if (mind.battleUntil > nowMs) {
+        // The engine's combat AI has this bot; leave it alone.
+        return false;
     }
-    if (wantObj < 0 && cur >= 0 && objectiveState(cur, team) !== OBJ_ATTACK
-        && !failedRecently(mind, cur, nowMs)) {
-        const holding: number = objectiveState(cur, team);
-        if (holding === OBJ_HOLD && nowMs - mind.since > BOT_ROAM_MS
-            && !failedRecently(mind, mind.obj, nowMs)) {
-            // Held it long enough. Go somewhere else, the way CQ's AI_Scouting
-            // rotates a bot between points instead of parking it.
-            const roam: number = pickRoamObjective(team, x, y, z, cur);
-            if (roam >= 0) {
-                wantState = OBJ_HOLD;
-                wantObj = roam;
-                roaming = true;
-            }
-        }
-        if (wantObj < 0) {
-            wantState = holding === OBJ_DEFEND ? OBJ_DEFEND : OBJ_HOLD;
-            wantObj = cur;
-        }
+    if (mind.battleUntil !== 0) {
+        // Fight over: AIBattlefieldBehavior replaced our behavior, so the same
+        // intent must be issued again rather than dirty-checked away.
+        mind.battleUntil = 0;
+        mind.state = -1;
     }
-    if (wantObj < 0 || (wantState === OBJ_HOLD && !roaming && mind.role !== BOT_ROLE_GUARD)) {
-        // Nothing to hold. Before the normal pick, check whether one of our own
-        // objectives is about to be capped: an owned point with enemies around
-        // it and fewer defenders than attackers outranks whatever else is
-        // available. This is the "defend the one they are taking" behaviour.
-        const help: number = pickDefendObjective(team, x, y, z);
-        if (help >= 0 && !failedRecently(mind, help, nowMs)) {
-            wantState = OBJ_DEFEND;
-            wantObj = help;
-        }
+    botScratch.pid = pid;
+    botScratch.team = team;
+    botScratch.x = x;
+    botScratch.y = y;
+    botScratch.z = z;
+    botScratch.cur = mind.obj;
+    botScratch.sinceMs = mind.since;
+    botScratch.failUntil = failMapOf(pid);
+    const pick: ScorePick = pickBest(scoreSnapshot(team), botScratch, nowMs, PARAMS);
+    if (pick.obj < 0) {
+        return false;
     }
-    if (wantObj < 0) {
-        const idx: number = pickObjective(team, x, y, z);
-        if (idx < 0) {
-            return false;
-        }
-        if (failedRecently(mind, idx, nowMs)) {
-            return false;
-        }
-        wantState = objectiveState(idx, team);
-        wantObj = idx;
-    }
-    // Arrival without occupancy: standing close enough that the trigger will
-    // claim the bot. Hold instead of re-issuing MoveTo every sweep.
-    const arriveSq: number = BOT_ARRIVE_M * BOT_ARRIVE_M;
+    const wantObj: number = pick.obj;
+    let wantState: number = pick.job;
+    claimObjective(pid, team, wantObj);
+    // Arrival: close enough that the trigger will take over. Stand and capture
+    // instead of re-issuing MoveTo every sweep.
     const dSq: number = distSqTo(wantObj, x, y, z);
     let wantSpeed: number = 0;
-    if (wantState === OBJ_ATTACK) {
-        if (dSq < arriveSq) {
-            wantState = OBJ_HOLD;
+    if (wantState === JOB_ATTACK) {
+        if (dSq < BOT_ARRIVE_M * BOT_ARRIVE_M) {
+            wantState = JOB_HOLD;
         } else {
             wantSpeed = dSq > BOT_SPRINT_DIST_M * BOT_SPRINT_DIST_M ? 1 : 0;
         }
     }
-    // Dirty-check: identical intent is never re-issued. age counts sweeps
-    // since the last issue; BOT_REISSUE_SWEEPS > 0 re-issues the same intent
-    // on schedule if playtests show behaviors expiring mid-path.
     if (mind.state === wantState && mind.obj === wantObj && mind.speed === wantSpeed) {
         mind.age++;
         if (BOT_REISSUE_SWEEPS <= 0 || mind.age < BOT_REISSUE_SWEEPS) {
             return false;
         }
     }
-    // Aim at the objective anchor nudged by this bot's own stable offset, so 24
-    // bots heading for the same point spread around it instead of stacking on
-    // one metre and shoving each other off.
+    // Aim at the anchor nudged by this bot's own stable offset, so bots heading
+    // for the same point spread around it instead of stacking on one metre.
     const anchor: mod.Vector = objectiveVector(wantObj);
     const off: mod.Vector = spreadOffset(pid, wantObj);
     const vec: mod.Vector = mod.CreateVector(
         mod.XComponentOf(anchor) + mod.XComponentOf(off),
         mod.YComponentOf(anchor) + mod.YComponentOf(off),
         mod.ZComponentOf(anchor) + mod.ZComponentOf(off));
-    if (wantState === OBJ_ATTACK) {
+    if (wantState === JOB_ATTACK) {
         issueAttack(p, vec, wantSpeed === 1);
-    } else if (wantState === OBJ_DEFEND) {
+    } else if (wantState === JOB_DEFEND) {
         issueDefend(p, vec);
     } else {
         issueHold(p, vec);
     }
-    const prevObj: number = mind.obj;
+    // The roam clock measures how long the bot has held this point, so it
+    // restarts on a new objective and when a walk turns into a hold.
+    if (mind.obj !== wantObj || (wantState === JOB_HOLD && mind.state !== JOB_HOLD)) {
+        mind.since = nowMs;
+    }
     mind.state = wantState;
     mind.obj = wantObj;
     mind.speed = wantSpeed;
     mind.age = 0;
-    if (mind.since === 0 || prevObj !== wantObj) {
-        // Roam timer restarts only on a genuine destination change, otherwise a
-        // re-issued hold would reset the clock and the bot would never rotate.
-        mind.since = nowMs;
-    }
+    mind.issuedAt = nowMs;
     return true;
 }
 
 
 // --- SOURCE: src\bots.ts ---
+
 
 
 
@@ -9169,6 +9262,22 @@ interface BotRec {
     // attempt and the position-based stuck detector, which cannot tell a parked
     // bot from a bot at the wheel.
     inVehicle: boolean;
+    // Walking to a vehicle to board it: the vehicle, its ObjId (reservation key)
+    // and when to give up. approachVid is -1 when not approaching.
+    approachVeh: mod.Vehicle | undefined;
+    approachVid: number;
+    approachUntil: number;
+    // Seated: when, and the vehicle position at the last stuck check. seatedAt
+    // is 0 when not seated.
+    seatedAt: number;
+    seatX: number;
+    seatZ: number;
+    seatCheckAt: number;
+    // Driver steering toward an objective: -1 when not steering. driveD is the
+    // vehicle's distance to it at the last progress check.
+    driveObj: number;
+    driveD: number;
+    driveCheckAt: number;
 }
 
 const respawnPending: { [pid: number]: boolean } = {};
@@ -9293,8 +9402,11 @@ function registerBot(p: mod.Player, pid: number, team: number): BotRec {
     let rec: BotRec | undefined = bots[pid];
     if (rec === undefined) {
         rec = {
-            pid: pid, team: team, player: p, mind: newMind(pid, team), dead: false, nameKey: "",
-            lastX: 0, lastY: 0, lastZ: 0, stillFor: 0, strikes: 0, inVehicle: false
+            pid: pid, team: team, player: p, mind: newMind(), dead: false, nameKey: "",
+            lastX: 0, lastY: 0, lastZ: 0, stillFor: 0, strikes: 0, inVehicle: false,
+            approachVeh: undefined, approachVid: -1, approachUntil: 0,
+            seatedAt: 0, seatX: 0, seatZ: 0, seatCheckAt: 0,
+            driveObj: -1, driveD: 0, driveCheckAt: 0
         };
         bots[pid] = rec;
         botOrder.push(pid);
@@ -9306,6 +9418,8 @@ function registerBot(p: mod.Player, pid: number, team: number): BotRec {
         rec.stillFor = 0;
         rec.strikes = 0;
         rec.inVehicle = false;
+        endApproach(rec);
+        resetSeat(rec);
     }
     botPidSet[pid] = true;
     // The name was queued by drainSpawns before the engine spawned this
@@ -9323,7 +9437,11 @@ function forgetBot(pid: number): void {
         // Release here, on leaving the game, not on death: the corpse still
         // carries the name in the kill feed until it unspawns.
         releaseBotName(rec.team, rec.nameKey);
+        endApproach(rec);
     }
+    // The claim goes; the per-pid fail memory in botbrain deliberately stays,
+    // because the respawned bot comes back with the same pid.
+    releaseClaim(pid);
     delete bots[pid];
     delete botPidSet[pid];
     delete respawnPending[pid];
@@ -9356,7 +9474,12 @@ function onBotDead(pid: number): void {
             rec.dead = true;
             scheduleRespawn(pid, rec.team);
         }
+        endApproach(rec);
+        resetSeat(rec);
+        clearIntent(pid, rec.mind);
+        rec.mind.battleUntil = 0;
     }
+    releaseClaim(pid);
     dropOccupant(pid);
 }
 
@@ -9400,23 +9523,15 @@ function onBotUndeployed(p: mod.Player, pid: number): void {
 function onMoveFailed(p: mod.Player): void {
     const pid: number = mod.GetObjId(p);
     const rec: BotRec | undefined = bots[pid];
-    if (rec === undefined) {
+    if (rec === undefined || rec.dead || rec.inVehicle || rec.approachVid >= 0) {
         return;
     }
-    noteMoveFailed(rec.mind, Date.now());
+    noteMoveFailed(pid, rec.mind, Date.now());
 }
 
-function onMoveSucceeded(p: mod.Player): void {
-    const pid: number = mod.GetObjId(p);
-    const rec: BotRec | undefined = bots[pid];
-    if (rec === undefined) {
-        return;
-    }
-    noteMoveSucceeded(rec.mind);
-}
-
-// Retaliation only: bots never hunt, they answer. One target set plus a short
-// force-fire burst when damaged by a live enemy.
+// Shot by a live enemy: set the target, a short force-fire burst, and hand the
+// bot to the engine's combat AI for BOT_BATTLE_MS (botbrain.enterBattle). Bots
+// in a vehicle are left to the vehicle AI.
 function onDamaged(victim: mod.Player, damager: mod.Player): void {
     const pid: number = mod.GetObjId(victim);
     const rec: BotRec | undefined = bots[pid];
@@ -9430,6 +9545,11 @@ function onDamaged(victim: mod.Player, damager: mod.Player): void {
         return;
     }
     try {
+        if (!rec.inVehicle) {
+            // A fight cancels a walk to a vehicle.
+            endApproach(rec);
+            enterBattle(victim, rec.mind, Date.now());
+        }
         mod.AISetTarget(victim, damager);
         mod.AIForceFire(victim, 2);
     } catch (e) {
@@ -9451,15 +9571,17 @@ function readPos(pid: number): boolean {
     return v !== null && v !== undefined;
 }
 
-// Vehicle boarding. mod.AllVehicles() returns an opaque mod.Array and costs an
-// FFI to build, so the candidate list is rebuilt once per BOT_VEHICLE_SCAN_MS
-// for the whole population rather than once per bot per sweep. Each candidate
-// is a vehicle that exists and still has a free seat, which is the same
-// availability test CustomConquest V15 AI_VehicleDeploy performs before it
-// commits a bot to a seat.
+// Vehicles: existing ones only. mod.AllVehicles() returns an opaque mod.Array
+// and costs an FFI to build, so the candidate list is rebuilt once per
+// BOT_VEHICLE_SCAN_MS for the whole population. A candidate exists and has
+// fewer than BOT_VEHICLE_FREE_SEATS occupants, the same availability test
+// CustomConquest V15 AI_VehicleDeploy uses.
 const vehicleCand: mod.Vehicle[] = [];
 const vScratch: Vectors.Vector3 = { x: 0, y: 0, z: 0 };
 let vehicleScannedAt: number = 0;
+// Vehicle ObjId -> pid of the bot walking to it, so a crowd does not all head
+// for the same tank.
+const vehicleReservedBy: { [vid: number]: number } = {};
 
 function scanVehicles(nowMs: number): void {
     if (nowMs - vehicleScannedAt < BOT_VEHICLE_SCAN_MS) {
@@ -9495,61 +9617,302 @@ function scanVehicles(nowMs: number): void {
     }
 }
 
-// Try to put this bot in a nearby free vehicle. Bots only do this while they are
-// on foot, and a bot already in a seat skips the whole thing.
-//
-// Boarding is CQ's AI_VehicleDeploy pair, both Tier 0: AIBattlefieldBehavior
-// hands the bot to the normal vehicle AI, then ForcePlayerToSeat puts it in seat
-// -1, which is the engine's "any free seat" seat. Seat -1 rather than a seat
-// index is deliberate: it is what the template uses, and it means a bot does not
-// fail because the driver slot was taken between the scan and the board.
-function tryBoardVehicle(rec: BotRec, x: number, y: number, z: number): boolean {
-    if (rec.inVehicle || vehicleCand.length === 0) {
+function endApproach(rec: BotRec): void {
+    if (rec.approachVid >= 0 && vehicleReservedBy[rec.approachVid] === rec.pid) {
+        delete vehicleReservedBy[rec.approachVid];
+    }
+    rec.approachVeh = undefined;
+    rec.approachVid = -1;
+    rec.approachUntil = 0;
+}
+
+function resetSeat(rec: BotRec): void {
+    rec.seatedAt = 0;
+    rec.seatCheckAt = 0;
+    rec.driveObj = -1;
+    rec.driveD = 0;
+    rec.driveCheckAt = 0;
+}
+
+// Reads a vehicle's position into vScratch. False when the read throws.
+function vehiclePos(v: mod.Vehicle): boolean {
+    try {
+        Vectors.toVector3(mod.GetVehicleState(v, mod.VehicleStateVector.VehiclePosition), vScratch);
+        return true;
+    } catch (e) {
         return false;
     }
-    // Only a slice of the population ever tries, so a parked tank is not
-    // stripped by every bot within earshot in the same second.
-    if (rec.pid % BOT_VEHICLE_MOD !== rec.team) {
-        return false;
+}
+
+// After a think: a bot walking to a far attack target heads for a free vehicle
+// near it instead - walk there, then seat (the bf6-portal-bots-brain pattern),
+// rather than being teleported into a seat. Short trips stay on foot.
+function maybeApproachVehicle(rec: BotRec, x: number, y: number, z: number, nowMs: number): void {
+    const mind: BotMind = rec.mind;
+    if (vehicleCand.length === 0 || mind.state !== JOB_ATTACK || mind.obj < 0 || inBattle(mind, nowMs)) {
+        return;
+    }
+    if (distSqTo(mind.obj, x, y, z) < BOT_VEHICLE_MIN_TRIP_M * BOT_VEHICLE_MIN_TRIP_M) {
+        return;
     }
     const rSq: number = BOT_VEHICLE_RADIUS_M * BOT_VEHICLE_RADIUS_M;
     for (const v of vehicleCand) {
         try {
-            Vectors.toVector3(
-                mod.GetVehicleState(v, mod.VehicleStateVector.VehiclePosition), vScratch
-            );
+            const vid: number = mod.GetObjId(v);
+            const owner: number | undefined = vehicleReservedBy[vid];
+            if (owner !== undefined && owner !== rec.pid) {
+                const holder: BotRec | undefined = bots[owner];
+                if (holder !== undefined && !holder.dead && holder.approachVid === vid) {
+                    continue;
+                }
+            }
+            if (!vehiclePos(v)) {
+                continue;
+            }
             const dx: number = vScratch.x - x;
             const dy: number = vScratch.y - y;
             const dz: number = vScratch.z - z;
             if (dx * dx + dy * dy + dz * dz > rSq) {
                 continue;
             }
-            mod.AIBattlefieldBehavior(rec.player);
-            mod.ForcePlayerToSeat(rec.player, v, -1);
-            rec.inVehicle = true;
-            if (willLogDebug()) {
-                log("bots", "pid=" + rec.pid + " boarded a vehicle");
+            vehicleReservedBy[vid] = rec.pid;
+            rec.approachVeh = v;
+            rec.approachVid = vid;
+            rec.approachUntil = nowMs + BOT_VEHICLE_APPROACH_MS;
+            // Plain MoveTo: the validated variant may stop short of a vehicle.
+            mod.AIMoveToBehavior(rec.player, mod.CreateVector(vScratch.x, vScratch.y, vScratch.z));
+            mod.AISetMoveSpeed(rec.player, mod.MoveSpeed.Sprint);
+            // The objective intent is re-issued after the vehicle trip.
+            mind.state = -1;
+            if (BOT_TRACE) {
+                log("bots", "pid=" + rec.pid + " heads for vehicle " + vid
+                    + " (target " + objectiveLabel(mind.obj) + ")");
             }
-            return true;
+            return;
         } catch (e) {
         }
+    }
+}
+
+// Walking to a reserved vehicle: seat once close, give up on timeout or if the
+// vehicle is gone or full. Returns true while the approach continues.
+function tickApproach(rec: BotRec, x: number, y: number, z: number, nowMs: number): boolean {
+    const v: mod.Vehicle | undefined = rec.approachVeh;
+    if (v === undefined) {
+        endApproach(rec);
+        return false;
+    }
+    let why: string = "";
+    if (nowMs > rec.approachUntil) {
+        why = "timeout";
+    } else if (!mod.IsValid(v) || !vehiclePos(v)) {
+        why = "vehicle gone";
+    } else if (mod.CountOf(mod.GetAllPlayersInVehicle(v)) >= BOT_VEHICLE_FREE_SEATS) {
+        why = "vehicle full";
+    }
+    if (why !== "") {
+        if (BOT_TRACE) {
+            log("bots", "pid=" + rec.pid + " drops vehicle " + rec.approachVid + " (" + why + ")");
+        }
+        endApproach(rec);
+        return false;
+    }
+    const dx: number = vScratch.x - x;
+    const dy: number = vScratch.y - y;
+    const dz: number = vScratch.z - z;
+    if (dx * dx + dy * dy + dz * dz > BOT_VEHICLE_SEAT_M * BOT_VEHICLE_SEAT_M) {
+        return true;
+    }
+    const vid: number = rec.approachVid;
+    const driver: boolean = !mod.IsVehicleSeatOccupied(v, 0);
+    endApproach(rec);
+    mod.ForcePlayerToSeat(rec.player, v, driver ? 0 : -1);
+    rec.inVehicle = true;
+    rec.seatedAt = nowMs;
+    rec.seatX = vScratch.x;
+    rec.seatZ = vScratch.z;
+    rec.seatCheckAt = nowMs + BOT_VEHICLE_STUCK_MS;
+    const obj: number = rec.mind.obj;
+    if (driver && obj >= 0) {
+        steerDriver(rec, obj, vScratch.y, nowMs);
+    } else {
+        mod.AIBattlefieldBehavior(rec.player);
+    }
+    if (BOT_TRACE) {
+        log("bots", "pid=" + rec.pid + " boarded vehicle " + vid + (driver ? " as driver" : " as passenger"));
     }
     return false;
 }
 
-// Keep the in-vehicle flag honest. Only bots that are allowed to board pay for
-// this, so it is one FFI for a fraction of the population, and it means a bot
-// that got out again is back under stuck detection instead of being treated as
-// permanently seated.
-function syncVehicleState(rec: BotRec): void {
-    if (rec.pid % BOT_VEHICLE_MOD !== rec.team) {
-        rec.inVehicle = false;
+// Driver steering, from bf6-portal-bots-brain: a driver given
+// AIDefendPositionBehavior on a point makes the vehicle AI drive there. Issued a
+// moment after the seat change so it lands on the seated soldier. Unverified on
+// PS_Isolated, so handleSeated checks progress and falls back to battlefield AI.
+function steerDriver(rec: BotRec, obj: number, y: number, nowMs: number): void {
+    const anchor: mod.Vector = objectiveVector(obj);
+    rec.driveObj = obj;
+    rec.driveD = Math.sqrt(distSqTo(obj, rec.seatX, y, rec.seatZ));
+    rec.driveCheckAt = nowMs + BOT_DRIVE_CHECK_MS;
+    const pid: number = rec.pid;
+    Timers.setTimeout(() => {
+        safe("bots.steer", () => {
+            const r: BotRec | undefined = bots[pid];
+            if (r === undefined || r.dead || !mod.IsValid(r.player) || r.driveObj !== obj) {
+                return;
+            }
+            mod.AIDefendPositionBehavior(r.player, anchor, 10, 20);
+        });
+    }, 150);
+    if (BOT_TRACE) {
+        log("bots", "pid=" + pid + " driving to " + objectiveLabel(obj)
+            + " (" + String(Math.round(rec.driveD)) + "m)");
+    }
+}
+
+function ejectFromVehicle(rec: BotRec, why: string): void {
+    try {
+        mod.ForcePlayerExitVehicle(rec.player);
+    } catch (e) {
+    }
+    if (BOT_TRACE) {
+        log("bots", "pid=" + rec.pid + " ejected (" + why + ")");
+    }
+    rec.inVehicle = false;
+    leftVehicle(rec);
+}
+
+// Back on foot (ejected, or got out on its own): stuck tracking restarts and
+// the objective intent is re-picked next think.
+function leftVehicle(rec: BotRec): void {
+    resetSeat(rec);
+    rec.lastX = 0;
+    rec.lastY = 0;
+    rec.lastZ = 0;
+    rec.stillFor = 0;
+    rec.strikes = 0;
+    clearIntent(rec.pid, rec.mind);
+}
+
+// A seated bot: eject when the vehicle has not moved (CustomConquest V15: 15 s,
+// 3 m), after BOT_VEHICLE_MAX_MS, or when a driver reaches its objective. A
+// driver that is not closing on its objective falls back to battlefield AI.
+// posScratch holds the bot's cached position, which for a seated soldier is
+// the vehicle's position.
+function handleSeated(rec: BotRec, nowMs: number): void {
+    const x: number = posScratch.x;
+    const z: number = posScratch.z;
+    if (rec.seatedAt === 0) {
+        // Seated by something other than us, e.g. a player's squad call.
+        rec.seatedAt = nowMs;
+        rec.seatCheckAt = nowMs + BOT_VEHICLE_STUCK_MS;
+        rec.seatX = x;
+        rec.seatZ = z;
         return;
     }
+    if (nowMs - rec.seatedAt > BOT_VEHICLE_MAX_MS) {
+        ejectFromVehicle(rec, "max time");
+        return;
+    }
+    if (nowMs >= rec.seatCheckAt) {
+        const dx: number = x - rec.seatX;
+        const dz: number = z - rec.seatZ;
+        if (dx * dx + dz * dz < BOT_VEHICLE_STUCK_M * BOT_VEHICLE_STUCK_M) {
+            ejectFromVehicle(rec, "vehicle stuck");
+            return;
+        }
+        rec.seatX = x;
+        rec.seatZ = z;
+        rec.seatCheckAt = nowMs + BOT_VEHICLE_STUCK_MS;
+    }
+    if (rec.driveObj < 0) {
+        return;
+    }
+    const d: number = Math.sqrt(distSqTo(rec.driveObj, x, posScratch.y, z));
+    if (d < BOT_VEHICLE_DISMOUNT_M) {
+        ejectFromVehicle(rec, "arrived at " + objectiveLabel(rec.driveObj));
+        return;
+    }
+    if (nowMs >= rec.driveCheckAt) {
+        if (rec.driveD - d < BOT_DRIVE_PROGRESS_M) {
+            if (BOT_TRACE) {
+                log("bots", "pid=" + rec.pid + " steering made no progress to "
+                    + objectiveLabel(rec.driveObj) + " (" + String(Math.round(d)) + "m) - battlefield AI");
+            }
+            rec.driveObj = -1;
+            try {
+                mod.AIBattlefieldBehavior(rec.player);
+            } catch (e) {
+            }
+            return;
+        }
+        rec.driveD = d;
+        rec.driveCheckAt = nowMs + BOT_DRIVE_CHECK_MS;
+    }
+}
+
+// One FFI per think per bot; keeps the in-vehicle flag honest whoever put the
+// bot in or took it out.
+function syncVehicleState(rec: BotRec): void {
     try {
         rec.inVehicle = mod.GetSoldierState(rec.player, mod.SoldierStateBool.IsInVehicle);
     } catch (e) {
         rec.inVehicle = false;
+    }
+}
+
+let traceAt: number = 0;
+
+// BOT_TRACE: one line per team, e.g.
+//   "t1 plan: bunker1 A3, site2 H5 | walk-veh 1, in-veh 2, fight 4, idle 0"
+// (A attack, H hold, D defend), so a playtest log shows whether bots split up.
+function tracePlan(nowMs: number): void {
+    if (!BOT_TRACE || nowMs - traceAt < BOT_TRACE_MS) {
+        return;
+    }
+    traceAt = nowMs;
+    const letters: string = "HAD";
+    for (let team: number = 1; team <= 2; team++) {
+        const counts: { [key: string]: number } = {};
+        const order: string[] = [];
+        let veh: number = 0;
+        let walkVeh: number = 0;
+        let fight: number = 0;
+        let idle: number = 0;
+        for (const pid of botOrder) {
+            const rec: BotRec | undefined = bots[pid];
+            if (rec === undefined || rec.dead || rec.team !== team) {
+                continue;
+            }
+            if (rec.inVehicle) {
+                veh++;
+                continue;
+            }
+            if (rec.approachVid >= 0) {
+                walkVeh++;
+                continue;
+            }
+            if (inBattle(rec.mind, nowMs)) {
+                fight++;
+                continue;
+            }
+            const m: BotMind = rec.mind;
+            if (m.obj < 0 || m.obj >= objectiveCount() || m.state < 0) {
+                idle++;
+                continue;
+            }
+            const key: string = objectiveLabel(m.obj) + " " + letters.charAt(m.state);
+            if (counts[key] === undefined) {
+                counts[key] = 0;
+                order.push(key);
+            }
+            counts[key]++;
+        }
+        const parts: string[] = [];
+        for (const k of order) {
+            parts.push(k + String(counts[k]));
+        }
+        log("bots", "t" + team + " plan: " + (parts.length > 0 ? parts.join(", ") : "-")
+            + " | walk-veh " + walkVeh + ", in-veh " + veh + ", fight " + fight + ", idle " + idle);
     }
 }
 
@@ -9566,6 +9929,11 @@ function sweep(): void {
     }
     const nowMs: number = Date.now();
     scanVehicles(nowMs);
+    // Owner and enemy pressure for the scorer, once per sweep per team. Claims
+    // are kept live by the ledger as bots pick during the sweep.
+    refreshScoreSnapshot(1);
+    refreshScoreSnapshot(2);
+    tracePlan(nowMs);
     const n: number = botOrder.length;
     if (n === 0) {
         return;
@@ -9587,21 +9955,29 @@ function sweep(): void {
             }
             syncVehicleState(rec);
             if (rec.inVehicle) {
-                // A bot driving a vehicle is not walking, so position-based stuck
-                // detection would read it as frozen and recycle it out of the
-                // seat. The vehicle AI is in charge from here.
+                // Position-based stuck detection cannot tell a parked bot from a
+                // driver, so seated bots have their own checks.
+                endApproach(rec);
+                handleSeated(rec, nowMs);
                 continue;
             }
-            if (tryBoardVehicle(rec, posScratch.x, posScratch.y, posScratch.z)) {
-                continue;
+            if (rec.seatedAt !== 0) {
+                // Out of the vehicle without our eject (vehicle destroyed, engine).
+                leftVehicle(rec);
             }
-            if (handleStuck(rec, posScratch.x, posScratch.y, posScratch.z)) {
+            if (rec.approachVid >= 0) {
+                if (tickApproach(rec, posScratch.x, posScratch.y, posScratch.z, nowMs) || rec.inVehicle) {
+                    continue;
+                }
+            }
+            if (handleStuck(rec, posScratch.x, posScratch.y, posScratch.z, nowMs)) {
                 // Recycled: mod.Kill routes it through the ordinary death and
                 // respawn path, so it comes back at a spawner instead of
                 // wedged. Skip this think, the body is going away.
                 continue;
             }
             thinkBot(rec.player, pid, rec.team, posScratch.x, posScratch.y, posScratch.z, rec.mind, nowMs);
+            maybeApproachVehicle(rec, posScratch.x, posScratch.y, posScratch.z, nowMs);
         } catch (e) {
             log("bots", "think failed pid=" + pid + ": " + String(e));
         }
@@ -9664,32 +10040,34 @@ function teleportToObjective(p: mod.Player, team: number, pid: number): void {
     }
 }
 
-// A bot is stuck when it has barely moved across a whole window of thinks. The
-// first window only forces a re-pick (clearing the recorded intent makes the
-// next think pick something else); a bot that is still stuck after
-// BOT_STUCK_STRIKES windows is killed so the respawn path replaces it. Without
-// this, a bot that ended up against a wall, or whose behavior expired silently,
-// stood there for the rest of the match - which is what the playtest showed.
+// A bot is stuck when it has barely moved across a whole window of thinks while
+// walking to an attack target. Only walks count: a holding or defending bot
+// barely moves by design, and the old check killed those as stuck (the 18:52
+// wave in the playtest). Each window gives up on the current target for this
+// bot (botbrain.giveUp, kept across respawns) so it re-picks somewhere else; a
+// bot still stuck after BOT_STUCK_STRIKES windows is killed and respawns.
 //
 // Returns true when the bot was recycled and should not be thought this sweep.
-function handleStuck(rec: BotRec, x: number, y: number, z: number): boolean {
+function handleStuck(rec: BotRec, x: number, y: number, z: number, nowMs: number): boolean {
+    const mind: BotMind = rec.mind;
+    const reach: number = BOT_ARRIVE_M * 2;
+    const walking: boolean = mind.state === JOB_ATTACK && mind.obj >= 0 && !inBattle(mind, nowMs)
+        && distSqTo(mind.obj, x, y, z) > reach * reach;
     // First think after spawn has no baseline to compare against.
-    if (rec.stillFor === 0 && rec.lastX === 0 && rec.lastY === 0 && rec.lastZ === 0) {
-        rec.lastX = x;
-        rec.lastY = y;
-        rec.lastZ = z;
-        return false;
-    }
+    const fresh: boolean = rec.lastX === 0 && rec.lastY === 0 && rec.lastZ === 0;
     const dx: number = x - rec.lastX;
     const dy: number = y - rec.lastY;
     const dz: number = z - rec.lastZ;
     rec.lastX = x;
     rec.lastY = y;
     rec.lastZ = z;
-    const minSq: number = BOT_STUCK_MIN_M * BOT_STUCK_MIN_M;
-    if (dx * dx + dy * dy + dz * dz > minSq) {
+    if (!walking) {
         rec.stillFor = 0;
         rec.strikes = 0;
+        return false;
+    }
+    if (fresh || dx * dx + dy * dy + dz * dz > BOT_STUCK_MIN_M * BOT_STUCK_MIN_M) {
+        rec.stillFor = 0;
         return false;
     }
     rec.stillFor++;
@@ -9699,15 +10077,11 @@ function handleStuck(rec: BotRec, x: number, y: number, z: number): boolean {
     rec.stillFor = 0;
     rec.strikes++;
     if (rec.strikes < BOT_STUCK_STRIKES) {
-        // First offence: break the dirty-check by clearing the intent, so the
-        // next think issues a fresh behavior toward a re-picked objective.
-        rec.mind.state = -1;
-        rec.mind.obj = -1;
-        rec.mind.speed = -1;
-        rec.mind.failUntil = {};
+        giveUp(rec.pid, mind, nowMs, "stuck");
         return false;
     }
     rec.strikes = 0;
+    giveUp(rec.pid, mind, nowMs, "stuck, recycling");
     log("bots", "pid=" + rec.pid + " stuck, recycling");
     try {
         mod.AIIdleBehavior(rec.player);
@@ -9851,9 +10225,6 @@ export function configureBotEvents(): void {
     });
     Events.OnAIMoveToFailed.subscribe((p: mod.Player) => {
         safe("bots.movefail", () => { onMoveFailed(p); });
-    });
-    Events.OnAIMoveToSucceeded.subscribe((p: mod.Player) => {
-        safe("bots.movesok", () => { onMoveSucceeded(p); });
     });
     Events.OnPlayerDamaged.subscribe((victim: mod.Player, damager: mod.Player) => {
         safe("bots.damaged", () => { onDamaged(victim, damager); });
@@ -15063,9 +15434,17 @@ function awardCaptureToZone(team: number, kind: AwardKind, players: mod.Player[]
     log("stats", "capture " + kind + " -> team " + String(team)
         + " present " + String(capturers.length)
         + " paid " + String(paid) + " human(s) x" + String(prestigeFor(kind)));
-    if (capturers.length > 0 && paid === 0) {
-        logAdmin("stats", "WARNING capture " + kind + " found " + String(capturers.length)
-            + " player(s) on the objective but paid no human prestige");
+    // Only a human on the point who went unpaid is worth a warning; a capture by
+    // bots alone pays no prestige by design and logged this on every bot capture.
+    let humans: number = 0;
+    for (const p of capturers) {
+        if (!isBotPlayer(p)) {
+            humans++;
+        }
+    }
+    if (humans > 0 && paid === 0) {
+        logAdmin("stats", "WARNING capture " + kind + " found " + String(humans)
+            + " human(s) on the objective but paid no prestige");
     }
     pushHeader();
     pushAllRows();

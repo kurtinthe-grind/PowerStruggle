@@ -2988,9 +2988,17 @@ function awardCaptureToZone(team: number, kind: AwardKind, players: mod.Player[]
     log("stats", "capture " + kind + " -> team " + String(team)
         + " present " + String(capturers.length)
         + " paid " + String(paid) + " human(s) x" + String(prestigeFor(kind)));
-    if (capturers.length > 0 && paid === 0) {
-        logAdmin("stats", "WARNING capture " + kind + " found " + String(capturers.length)
-            + " player(s) on the objective but paid no human prestige");
+    // Only a human on the point who went unpaid is worth a warning; a capture by
+    // bots alone pays no prestige by design and logged this on every bot capture.
+    let humans: number = 0;
+    for (const p of capturers) {
+        if (!isBotPlayer(p)) {
+            humans++;
+        }
+    }
+    if (humans > 0 && paid === 0) {
+        logAdmin("stats", "WARNING capture " + kind + " found " + String(humans)
+            + " human(s) on the objective but paid no prestige");
     }
     pushHeader();
     pushAllRows();

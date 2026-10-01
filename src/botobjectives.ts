@@ -7,9 +7,8 @@ import { allBunkers, bunkerByCp, onBunkerCaptured } from "./buildings";
 import { allStates, onCaptured } from "./capture";
 import { isConfigured } from "./objids";
 import { PlayerLocations } from "bf6-portal-utils/player-locations";
-import {
-    BOT_CROWD_PENALTY_M, BOT_MAX_PATH_M, BOT_SPREAD_M, BOT_THREAT_REACH_M
-} from "./config";
+import { BOT_KIND_WEIGHT, BOT_SPREAD_M, BOT_THREAT_REACH_M } from "./config";
+import { ScoreObjective } from "./botscore";
 
 // Unified objective read model for the bot population. Bunkers (native
 // CapturePoints) and area buildings (custom AreaTrigger capture) become one
@@ -343,171 +342,103 @@ export function objectiveState(idx: number, team: number): number {
     return isContested(idx) ? OBJ_DEFEND : OBJ_HOLD;
 }
 
-// Nearest objective by role priority: contested-ours, then nearest not-ours
-// within pathing range, then nearest safely-ours. All squared distances, one
-// sqrt nowhere. Returns -1 when nothing is in range.
-//
-// Occupancy is folded into the comparison as a squared-distance penalty so a
-// bot prefers a slightly further but empty point over piling onto a point that
-// already has a dozen bots standing on it. That penalty is what stops the whole
-// team funnelling through one doorway and then shoving each other off the flag.
-export function pickObjective(team: number, x: number, y: number, z: number): number {
+// Squared distance from a point to an objective anchor. Zero FFI.
+export function distSqTo(idx: number, x: number, y: number, z: number): number {
     scratch.x = x;
-    scratch.y = y;
-    scratch.z = z;
-    const maxD: number = BOT_MAX_PATH_M * BOT_MAX_PATH_M;
-    let defend: number = -1;
-    let defendD: number = 0;
-    let attack: number = -1;
-    let attackD: number = 0;
-    let hold: number = -1;
-    let holdD: number = 0;
-    for (let i: number = 0; i < objCount; i++) {
-        const d: number = InterleavedVectors.sliceToVectorDistanceSquared(objPos, i, scratch);
-        if (d > maxD) {
-            continue;
-        }
-        // Crowding penalty, in squared-metre units: each bot already standing
-        // there is worth BOT_CROWD_PENALTY_M of extra "distance".
-        const occ: number = occupancy(i);
-        const cost: number = d + occ * occ * BOT_CROWD_PENALTY_M * BOT_CROWD_PENALTY_M;
-        const st: number = objectiveState(i, team);
-        if (st === OBJ_DEFEND) {
-            if (defend < 0 || cost < defendD) {
-                defend = i;
-                defendD = cost;
-            }
-        } else if (st === OBJ_ATTACK) {
-            if (attack < 0 || cost < attackD) {
-                attack = i;
-                attackD = cost;
-            }
-        } else {
-            if (hold < 0 || cost < holdD) {
-                hold = i;
-                holdD = cost;
-            }
-        }
-    }
-    if (defend >= 0) {
-        return defend;
-    }
-    if (attack >= 0) {
-        return attack;
-    }
-    return hold;
-}
-
-export function distSqTo(idx: number, x: number, y: number, z: number): number {    scratch.x = x;
     scratch.y = y;
     scratch.z = z;
     return InterleavedVectors.sliceToVectorDistanceSquared(objPos, idx, scratch);
 }
 
-// Guard assignment target. A bot picked as a factory guard has no other job, so
-// it needs the nearest prototype factory its team actually owns. A playtest
-// showed generic picks parking guards in the prototype factory by accident and
-// then never moving them again, which is exactly the reported behaviour, so the
-// role is now explicit and the brain sticks to it. Returns -1 when the team owns
-// no prototype factory, which lets the guard fall back to normal picking.
-export function pickGuardObjective(team: number, x: number, y: number, z: number): number {
-    scratch.x = x;
-    scratch.y = y;
-    scratch.z = z;
-    let best: number = -1;
-    let bestD: number = 0;
-    for (let i: number = 0; i < objCount; i++) {
-        if (objKind[i] !== OBJ_PROTO || objOwner[i] !== team) {
-            continue;
-        }
-        const d: number = InterleavedVectors.sliceToVectorDistanceSquared(objPos, i, scratch);
-        if (best < 0 || d < bestD) {
-            best = i;
-            bestD = d;
-        }
+// Claims ledger: which objective each bot has picked, counted per team. This is
+// what spreads the population. The old picker penalised crowding only by bots
+// standing inside a trigger, which is zero at game start, so the whole team
+// walked to the same nearest point (18:48 playtest). Claims include bots still
+// walking there. Zero FFI.
+const claimOf: { [pid: number]: number } = {};
+const claimTeam: { [pid: number]: number } = {};
+const claimCount: number[][] = [[], [], []];
+
+export function claimsOn(idx: number, team: number): number {
+    if (team !== 1 && team !== 2) {
+        return 0;
     }
-    return best;
+    const c: number | undefined = claimCount[team][idx];
+    return c === undefined ? 0 : c;
 }
 
-// Roaming target. This is CustomConquest V15 AI_Scouting reduced to what the bot
-// already has: pick another objective within range and walk there, instead of
-// holding the first one it reached for the rest of the match. exclude is the
-// objective the bot is already on, so a roam always produces a new destination
-// and the brain's dirty-check sees a changed intent. Owned points are preferred
-// over enemy ones, since a roam is about circulating, not about rotating the
-// whole team into a single attack.
-export function pickRoamObjective(
-    team: number, x: number, y: number, z: number, exclude: number
-): number {
-    scratch.x = x;
-    scratch.y = y;
-    scratch.z = z;
-    const maxD: number = BOT_MAX_PATH_M * BOT_MAX_PATH_M;
-    let own: number = -1;
-    let ownD: number = 0;
-    let any: number = -1;
-    let anyD: number = 0;
-    for (let i: number = 0; i < objCount; i++) {
-        if (i === exclude) {
-            continue;
-        }
-        const d: number = InterleavedVectors.sliceToVectorDistanceSquared(objPos, i, scratch);
-        if (d > maxD) {
-            continue;
-        }
-        if (any < 0 || d < anyD) {
-            any = i;
-            anyD = d;
-        }
-        if (objOwner[i] === team && (own < 0 || d < ownD)) {
-            own = i;
-            ownD = d;
-        }
+function setClaims(idx: number, team: number, n: number): void {
+    claimCount[team][idx] = n;
+    // Keep the score snapshot live, so bots thinking later in the same sweep
+    // already see this claim.
+    const o: ScoreObjective | undefined = snap[team][idx];
+    if (o !== undefined) {
+        o.claims = n;
     }
-    return own >= 0 ? own : any;
 }
 
-// Which owned objective most needs help right now: enemies inside the threat
-// radius of a point we still own. Returns -1 when nothing is threatened, or when
-// the most pressured point is already busier with defenders than it is with
-// attackers, which is the case where sending one more bot across makes it worse.
-//
-// Pure map reads plus one PlayerLocations sphere query, so this is safe to call
-// from a bot think.
-export function pickDefendObjective(
-    team: number, x: number, y: number, z: number
-): number {
-    scratch.x = x;
-    scratch.y = y;
-    scratch.z = z;
-    const reachSq: number = BOT_THREAT_REACH_M * BOT_THREAT_REACH_M;
-    let best: number = -1;
-    let bestScore: number = 0;
-    for (let i: number = 0; i < objCount; i++) {
-        if (objOwner[i] !== team) {
-            continue;
-        }
-        const d: number = InterleavedVectors.sliceToVectorDistanceSquared(objPos, i, scratch);
-        if (d > reachSq) {
-            continue;
-        }
-        const defenders: number = occupancy(i);
-        const pressure: number = enemyPressure(i, team, BOT_THREAT_REACH_M);
-        // Two enemies minimum, and strictly more attackers than defenders.
-        // Without both gates a single enemy loitering near a flag would pull
-        // half the team off what it is doing, because the reach radius is
-        // deliberately wide.
-        if (pressure < 2 || defenders >= pressure) {
-            continue;
-        }
-        // Under-defended by margin, and nearer is better on a tie.
-        const score: number = pressure - defenders;
-        if (best < 0 || score > bestScore) {
-            best = i;
-            bestScore = score;
-        }
+export function releaseClaim(pid: number): void {
+    const prev: number | undefined = claimOf[pid];
+    if (prev === undefined) {
+        return;
     }
-    return best;
+    const team: number = claimTeam[pid];
+    const c: number = claimsOn(prev, team);
+    setClaims(prev, team, c > 0 ? c - 1 : 0);
+    delete claimOf[pid];
+    delete claimTeam[pid];
+}
+
+export function claimObjective(pid: number, team: number, idx: number): void {
+    if (claimOf[pid] === idx && claimTeam[pid] === team) {
+        return;
+    }
+    releaseClaim(pid);
+    if (idx < 0 || idx >= objCount || (team !== 1 && team !== 2)) {
+        return;
+    }
+    claimOf[pid] = idx;
+    claimTeam[pid] = team;
+    setClaims(idx, team, claimsOn(idx, team) + 1);
+}
+
+// Per-team score snapshot handed to botscore.pickBest. Positions and weights are
+// set once; owner and pressure are refreshed once per sweep (refreshScoreSnapshot),
+// claims are kept live by the ledger above. The objects are reused, so a think
+// allocates nothing.
+const snap: ScoreObjective[][] = [[], [], []];
+
+export function refreshScoreSnapshot(team: number): void {
+    if (team !== 1 && team !== 2) {
+        return;
+    }
+    const arr: ScoreObjective[] = snap[team];
+    for (let i: number = 0; i < objCount; i++) {
+        let o: ScoreObjective | undefined = arr[i];
+        if (o === undefined) {
+            const k: number = objKind[i];
+            const w: number | undefined = BOT_KIND_WEIGHT[k];
+            o = {
+                x: objPos[i * 3], y: objPos[i * 3 + 1], z: objPos[i * 3 + 2],
+                owner: 0, weight: w === undefined ? 1 : w, claims: 0, pressure: 0
+            };
+            arr[i] = o;
+        }
+        o.owner = objOwner[i];
+        o.claims = claimsOn(i, team);
+        o.pressure = enemyPressure(i, team, BOT_THREAT_REACH_M);
+    }
+}
+
+export function scoreSnapshot(team: number): ScoreObjective[] {
+    return snap[team === 2 ? 2 : 1];
+}
+
+// Short label for trace lines: "bunker1", "site2", ...
+export function objectiveLabel(idx: number): string {
+    const k: string = objectiveKey(idx);
+    const at: number = k.indexOf(":");
+    return at >= 0 ? k.substring(at + 1) : k;
 }
 
 // How many bots currently stand on an objective. Used to spread a crowd across

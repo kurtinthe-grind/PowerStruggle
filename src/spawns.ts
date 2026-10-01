@@ -4,6 +4,10 @@ import { BUNKERS, isConfigured, BunkerDef } from "./objids";
 import { teamNumOf } from "./teams";
 
 const deployed: { [defId: string]: boolean } = {};
+// Last deploying state logged per bunker. enableDeploying runs on every player
+// join (refreshSpawnAvailability), which logged 3 identical lines per bot join;
+// now a line is written only when the state changes.
+const loggedDeploying: { [defId: string]: boolean } = {};
 
 function enableDeploying(def: BunkerDef, on: boolean): void {
     if (!isConfigured(def.capturePointId)) {
@@ -16,7 +20,10 @@ function enableDeploying(def: BunkerDef, on: boolean): void {
     }
     try {
         mod.EnableCapturePointDeploying(cp, on);
-        log("spawns", def.id + " deploying=" + String(on));
+        if (loggedDeploying[def.id] !== on) {
+            loggedDeploying[def.id] = on;
+            log("spawns", def.id + " deploying=" + String(on));
+        }
     } catch (e) {
         log("spawns", def.id + " enable failed: " + String(e));
     }
