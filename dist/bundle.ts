@@ -2290,7 +2290,7 @@ export const PROTO_FACTORY: AreaBuildingDef[] = [
 
 export const WAR_FACTORY: AreaBuildingDef[] = [
     { id: "war1", kind: "war", areaTriggerId: 4000, worldIconId: 4100, vehicleSpawnerId: 4200, vehicleSpawnerIds: [4200, 4201, 4202], factoryName: "War Factory 1" },
-    { id: "war2", kind: "war", areaTriggerId: 4001, worldIconId: 0, vehicleSpawnerId: 4204, vehicleSpawnerIds: [4204], factoryName: "War Factory 2" }
+    { id: "war2", kind: "war", areaTriggerId: 4001, worldIconId: 4101, vehicleSpawnerId: 4204, vehicleSpawnerIds: [4204], factoryName: "War Factory 2" }
 ];
 
 export const AIR_FACTORY: AreaBuildingDef[] = [
@@ -2319,7 +2319,6 @@ export const HQ_GATES: number[] = [7500, 7501];
 export const HQ_OBJIDS: number[] = [1, 2];
 
 export const DEFERRED_SLOTS: { what: string; note: string }[] = [
-    { what: "war2.worldIconId", note: "duplicate ObjId 4100 - two War Factory WorldIcons share it; left 0" },
     { what: "war2.vehicleSpawnerIds[0]", note: "duplicate ObjId 4203 - left unbound, war2 uses 4204 only" },
     { what: "air1.vehicleSpawnerIds[2]", note: "duplicate ObjId 5201 - air1 binds 5200 and 5201 only" }
 ];
