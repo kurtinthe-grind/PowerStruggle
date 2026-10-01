@@ -12,7 +12,8 @@
         "verify:bundle": "tsc --noEmit -p tsconfig.bundle.json",
         "guard:sources": "node scripts/guard-sources.js",
         "test:guard": "node scripts/test-guard.js",
-        "build": "npm run guard:sources && npm run typecheck && npm run bundle && npm run verify:bundle"
+        "build": "npm run guard:sources && npm run test:winner && npm run typecheck && npm run bundle && npm run verify:bundle",
+        "test:winner": "node scripts/test-winner.js"
     },
     "devDependencies": {
         "bf6-portal-bundler": "1.4.1",

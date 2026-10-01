@@ -6,6 +6,7 @@ import { TURRET_WARNING_SECS, TURRET_CLUSTER_REQ, HQ_HITS_REQUIRED } from "./con
 import { teamIdOf } from "./util/roster";
 import { playSfxAll, playSfxTeam } from "./audio";
 import { notifyTeam } from "./notify";
+import { winnerForDestroyedBase, winMessageKey } from "./winner";
 import { Vectors } from "bf6-portal-utils/vectors";
 
 const turretByZone: { [zoneId: number]: TurretDef } = {};
@@ -343,24 +344,16 @@ function endMatchFor(base: number): void {
             });
         }
         playSfxAll("nukeFire", 1.0);
-        notifyTeam(base, base === 1 ? "winT1" : "winT2", 0, 0);
-        // KNOWN LATENT ISSUE - deliberately NOT changed, owner boundary.
-        //
-        // This mod's own semantics say the winner is team 'base': base 1 notifies
-        // team 1 with "NATO destroyed the PAX HQ", base 2 notifies team 2 with
-        // "PAX destroyed the NATO HQ", and the log line below also reports team
-        // base as the winner. The engine call disagrees: GetTeam takes the team
-        // id itself, so GetTeam(base - 1) resolves an invalid team 0 for base 1,
-        // and team 1 rather than team 2 for base 2. The correct call is
-        // teamHandle(base) from teams.ts, or equivalently GetTeam(base).
-        //
-        // This is left exactly as the owner wrote it. A playtest of the base-2
-        // path by a team-1 player made the off-by-one look correct, because the
-        // engine happened to award that player's own team. Left unchanged
-        // pending an explicit decision; see optimization_plan.md section 8.2.
-        const t: mod.Team = mod.GetTeam(base - 1);
-        logAdmin("turrets", "team " + base + " WINS - EndGameMode");
-        mod.EndGameMode(t);
+        // 'base' is the team that owned the destroyed HQ, so the winner is the
+        // other team. The previous GetTeam(base - 1) passed team 0 when HQ 1
+        // fell, and EndGameMode(team 0) is a draw (Tier 0). Both teams get the
+        // same factual message: "NATO destroyed the PAX HQ" or the reverse.
+        const winner: number = winnerForDestroyedBase(base);
+        const msg: string = winMessageKey(winner);
+        notifyTeam(1, msg, 0, 0);
+        notifyTeam(2, msg, 0, 0);
+        logAdmin("turrets", "HQ " + base + " destroyed - team " + winner + " WINS - EndGameMode");
+        mod.EndGameMode(mod.GetTeam(winner));
     });
 }
 
