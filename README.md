@@ -102,3 +102,13 @@ npm run build
 `npm run build` runs the source guard and unit tests, type-checks, bundles, and
 type-checks the bundle. Upload `dist/bundle.ts` and `dist/bundle.strings.json`
 to the Portal web editor together with the map export.
+
+## Credits
+
+- [**bf6-portal-utils**](https://github.com/deluca-mike/bf6-portal-utils) by
+  deluca-mike: the utility library this mode is built on (events, timers,
+  logging, performance stats, callback handler, player locations, vectors and the
+  player undeploy fixer).
+- [**bf6-portal-bots-brain**](https://github.com/nikgodda/bf6-portal-bots-brain/tree/main)
+  by nikgodda: ideas behind the bot AI, in particular handing a shot bot to the
+  combat AI for a short time and steering bot-driven vehicles toward an objective.
