@@ -112,3 +112,8 @@ to the Portal web editor together with the map export.
 - [**bf6-portal-bots-brain**](https://github.com/nikgodda/bf6-portal-bots-brain/tree/main)
   by nikgodda: ideas behind the bot AI, in particular handing a shot bot to the
   combat AI for a short time and steering bot-driven vehicles toward an objective.
+
+## License
+
+[MIT](LICENSE). `dist/bundle.ts` also contains code from bf6-portal-utils, which
+is MIT licensed, Copyright (c) 2026 Michael De Luca.

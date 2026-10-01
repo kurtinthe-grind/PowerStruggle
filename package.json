@@ -2,6 +2,7 @@
     "name": "power-struggle",
     "version": "0.49.0",
     "private": true,
+    "license": "MIT",
     "description": "Crysis-inspired Power Struggle mode for Battlefield 6 Portal",
     "engines": {
         "node": ">=24.0.0"
