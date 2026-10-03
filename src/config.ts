@@ -88,12 +88,13 @@ export const RAY_START_OFFSET_M: number = 2.5;
 // RAY_PASS_TRIES times.
 export const RAY_PASS_M: number = 0.5;
 export const RAY_PASS_TRIES: number = 3;
-// The Rorsch is a raygun: its shot is a straight line. The facing read while
-// it charges points higher than the shot. 17:38 log: rays aimed at turrets
-// passed over them by 0.050 and 0.063 rad (115 m and 152 m) with the yaw
-// exact; 2026-10-03: the duds were all "level or slightly up" shots that hit
-// the ground close by. The ray is pitched down by this much. 0 turns it off.
-export const RORSCH_PITCH_FIX_RAD: number = 0.057;
+// The Rorsch is a raygun: its shot is a straight line. A downward pitch
+// correction for the ray, off. It was set to 0.057 rad on the idea that the
+// charging facing reads high, but the turret rays that suggested it were aimed
+// at the gun body, 6-14 m above the base, so that evidence does not hold. The
+// duds (level shots logged as misses while the shot hit the ground nearby)
+// are still unexplained: the CAST log prints the raw aim for the next test.
+export const RORSCH_PITCH_FIX_RAD: number = 0;
 // The Rorsch shot is the moment IsFiring turns off after a full charge (see
 // rorschshot.ts). Measured 2026-10-01: the discharge lands 2200-2212 ms after
 // the press. A release shorter than this is a cancelled charge, no shot. Kept
