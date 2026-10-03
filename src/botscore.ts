@@ -9,6 +9,13 @@
 // so every bot on a team walked to the same nearest objective. The crowd term
 // here counts claims - bots that have picked the objective, including the ones
 // still walking there.
+//
+// 2026-10-02 playtest: the whole match was spent on the two or three nearest
+// objectives. Anything beyond 500 m was never even scored, and a bot that gave
+// up on everything in range stood still. Distances are now horizontal (an
+// energy site's icon floats 23 m up) and the range cap is the whole map.
+// Objectives can also ask for a minimum crew (quota): the Prototype Factory
+// keeps defenders while owned and draws attackers while not.
 
 export const JOB_HOLD: number = 0;
 export const JOB_ATTACK: number = 1;
@@ -26,6 +33,9 @@ export interface ScoreObjective {
     claims: number;
     // Enemy players near the objective.
     pressure: number;
+    // Bots this team wants on the objective at all times, 0 for none. Below the
+    // quota the objective gets wQuota on top of its normal score.
+    quota: number;
 }
 
 export interface ScoreBot {
@@ -47,6 +57,7 @@ export interface ScoreParams {
     wDefend: number;
     wPerThreat: number;
     wHold: number;
+    wQuota: number;
     wCrowd: number;
     wStick: number;
     wJitter: number;
@@ -82,9 +93,8 @@ export function pickBest(objs: ScoreObjective[], bot: ScoreBot, nowMs: number, P
             continue;
         }
         const dx: number = o.x - bot.x;
-        const dy: number = o.y - bot.y;
         const dz: number = o.z - bot.z;
-        const dSq: number = dx * dx + dy * dy + dz * dz;
+        const dSq: number = dx * dx + dz * dz;
         if (dSq > maxSq) {
             continue;
         }
@@ -93,6 +103,7 @@ export function pickBest(objs: ScoreObjective[], bot: ScoreBot, nowMs: number, P
         if (claims < 0) {
             claims = 0;
         }
+        const short: boolean = o.quota > 0 && claims < o.quota;
         let job: number;
         let base: number;
         if (o.owner !== bot.team) {
@@ -106,7 +117,7 @@ export function pickBest(objs: ScoreObjective[], bot: ScoreBot, nowMs: number, P
         } else {
             job = JOB_HOLD;
             base = P.wHold;
-            if (i === bot.cur && nowMs - bot.sinceMs > P.roamMs) {
+            if (i === bot.cur && !short && nowMs - bot.sinceMs > P.roamMs) {
                 // Held long enough: move on, the way CQ's AI_Scouting rotates
                 // bots between points instead of parking them.
                 fallback = i;
@@ -114,6 +125,7 @@ export function pickBest(objs: ScoreObjective[], bot: ScoreBot, nowMs: number, P
             }
         }
         const score: number = base * o.weight
+            + (short ? P.wQuota : 0)
             - Math.sqrt(dSq) / P.distM
             - P.wCrowd * claims * claims
             + (i === bot.cur ? P.wStick : 0)

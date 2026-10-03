@@ -98,6 +98,15 @@ export const AI_SPAWNERS: AiSpawnerDef[] = [
     { spawnerId: 8011, team: 2 }
 ];
 
+// 9000-9199: bot navigation waypoints (src/botnav.ts). Any placed object with
+// an ObjId (PS_Isolated uses tiny props, which are SpatialObjects; a WorldIcon
+// works too) on walkable ground where the engine's own bot pathing is poor; any two within
+// BOT_NAV_LINK_M of each other are linked automatically. Number them upward
+// from 9000 without long gaps: the scan stops after BOT_NAV_MISS_STOP missing
+// ids in a row.
+export const NAV_WAYPOINT_FIRST_ID: number = 9000;
+export const NAV_WAYPOINT_LAST_ID: number = 9199;
+
 export function allAreaBuildings(): AreaBuildingDef[] {
     return ENERGY_SITES.concat(PROTO_FACTORY, WAR_FACTORY, AIR_FACTORY, NAVAL_FACTORY);
 }

@@ -11310,6 +11310,370 @@
                 "z": -382.83713
             },
             "id": "AI_Spawner_T_2_2"
+        },
+        {
+            "name": "waypoint_objid1",
+            "ObjId": 9012,
+            "type": "AmmoChest_Small_Int_01",
+            "right": {
+                "x": -4.371139e-11,
+                "y": 0,
+                "z": -0.001
+            },
+            "up": {
+                "x": 0,
+                "y": 0.001,
+                "z": 0
+            },
+            "front": {
+                "x": 0.001,
+                "y": 0,
+                "z": -4.371139e-11
+            },
+            "position": {
+                "x": -673.22363,
+                "y": 111.679,
+                "z": 410.98157
+            },
+            "id": "waypoint_objid1"
+        },
+        {
+            "name": "waypoint_objid2",
+            "ObjId": 9011,
+            "type": "AmmoChest_Small_Int_01",
+            "right": {
+                "x": -4.371139e-11,
+                "y": 0,
+                "z": -0.001
+            },
+            "up": {
+                "x": 0,
+                "y": 0.001,
+                "z": 0
+            },
+            "front": {
+                "x": 0.001,
+                "y": 0,
+                "z": -4.371139e-11
+            },
+            "position": {
+                "x": -685.92163,
+                "y": 116.24856,
+                "z": 286.4359
+            },
+            "id": "waypoint_objid2"
+        },
+        {
+            "name": "waypoint_objid3",
+            "ObjId": 9010,
+            "type": "AmmoChest_Small_Int_01",
+            "right": {
+                "x": -4.371139e-11,
+                "y": 0,
+                "z": -0.001
+            },
+            "up": {
+                "x": 0,
+                "y": 0.001,
+                "z": 0
+            },
+            "front": {
+                "x": 0.001,
+                "y": 0,
+                "z": -4.371139e-11
+            },
+            "position": {
+                "x": -778.35315,
+                "y": 117.827484,
+                "z": 216.44016
+            },
+            "id": "waypoint_objid3"
+        },
+        {
+            "name": "waypoint_objid4",
+            "ObjId": 9009,
+            "type": "AmmoChest_Small_Int_01",
+            "right": {
+                "x": -4.371139e-11,
+                "y": 0,
+                "z": -0.001
+            },
+            "up": {
+                "x": 0,
+                "y": 0.001,
+                "z": 0
+            },
+            "front": {
+                "x": 0.001,
+                "y": 0,
+                "z": -4.371139e-11
+            },
+            "position": {
+                "x": -876.1066,
+                "y": 120.9293,
+                "z": 150.45073
+            },
+            "id": "waypoint_objid4"
+        },
+        {
+            "name": "waypoint_objid5",
+            "ObjId": 9008,
+            "type": "AmmoChest_Small_Int_01",
+            "right": {
+                "x": -4.371139e-11,
+                "y": 0,
+                "z": -0.001
+            },
+            "up": {
+                "x": 0,
+                "y": 0.001,
+                "z": 0
+            },
+            "front": {
+                "x": 0.001,
+                "y": 0,
+                "z": -4.371139e-11
+            },
+            "position": {
+                "x": -1000.9832,
+                "y": 112.30253,
+                "z": 72.883545
+            },
+            "id": "waypoint_objid5"
+        },
+        {
+            "name": "waypoint_objid6",
+            "ObjId": 9007,
+            "type": "AmmoChest_Small_Int_01",
+            "right": {
+                "x": -4.371139e-11,
+                "y": 0,
+                "z": -0.001
+            },
+            "up": {
+                "x": 0,
+                "y": 0.001,
+                "z": 0
+            },
+            "front": {
+                "x": 0.001,
+                "y": 0,
+                "z": -4.371139e-11
+            },
+            "position": {
+                "x": -810.13135,
+                "y": 104.47223,
+                "z": 30.350895
+            },
+            "id": "waypoint_objid6"
+        },
+        {
+            "name": "waypoint_objid7",
+            "ObjId": 9006,
+            "type": "AmmoChest_Small_Int_01",
+            "right": {
+                "x": -4.371139e-11,
+                "y": 0,
+                "z": -0.001
+            },
+            "up": {
+                "x": 0,
+                "y": 0.001,
+                "z": 0
+            },
+            "front": {
+                "x": 0.001,
+                "y": 0,
+                "z": -4.371139e-11
+            },
+            "position": {
+                "x": -737.7397,
+                "y": 107.09433,
+                "z": -88.17982
+            },
+            "id": "waypoint_objid7"
+        },
+        {
+            "name": "waypoint_objid8",
+            "ObjId": 9005,
+            "type": "AmmoChest_Small_Int_01",
+            "right": {
+                "x": -4.371139e-11,
+                "y": 0,
+                "z": -0.001
+            },
+            "up": {
+                "x": 0,
+                "y": 0.001,
+                "z": 0
+            },
+            "front": {
+                "x": 0.001,
+                "y": 0,
+                "z": -4.371139e-11
+            },
+            "position": {
+                "x": -633.73267,
+                "y": 106.06635,
+                "z": -138.31001
+            },
+            "id": "waypoint_objid8"
+        },
+        {
+            "name": "waypoint_objid9",
+            "ObjId": 9004,
+            "type": "AmmoChest_Small_Int_01",
+            "right": {
+                "x": -4.371139e-11,
+                "y": 0,
+                "z": -0.001
+            },
+            "up": {
+                "x": 0,
+                "y": 0.001,
+                "z": 0
+            },
+            "front": {
+                "x": 0.001,
+                "y": 0,
+                "z": -4.371139e-11
+            },
+            "position": {
+                "x": -510.43726,
+                "y": 111.85805,
+                "z": -269.84155
+            },
+            "id": "waypoint_objid9"
+        },
+        {
+            "name": "waypoint_objid10",
+            "ObjId": 9003,
+            "type": "AmmoChest_Small_Int_01",
+            "right": {
+                "x": -4.371139e-11,
+                "y": 0,
+                "z": -0.001
+            },
+            "up": {
+                "x": 0,
+                "y": 0.001,
+                "z": 0
+            },
+            "front": {
+                "x": 0.001,
+                "y": 0,
+                "z": -4.371139e-11
+            },
+            "position": {
+                "x": -559.42163,
+                "y": 111.65534,
+                "z": -100.81882
+            },
+            "id": "waypoint_objid10"
+        },
+        {
+            "name": "waypoint_objid11",
+            "ObjId": 9002,
+            "type": "AmmoChest_Small_Int_01",
+            "right": {
+                "x": -4.371139e-11,
+                "y": 0,
+                "z": -0.001
+            },
+            "up": {
+                "x": 0,
+                "y": 0.001,
+                "z": 0
+            },
+            "front": {
+                "x": 0.001,
+                "y": 0,
+                "z": -4.371139e-11
+            },
+            "position": {
+                "x": -718.99133,
+                "y": 143.26534,
+                "z": 174.12463
+            },
+            "id": "waypoint_objid11"
+        },
+        {
+            "name": "waypoint_objid12",
+            "ObjId": 9001,
+            "type": "AmmoChest_Small_Int_01",
+            "right": {
+                "x": -4.371139e-11,
+                "y": 0,
+                "z": -0.001
+            },
+            "up": {
+                "x": 0,
+                "y": 0.001,
+                "z": 0
+            },
+            "front": {
+                "x": 0.001,
+                "y": 0,
+                "z": -4.371139e-11
+            },
+            "position": {
+                "x": -756.02936,
+                "y": 152.07051,
+                "z": 341.45218
+            },
+            "id": "waypoint_objid12"
+        },
+        {
+            "name": "waypoint_objid13",
+            "ObjId": 9000,
+            "type": "AmmoChest_Small_Int_01",
+            "right": {
+                "x": -4.371139e-11,
+                "y": 0,
+                "z": -0.001
+            },
+            "up": {
+                "x": 0,
+                "y": 0.001,
+                "z": 0
+            },
+            "front": {
+                "x": 0.001,
+                "y": 0,
+                "z": -4.371139e-11
+            },
+            "position": {
+                "x": -879.7684,
+                "y": 117.978745,
+                "z": 392.0759
+            },
+            "id": "waypoint_objid13"
+        },
+        {
+            "name": "waypoint_objid14",
+            "ObjId": 9013,
+            "type": "AmmoChest_Small_Int_01",
+            "right": {
+                "x": 5.9592644e-06,
+                "y": -4.2705833e-06,
+                "z": -0.0009999732
+            },
+            "up": {
+                "x": 0.00031066625,
+                "y": 0.00095051655,
+                "z": -2.2079769e-06
+            },
+            "front": {
+                "x": 0.0009505004,
+                "y": -0.00031064474,
+                "z": 6.9911043e-06
+            },
+            "position": {
+                "x": -731.78406,
+                "y": 126.47887,
+                "z": -165.02548
+            },
+            "id": "waypoint_objid14"
         }
     ],
     "Static": [

@@ -110,8 +110,24 @@ export type PlayerStats = {
 };
 
 let stats: { [id: number]: PlayerStats } = {};
+// Bots, keyed by "team:nameKey" instead of player id. A dead bot leaves the
+// game and its respawn is a new player (often with a different id), so per-id
+// stats died with every bot: the 2026-10-02 scoreboard never showed a bot
+// kill, death or score. The respawn reuses its name (botnames.takeBotName),
+// so keying by name carries the row across lives.
+let botStats: { [key: string]: PlayerStats } = {};
+let botKeyOf: { [id: number]: string } = {};
 
 export function statsOf(id: number): PlayerStats {
+    const key: string | undefined = botKeyOf[id];
+    if (key !== undefined) {
+        let b: PlayerStats | undefined = botStats[key];
+        if (b === undefined) {
+            b = { score: 0, kills: 0, deaths: 0, assists: 0 };
+            botStats[key] = b;
+        }
+        return b;
+    }
     let s: PlayerStats | undefined = stats[id];
     if (s === undefined) {
         s = { score: 0, kills: 0, deaths: 0, assists: 0 };
@@ -120,14 +136,34 @@ export function statsOf(id: number): PlayerStats {
     return s;
 }
 
+// Called by bots.ts when a bot spawns. Anything already booked under the id
+// (an event that landed before the bind) is folded into the named record.
+export function bindBotStats(id: number, key: string): void {
+    botKeyOf[id] = key;
+    const loose: PlayerStats | undefined = stats[id];
+    if (loose !== undefined) {
+        const b: PlayerStats = statsOf(id);
+        b.score += loose.score;
+        b.kills += loose.kills;
+        b.deaths += loose.deaths;
+        b.assists += loose.assists;
+        delete stats[id];
+    }
+}
+
 export function forgetPlayer(id: number): void {
+    // A bot's named record stays for its respawn; only the id binding goes,
+    // because the id can be reused by someone else.
     delete stats[id];
+    delete botKeyOf[id];
 }
 
 export function resetStats(): void {
     // Rebind rather than delete-by-key: Object.keys yields strings while this
     // map is number-keyed, so walking it would need a parse.
     stats = {};
+    botStats = {};
+    botKeyOf = {};
 }
 
 // Pays prestige and score for one action. Kills, deaths and assists must be
@@ -249,6 +285,23 @@ export function pushRow(p: mod.Player): void {
     safe("scoreboard.row", () => {
         mod.SetScoreboardPlayerValues(p, s.score, prestigeOf(id), s.kills, s.deaths, s.assists);
     });
+}
+
+// Writes one row and returns "" or the engine's error text, for the periodic
+// bot refresh in bots.ts, which counts failures itself rather than logging
+// each one.
+export function writeRow(p: mod.Player): string {
+    if (!headerReady) {
+        return "scoreboard not configured";
+    }
+    try {
+        const id: number = mod.GetObjId(p);
+        const s: PlayerStats = statsOf(id);
+        mod.SetScoreboardPlayerValues(p, s.score, prestigeOf(id), s.kills, s.deaths, s.assists);
+        return "";
+    } catch (e) {
+        return String(e);
+    }
 }
 
 export function pushAllRows(): void {

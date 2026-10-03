@@ -1,13 +1,107 @@
 import { Logging } from "bf6-portal-utils/logging";
 import { CallbackHandler } from "bf6-portal-utils/callback-handler";
-import { LOG_DEBUG } from "../config";
+import {
+    ADMIN_LOG_CAP_DEFAULT, ADMIN_LOG_CAPS, ADMIN_LOG_MIN_GAP_MS, ADMIN_LOG_SEND_MS, LOG_DEBUG
+} from "../config";
 
-const ADMIN_BUDGET_PER_TICK: number = 2;
+// Admin logs (see ADMIN_LOG_CAPS in config.ts). Off: everything is logged and
+// nothing is sent, which is what local hosting wants. On: noisy tags are
+// filtered and capped, and the log is sent to the admin on a timer instead of
+// once per error (the old per-error send would spend a hosted server's whole
+// quota in the first minutes).
+let adminMode: boolean = false;
+let sendSoon: boolean = false;
+let lastSendAt: number = 0;
+let sends: number = 0;
+let minuteAt: number = 0;
+const tagCount: { [tag: string]: number } = {};
+const tagDropped: { [tag: string]: number } = {};
 
-let adminBudget: number = ADMIN_BUDGET_PER_TICK;
+export function adminLogMode(): boolean {
+    return adminMode;
+}
 
+export function adminLogSends(): number {
+    return sends;
+}
+
+export function setAdminLogMode(on: boolean): void {
+    if (on === adminMode) {
+        return;
+    }
+    adminMode = on;
+    rawLog("[log] admin logs " + (on ? "ON" : "OFF"));
+    if (on) {
+        sendAdminLog("admin logs switched on");
+    }
+}
+
+// Sends now when admin logs are on (match end), whatever the timer says.
+export function flushAdminLog(reason: string): void {
+    if (adminMode) {
+        sendAdminLog(reason);
+    }
+}
+
+function sendAdminLog(reason: string): void {
+    sends++;
+    lastSendAt = Date.now();
+    sendSoon = false;
+    // Logged before the send, so the line is part of what is sent.
+    rawLog("[log] send #" + sends + " to admin (" + reason + ")");
+    try {
+        mod.SendPortalLogToAdmin();
+    } catch (e) {
+        rawLog("[log] send #" + sends + " failed: " + String(e));
+    }
+}
+
+function rawLog(line: string): void {
+    LOG.log(line, Logging.LogLevel.Info);
+}
+
+// True when this line may be written: always with admin logs off, else
+// within its tag's per-minute cap.
+function allowed(tag: string): boolean {
+    if (!adminMode) {
+        return true;
+    }
+    const capped: number | undefined = ADMIN_LOG_CAPS[tag];
+    const cap: number = capped === undefined ? ADMIN_LOG_CAP_DEFAULT : capped;
+    const n: number = (tagCount[tag] === undefined ? 0 : tagCount[tag]) + 1;
+    tagCount[tag] = n;
+    if (n <= cap) {
+        return true;
+    }
+    tagDropped[tag] = (tagDropped[tag] === undefined ? 0 : tagDropped[tag]) + 1;
+    return false;
+}
+
+// Called once per tick (index.ts). Rolls the per-minute caps over, writes what
+// was dropped, and sends on the timer or after an error.
 export function tickAdminBudget(): void {
-    adminBudget = ADMIN_BUDGET_PER_TICK;
+    if (!adminMode) {
+        return;
+    }
+    const now: number = Date.now();
+    if (now - minuteAt >= 60000) {
+        minuteAt = now;
+        let dropped: string = "";
+        for (const tag in tagDropped) {
+            dropped += (dropped === "" ? "" : ", ") + tag + " " + tagDropped[tag];
+            delete tagDropped[tag];
+        }
+        for (const tag in tagCount) {
+            delete tagCount[tag];
+        }
+        if (dropped !== "") {
+            rawLog("[log] admin filter dropped last minute: " + dropped);
+        }
+    }
+    const since: number = now - lastSendAt;
+    if (since >= ADMIN_LOG_SEND_MS || (sendSoon && since >= ADMIN_LOG_MIN_GAP_MS)) {
+        sendAdminLog(sendSoon ? "error" : "timer");
+    }
 }
 
 // Shared Logging instance. Modules that need to gate a call site call
@@ -41,6 +135,9 @@ export function willLogDebug(): boolean {
 }
 
 export function log(tag: string, line: string): void {
+    if (!allowed(tag)) {
+        return;
+    }
     LOG.log("[" + tag + "] " + line, Logging.LogLevel.Info);
 }
 
@@ -48,21 +145,20 @@ export function log(tag: string, line: string): void {
 // should guard with willLogDebug() instead, because the argument is evaluated
 // before this is entered.
 export function logDebug(tag: string, line: string): void {
+    if (adminMode) {
+        return;
+    }
     LOG.log("[" + tag + "] " + line, Logging.LogLevel.Debug);
 }
 
-// Errors and admin-facing events. This is the only path to SendPortalLogToAdmin
-// and it is deliberately NOT routed through LOG, which has no rate limit of its
-// own and would happily spend the whole per-tick budget on its own.
+// Errors and admin-facing events. Written like any line; with admin logs on it
+// also asks for a send, at most every ADMIN_LOG_MIN_GAP_MS. It used to call
+// SendPortalLogToAdmin itself, up to twice a tick, which on a hosted server
+// would use up the session quota early in the match.
 export function logAdmin(tag: string, line: string): void {
     log(tag, line);
-    if (adminBudget <= 0) {
-        return;
-    }
-    adminBudget--;
-    try {
-        mod.SendPortalLogToAdmin();
-    } catch (e) {
+    if (adminMode) {
+        sendSoon = true;
     }
 }
 

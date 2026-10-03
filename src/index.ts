@@ -11,7 +11,9 @@ import { Timers } from "bf6-portal-utils/timers";
 // pending. Not combined with multi-click-detector, which would multiply the
 // synthetic event across its own subscribers.
 import "bf6-portal-utils/player-undeploy-fixer";
-import { log, logAdmin, safe, tickAdminBudget, willLogDebug } from "./util/log";
+import {
+    adminLogMode, adminLogSends, log, logAdmin, safe, setAdminLogMode, tickAdminBudget, willLogDebug
+} from "./util/log";
 import {
     initPerf, healthFactor, smoothedTickRate, smoothedTimeoutLagMs,
     spotDeltaMs, spotTickRate
@@ -24,7 +26,7 @@ import {
     MENU_BG, MENU_EDGE, MENU_TITLE, MENU_COST, MENU_LOCKTXT, MENU_HEAD, MENU_TXT,
     MENU_ORANGE_SEL, MENU_ORANGE_HOVER, MENU_HOVER, MENU_PRESS,
     MENU_TAB_PRESS, MENU_TAB_HOVER, P_RING,
-    colorFor, lighten
+    colorFor
 } from "./ui/palette";
 import { PRESTIGE_STEP, POWER_MILESTONES, ART_BUDGET, SITE_LETTER, WEAPONS_TAB_FREE } from "./config";
 import {
@@ -47,7 +49,7 @@ import { initEnergy, energyMultiplier } from "./energy";
 import { initFactory, factoryOwner, tickCharge, onCharge } from "./factory";
 import { initTurrets, configureTurretEvents, onHqHit } from "./turrets";
 import { hqHpPercent } from "./winner";
-import { initSlots, pickSpawner, SpawnChoice } from "./slots";
+import { buyVehicle, BuyResult, initSlots } from "./slots";
 import { factoryBuildings, isConfigured } from "./objids";
 import { initNuke, configureNukeEvents, tickNukeProbe } from "./nuke";
 import { initWorldIcons, stateFor, highlightFor, highlightedFor, distanceMeters } from "./worldicons";
@@ -122,8 +124,13 @@ const FEED_Y: number = BAR_Y + BAR_H + U * 2;
 const PFEED_Y: number = FEED_Y + FEED_SLOTS * CHIP_PITCH;
 
 const P_RING_BOX: number = 34;
-const P_RING_OUT: number = 27;
-const P_RING_IN: number = 25;
+// The ring is two "●" glyphs, the inner one smaller and dark. 27 / 25 left
+// a 1 px rim, and the old -1 px nudge on the inner disc erased it on one side
+// and doubled it on the other (the owner's screenshots of the HUD and the shop
+// balance). Concentric now, with a rim about 3 px wide so a sub-pixel glyph
+// offset between the two sizes does not show.
+const P_RING_OUT: number = 29;
+const P_RING_IN: number = 23;
 const P_RING_D: number = 22;
 
 const P_RING_GAP_HUD: number = 6;
@@ -132,7 +139,7 @@ const P_RING_GAP_MENU: number = 7;
 const P_GLYPH: number = 13;
 
 const P_RING_P_DX: number = 0;
-const P_RING_IN_DX: number = -1;
+const P_RING_IN_DX: number = 0;
 
 const P_RING_R: number = P_RING_BOX / 2;
 
@@ -307,6 +314,9 @@ function dbgValueMsg(id: number, act: string): mod.Message {
     }
     if (act === "reset") {
         return mod.Message("dbgAction");
+    }
+    if (act === "adminlog") {
+        return adminLogMode() ? mod.Message("dbgAdminLogOn", adminLogSends()) : mod.Message("dbgAdminLogOff");
     }
 
     const slot: number = parseInt(act.substring(2, 3), 10);
@@ -538,6 +548,10 @@ function runDebugAct(id: number, act: string): void {
         log("debug", "forced tab hover " + pHover[id]);
         return;
     }
+    if (act === "adminlog") {
+        setAdminLogMode(!adminLogMode());
+        return;
+    }
     if (act === "reset") {
         for (let t: number = 1; t <= 2; t++) {
             const st: number[] = siteState[t];
@@ -720,6 +734,7 @@ const TABS_DATA: PshTab[] = [
                       { key: "dbgRorsch", cost: 0, act: "rorsch" },
                       { key: "dbgPrestige", cost: 0, act: "prestige" },
                       { key: "dbgTabState", cost: 0, act: "tabstate" },
+                      { key: "dbgAdminLog", cost: 0, act: "adminlog" },
                       { key: "dbgReset", cost: 0, act: "reset" },
                   ],
               },
@@ -866,6 +881,7 @@ function siteFeedKey(viewer: number, from: number, to: number, slot: number): st
 }
 
 const FEED_CHARS_BY_KEY: { [k: string]: number } = {
+    shopRefund: 42,
     siteYoursA: 35,
     siteYoursB: 35,
     siteYoursC: 35,
@@ -1218,12 +1234,15 @@ function pRingIcon(
     mkText(owner, isTeam, key + "rp", x + P_RING_P_DX, y, P_RING_BOX, P_RING_BOX, mod.Message("pMark"), P_GLYPH, C_GOLD, mod.UIAnchor.Center, parent, recv);
 }
 
+// The same colours as the rest of the HUD: C_DARK while uncaptured (like the
+// empty bar pips and neutral site icons), the plain team colour (C_BLUE /
+// C_RED) once owned. It used to be platinum when neutral and a lightened red
+// when the enemy held it, so it stood out from everything around it.
 function protoColour(team: number): mod.Vector {
     if (getProtoOwner() === 0) {
-        return C_PLAT;
+        return C_DARK;
     }
-    const col: mod.Vector = colorFor(team, getProtoOwner());
-    return getProtoOwner() === team ? col : lighten(col);
+    return colorFor(team, getProtoOwner());
 }
 
 const PROTO_PAYLOAD: string = "46,6,4,2;44,7,8,1;42,8,4,1;50,8,4,1;40,9,4,1;52,9,4,1;38,10,4,1;54,10,4,1;36,11,4,1;55,11,5,1;34,12,5,1;57,12,5,1;32,13,5,1;59,13,5,1;30,14,5,1;61,14,5,1;28,15,5,1;63,15,5,1;26,16,5,1;65,16,5,1;24,17,5,1;67,17,5,1;22,18,5,1;69,18,4,1;21,19,4,1;71,19,4,1;19,20,4,1;73,20,4,1;17,21,4,1;47,21,2,2;75,21,4,1;15,22,4,1;46,22,4,1;77,22,4,1;13,23,4,1;45,23,2,1;49,23,2,1;79,23,4,1;11,24,4,1;45,24,1,2;50,24,1,2;81,24,4,1;9,25,4,1;44,25,2,1;51,25,1,4;82,25,5,1;7,26,5,1;44,26,1,3;84,26,5,1;7,27,3,1;86,27,3,1;7,28,2,42;43,28,2,1;52,28,1,6;87,28,2,42;43,29,1,5;42,32,2,2;53,32,1,15;27,33,3,2;66,33,3,2;25,34,10,1;42,34,1,12;61,34,10,1;25,35,1,3;33,35,4,1;58,35,5,1;70,35,1,3;37,36,3,1;56,36,3,1;26,37,1,3;39,37,4,1;54,37,3,1;69,37,2,1;41,38,4,1;51,38,4,1;69,38,1,2;27,39,1,2;44,39,3,1;49,39,3,1;68,39,2,1;28,40,1,2;46,40,4,2;67,40,2,1;29,41,1,2;41,41,2,5;54,41,1,14;66,41,2,1;30,42,1,2;44,42,3,1;49,42,3,1;65,42,2,1;31,43,1,2;43,43,2,1;51,43,4,1;64,43,2,1;32,44,1,2;46,44,4,8;63,44,2,1;33,45,1,1;39,45,4,1;45,45,6,6;55,45,2,1;62,45,2,1;34,46,2,1;38,46,2,1;41,46,1,9;44,46,8,4;56,46,2,1;60,46,2,1;35,47,4,2;57,47,4,2;33,49,3,1;38,49,2,1;42,49,1,15;53,49,2,6;56,49,2,1;60,49,3,1;32,50,2,1;39,50,4,1;55,50,2,1;62,50,2,1;31,51,2,1;63,51,2,1;30,52,2,1;43,52,2,1;51,52,4,1;64,52,2,1;29,53,2,1;44,53,3,1;49,53,3,1;65,53,2,1;28,54,2,1;46,54,4,2;66,54,2,1;27,55,2,1;53,55,1,9;67,55,2,1;26,56,2,1;44,56,3,1;49,56,3,1;68,56,2,1;26,57,1,2;41,57,4,1;51,57,4,1;69,57,1,2;25,58,2,1;39,58,4,1;54,58,3,1;70,58,1,4;25,59,1,3;37,59,3,1;56,59,3,1;33,60,4,1;58,60,5,1;26,61,8,1;61,61,10,1;27,62,3,1;43,62,1,6;52,62,2,2;66,62,3,1;52,64,1,4;44,67,1,4;51,67,2,1;9,68,1,3;51,68,1,3;86,68,3,2;10,69,2,2;84,69,5,1;12,70,2,2;45,70,1,3;50,70,2,1;82,70,5,1;11,71,4,1;50,71,1,2;81,71,4,1;13,72,4,1;46,72,1,2;49,72,2,1;79,72,4,1;15,73,4,1;47,73,3,1;77,73,4,1;17,74,4,1;47,74,2,1;75,74,4,1;19,75,4,1;73,75,4,1;21,76,4,1;71,76,4,1;22,77,5,1;69,77,4,1;24,78,5,1;67,78,5,1;26,79,5,1;65,79,5,1;28,80,5,1;63,80,5,1;30,81,5,1;61,81,5,1;32,82,5,1;59,82,5,1;34,83,5,1;57,83,5,1;36,84,4,1;55,84,5,1;38,85,5,1;53,85,5,1;40,86,4,1;52,86,4,1;42,87,4,1;50,87,4,1;44,88,8,1;46,89,4,1";
@@ -2130,7 +2149,7 @@ function buildBuyMenu(id: number, p: mod.Player): void {
     const menu: mod.UIWidget = mkContainer(id, false, "menu", MENU_INSET, MENU_Y, MENU_W, MENU_H, mod.UIAnchor.TopRight, root, MENU_BG, 0.9, mod.UIBgFill.Solid, p, false);
     mkContainer(id, false, "mframe", 0, 0, MENU_W, MENU_H, mod.UIAnchor.TopLeft, menu, MENU_EDGE, 1, mod.UIBgFill.OutlineThin, p);
 
-    pRingIcon(id, false, "mp", MENU_W - 68, P_RING_R, MENU_BG, 0.9, menu, p);
+    pRingIcon(id, false, "mp", MENU_W - 68, P_RING_R, MENU_BG, 1, menu, p);
     mkText(id, false, "mpv", MENU_W - 68 + P_RING_D / 2 + P_RING_GAP_MENU, P_RING_R - 15, 40, 30, mod.Message(pPrestige[id]), 20, MENU_COST, mod.UIAnchor.Center, menu, p);
 
     const tw: number = tabW();
@@ -2181,7 +2200,9 @@ function buildPlayerHud(p: mod.Player): void {
         // inside the top bar area rather than riding over the feed chips.
         const pr: mod.UIWidget = mkContainer(id, false, "pr", 28, 8, 210, P_RING_BOX, mod.UIAnchor.TopRight, root, C_BLACK, 0, mod.UIBgFill.None, p);
 
-        pRingIcon(id, false, "pr", P_RING_R, P_RING_R, C_BLACK, 0.5, pr, p);
+        // Solid dark centre, as in the shop: at 0.5 alpha the green showed
+        // through and the badge read as one green disc.
+        pRingIcon(id, false, "pr", P_RING_R, P_RING_R, MENU_BG, 1, pr, p);
 
         mkText(id, false, "prv", P_RING_R + P_RING_D / 2 + P_RING_GAP_HUD, P_RING_R - 15, 170, 30, mod.Message(pPrestige[id]), 25, C_PLAT, mod.UIAnchor.CenterLeft, pr, p);
 
@@ -2329,10 +2350,13 @@ const activeFactory: { [id: number]: string } = {};
 const highlightedLocation: { [id: number]: string } = {};
 let frameNo: number = 0;
 
-// Returns true only when a vehicle was actually spawned. A VehicleSpawner
-// silently refuses while it still holds a vehicle, so the caller must not
-// deduct prestige unless this succeeds.
-function spawnPurchasedVehicle(p: mod.Player, facId: string | undefined, index: number, veh: mod.VehicleList, itemKey: string): boolean {
+// Returns true when a spawn was issued, and the caller then takes the cost.
+// slots.ts picks a pad that is not physically blocked and uses a runtime
+// duplicate spawner when the placed one still holds a vehicle, so repeat
+// purchases of one type work. It confirms the spawn through OnVehicleSpawned and
+// calls back with false only when nothing appeared even after a retry; the cost
+// is then given back.
+function spawnPurchasedVehicle(p: mod.Player, facId: string | undefined, index: number, veh: mod.VehicleList, itemKey: string, cost: number): boolean {
     if (facId === undefined) {
         log("shop", "vehicle " + itemKey + " denied - no factory in range");
         return false;
@@ -2347,35 +2371,31 @@ function spawnPurchasedVehicle(p: mod.Player, facId: string | undefined, index: 
         pushPlayerFeed(p, "shopNoSpawner", 0, 0);
         return false;
     }
-    const choice: SpawnChoice = pickSpawner(st.def.id, index);
-    if (choice.slot < 0) {
-        log("shop", "vehicle " + itemKey + " refused - " + st.def.id
-            + " all slots busy (free " + String(choice.free)
-            + ", live vehicles " + String(choice.vehicles) + ")");
+    const pid: number = mod.GetObjId(p);
+    const res: BuyResult = buyVehicle(st.def.id, index, veh, itemKey, (spawned: boolean) => {
+        if (spawned) {
+            return;
+        }
+        if (!mod.IsValid(p)) {
+            // The buyer left; its id may already belong to someone else.
+            log("shop", "no refund for " + itemKey + " - pid " + pid + " left");
+            return;
+        }
+        const before: number = pPrestige[pid] === undefined ? 0 : pPrestige[pid];
+        setPrestige(pid, before + cost);
+        log("shop", "refunded " + itemKey + " (" + String(cost) + ") to pid " + pid + " - nothing spawned");
+        pushPlayerFeed(p, "shopRefund", 0, 0);
+    });
+    if (!res.ok) {
+        log("shop", "vehicle " + itemKey + " refused - " + st.def.id + " " + res.reason + " (open pads "
+            + String(res.open) + " of " + String(st.def.vehicleSpawnerIds.length)
+            + ", vehicles on map " + String(res.vehicles) + ")");
         pushPlayerFeed(p, "shopNoSlot", 0, 0);
         return false;
     }
-    const slot: number = choice.slot;
-    const spawnerId: number = st.def.vehicleSpawnerIds[slot];
-    // mod.ForceVehicleSpawnerSpawn returns void, so success cannot be observed.
-    // A slot was free and the spawn was issued, so the purchase counts as made.
-    // The engine still refuses if something else grabbed the slot in between;
-    // that race is not observable and is accepted rather than guessed at.
-    let ok: boolean = false;
-    safe("shop.vehicle", () => {
-        const sp: mod.VehicleSpawner = mod.GetVehicleSpawner(spawnerId);
-        if (!mod.IsValid(sp)) {
-            log("shop", "vehicle " + itemKey + " denied - spawner " + spawnerId + " invalid");
-            return;
-        }
-        mod.SetVehicleSpawnerVehicleType(sp, veh);
-        mod.ForceVehicleSpawnerSpawn(sp);
-        ok = true;
-        log("shop", "issued " + itemKey + " at slot " + slot
-            + " (spawner " + spawnerId + ") for " + st.def.id
-            + " free-before=" + String(choice.free));
-    });
-    return ok;
+    log("shop", "issued " + itemKey + " at " + st.def.id + " pad " + String(res.pad)
+        + (res.runtime ? " (runtime spawner)" : "") + ", open pads " + String(res.open));
+    return true;
 }
 
 function feedLane(key: string): number {
@@ -2874,12 +2894,13 @@ function onUIButtonEvent(eventPlayer: mod.Player, eventUIWidget: mod.UIWidget, e
                 }
 
                 const facId: string | undefined = activeFactory[id];
-                // Vehicles spawn before the cost is taken. If the spawner refuses we
-                // never charge, instead of taking prestige for nothing.
+                // The spawn is issued before the cost is taken: a purchase with every
+                // pad blocked is never charged, and one that produces nothing is
+                // refunded by spawnPurchasedVehicle.
                 if (veh !== undefined) {
                     const rawIdx: number | undefined = items[i].spawnerIndex;
                     const spawned: boolean = spawnPurchasedVehicle(
-                        eventPlayer, facId, rawIdx !== undefined ? rawIdx : 0, veh, items[i].key);
+                        eventPlayer, facId, rawIdx !== undefined ? rawIdx : 0, veh, items[i].key, items[i].cost);
                     if (!spawned) {
                         playSfxPlayer("deny", eventPlayer, 1);
                         return;

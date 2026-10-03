@@ -8,8 +8,22 @@
 import { Events } from "bf6-portal-utils/events";
 
 // Tier 0: OnPlayerSwitchTeam(eventPlayer, eventTeam) is "This will trigger when a
-// Player changes team", which is the only way teamIdOf can go stale.
+// Player changes team".
 Events.OnPlayerSwitchTeam.subscribe((p: mod.Player) => {
+    try {
+        forgetTeamCache(mod.GetObjId(p));
+    } catch (e) {
+    }
+});
+// Player ids are reused. A dead bot leaves the game (its spawner unspawns it)
+// and the next bot spawned, on either team, can get the same id. The 2026-10-02
+// log has pid 30 rejoining on team 2 while the cache still said team 1, so the
+// bot system booked it, and its respawns, to team 1: that is how one team grew
+// to 32 bots while the other shrank. The cache must die with the player.
+Events.OnPlayerLeaveGame.subscribe((id: number) => {
+    forgetTeamCache(id);
+});
+Events.OnPlayerJoinGame.subscribe((p: mod.Player) => {
     try {
         forgetTeamCache(mod.GetObjId(p));
     } catch (e) {

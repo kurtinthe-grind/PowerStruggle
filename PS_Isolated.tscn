@@ -24,6 +24,7 @@
 [ext_resource type="PackedScene" path="res://objects/fx/FX_CivCar_Tire_fire_S_GS.tscn" id="45_ejygf"]
 [ext_resource type="PackedScene" path="res://objects/architecture/ConstructionSetPillar01_A_128x512x128.tscn" id="46_wes6j"]
 [ext_resource type="PackedScene" path="res://objects/gameplay/ai/AI_Spawner.tscn" id="47_8kg5p"]
+[ext_resource type="PackedScene" path="res://objects/props/AmmoChest_Small_Int_01.tscn" id="48_7cyrp"]
 [ext_resource type="PackedScene" path="res://objects/uncategorized/Area_01_Base.tscn" id="49_nmgdi"]
 [ext_resource type="PackedScene" path="res://objects/props/BarrelLabratory_01_cluster_A_2x3.tscn" id="85_xqsdx"]
 [ext_resource type="PackedScene" path="res://objects/props/BarrelLabratory_01_cluster_A_2x3_DDPF.tscn" id="86_1qm4i"]
@@ -1714,3 +1715,59 @@ ObjId = 8010
 [node name="AI_Spawner_T_2_2" parent="." unique_id=1231367899 instance=ExtResource("47_8kg5p")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -573.2465, 106.00833, -382.83713)
 ObjId = 8011
+
+[node name="waypoint_objid1" parent="." unique_id=1655881494 instance=ExtResource("48_7cyrp")]
+transform = Transform3D(-4.371139e-11, 0, 0.001, 0, 0.001, 0, -0.001, 0, -4.371139e-11, -673.22363, 111.679, 410.98157)
+ObjId = 9012
+
+[node name="waypoint_objid2" parent="." unique_id=526042915 instance=ExtResource("48_7cyrp")]
+transform = Transform3D(-4.371139e-11, 0, 0.001, 0, 0.001, 0, -0.001, 0, -4.371139e-11, -685.92163, 116.24856, 286.4359)
+ObjId = 9011
+
+[node name="waypoint_objid3" parent="." unique_id=1593843415 instance=ExtResource("48_7cyrp")]
+transform = Transform3D(-4.371139e-11, 0, 0.001, 0, 0.001, 0, -0.001, 0, -4.371139e-11, -778.35315, 117.827484, 216.44016)
+ObjId = 9010
+
+[node name="waypoint_objid4" parent="." unique_id=1589888434 instance=ExtResource("48_7cyrp")]
+transform = Transform3D(-4.371139e-11, 0, 0.001, 0, 0.001, 0, -0.001, 0, -4.371139e-11, -876.1066, 120.9293, 150.45073)
+ObjId = 9009
+
+[node name="waypoint_objid5" parent="." unique_id=549528644 instance=ExtResource("48_7cyrp")]
+transform = Transform3D(-4.371139e-11, 0, 0.001, 0, 0.001, 0, -0.001, 0, -4.371139e-11, -1000.9832, 112.30253, 72.883545)
+ObjId = 9008
+
+[node name="waypoint_objid6" parent="." unique_id=1769482272 instance=ExtResource("48_7cyrp")]
+transform = Transform3D(-4.371139e-11, 0, 0.001, 0, 0.001, 0, -0.001, 0, -4.371139e-11, -810.13135, 104.47223, 30.350895)
+ObjId = 9007
+
+[node name="waypoint_objid7" parent="." unique_id=1745801707 instance=ExtResource("48_7cyrp")]
+transform = Transform3D(-4.371139e-11, 0, 0.001, 0, 0.001, 0, -0.001, 0, -4.371139e-11, -737.7397, 107.09433, -88.17982)
+ObjId = 9006
+
+[node name="waypoint_objid8" parent="." unique_id=1769015378 instance=ExtResource("48_7cyrp")]
+transform = Transform3D(-4.371139e-11, 0, 0.001, 0, 0.001, 0, -0.001, 0, -4.371139e-11, -633.73267, 106.06635, -138.31001)
+ObjId = 9005
+
+[node name="waypoint_objid9" parent="." unique_id=665590755 instance=ExtResource("48_7cyrp")]
+transform = Transform3D(-4.371139e-11, 0, 0.001, 0, 0.001, 0, -0.001, 0, -4.371139e-11, -510.43726, 111.85805, -269.84155)
+ObjId = 9004
+
+[node name="waypoint_objid10" parent="." unique_id=135690362 instance=ExtResource("48_7cyrp")]
+transform = Transform3D(-4.371139e-11, 0, 0.001, 0, 0.001, 0, -0.001, 0, -4.371139e-11, -559.42163, 111.65534, -100.81882)
+ObjId = 9003
+
+[node name="waypoint_objid11" parent="." unique_id=1668409504 instance=ExtResource("48_7cyrp")]
+transform = Transform3D(-4.371139e-11, 0, 0.001, 0, 0.001, 0, -0.001, 0, -4.371139e-11, -718.99133, 143.26534, 174.12463)
+ObjId = 9002
+
+[node name="waypoint_objid12" parent="." unique_id=297628230 instance=ExtResource("48_7cyrp")]
+transform = Transform3D(-4.371139e-11, 0, 0.001, 0, 0.001, 0, -0.001, 0, -4.371139e-11, -756.02936, 152.07051, 341.45218)
+ObjId = 9001
+
+[node name="waypoint_objid13" parent="." unique_id=307313881 instance=ExtResource("48_7cyrp")]
+transform = Transform3D(-4.371139e-11, 0, 0.001, 0, 0.001, 0, -0.001, 0, -4.371139e-11, -879.7684, 117.978745, 392.0759)
+ObjId = 9000
+
+[node name="waypoint_objid14" parent="." unique_id=2070414566 instance=ExtResource("48_7cyrp")]
+transform = Transform3D(5.9592644e-06, 0.00031066625, 0.0009505004, -4.2705833e-06, 0.00095051655, -0.00031064474, -0.0009999732, -2.2079769e-06, 6.9911043e-06, -731.78406, 126.47887, -165.02548)
+ObjId = 9013

@@ -1,6 +1,6 @@
 import { Events } from "bf6-portal-utils/events";
 import { Timers } from "bf6-portal-utils/timers";
-import { log, safe, logAdmin, willLogDebug, invokeSubscriber } from "./util/log";
+import { flushAdminLog, log, safe, logAdmin, willLogDebug, invokeSubscriber } from "./util/log";
 import { TURRETS, HQ_EXPLOSION, isConfigured, TurretDef } from "./objids";
 import { TURRET_WARNING_SECS, TURRET_CLUSTER_REQ, HQ_HITS_REQUIRED } from "./config";
 import { teamIdOf } from "./util/roster";
@@ -378,6 +378,7 @@ function endMatchFor(base: number): void {
         notifyTeam(1, msg, 0, 0);
         notifyTeam(2, msg, 0, 0);
         logAdmin("turrets", "HQ " + base + " destroyed - team " + winner + " WINS - EndGameMode");
+        flushAdminLog("match end");
         mod.EndGameMode(mod.GetTeam(winner));
     });
 }

@@ -7,7 +7,10 @@ import { allBunkers, bunkerByCp, onBunkerCaptured } from "./buildings";
 import { allStates, onCaptured } from "./capture";
 import { isConfigured } from "./objids";
 import { PlayerLocations } from "bf6-portal-utils/player-locations";
-import { BOT_KIND_WEIGHT, BOT_SPREAD_M, BOT_THREAT_REACH_M } from "./config";
+import {
+    BOT_CAPTURE_RADIUS_M, BOT_KIND_WEIGHT, BOT_PROTO_ATTACKERS, BOT_PROTO_DEFENDERS,
+    BOT_THREAT_REACH_M
+} from "./config";
 import { ScoreObjective } from "./botscore";
 
 // Unified objective read model for the bot population. Bunkers (native
@@ -44,6 +47,8 @@ const objVec: mod.Vector[] = [];
 const objOwner: number[] = [];
 const objKind: number[] = [];
 const objKey: string[] = [];
+// Horizontal capture radius per objective (BOT_CAPTURE_RADIUS_M by kind).
+const objRadius: number[] = [];
 const occByIdx: number[][] = [];
 const idxByTrigger: { [triggerId: number]: number } = {};
 const idxByCp: { [cpId: number]: number } = {};
@@ -91,35 +96,39 @@ function addObjective(key: string, kind: number, owner: number, vec: mod.Vector)
     objKind[idx] = kind;
     objOwner[idx] = owner;
     objVec[idx] = vec;
+    const r: number | undefined = BOT_CAPTURE_RADIUS_M[kind];
+    objRadius[idx] = r === undefined ? 4 : r;
     occByIdx[idx] = [];
     // Single boundary conversion per objective, at init only.
     Vectors.toVector3(vec, scratch);
     InterleavedVectors.setSlice(objPos, idx, scratch.x, scratch.y, scratch.z);
 }
 
-// Position source preference: WorldIcon first (a real world-positioned
-// object), AreaTrigger as fallback. This also resolves the open PS_ObjIds
-// 6.2 question for the bot path: whichever source binds is logged here.
+// Position source preference: AreaTrigger first, WorldIcon as fallback. The
+// trigger sits at the base of its capture volume. The icons float above it (an
+// energy site's is 23 m up, on top of its guard tower), so moving a bot to the
+// icon asked the navmesh for a point on the tower roof. turrets.ts already
+// reads trigger positions the same way.
 function resolveAreaVec(
     key: string, worldIconId: number, triggerId: number
 ): mod.Vector | undefined {
-    if (isConfigured(worldIconId)) {
-        try {
-            const icon: mod.WorldIcon = mod.GetWorldIcon(worldIconId);
-            if (mod.IsValid(icon)) {
-                const vec: mod.Vector = mod.GetObjectPosition(icon);
-                log("botobj", key + " anchored on WorldIcon " + worldIconId);
-                return vec;
-            }
-        } catch (e) {
-        }
-    }
     if (isConfigured(triggerId)) {
         try {
             const trigger: mod.AreaTrigger = mod.GetAreaTrigger(triggerId);
             if (mod.IsValid(trigger)) {
                 const vec: mod.Vector = mod.GetObjectPosition(trigger);
-                log("botobj", key + " anchored on AreaTrigger " + triggerId + " (icon missing)");
+                log("botobj", key + " anchored on AreaTrigger " + triggerId);
+                return vec;
+            }
+        } catch (e) {
+        }
+    }
+    if (isConfigured(worldIconId)) {
+        try {
+            const icon: mod.WorldIcon = mod.GetWorldIcon(worldIconId);
+            if (mod.IsValid(icon)) {
+                const vec: mod.Vector = mod.GetObjectPosition(icon);
+                log("botobj", key + " anchored on WorldIcon " + worldIconId + " (trigger missing)");
                 return vec;
             }
         } catch (e) {
@@ -174,38 +183,16 @@ export function objectiveVector(idx: number): mod.Vector {
     return objVec[idx];
 }
 
-// Deployment placement. Bots must land in a bunker, so this only ever considers
-// OBJ_BUNKER objectives - the energy, proto, war, air and naval AreaTriggers are
-// attack targets, not spawn targets, and a playtest showed bots landing on
-// resource points because those were in the same candidate list.
-//
-// The position is read from the native CapturePoint at deploy time with
-// mod.GetObjectPosition, matching CustomConquest V15 AI_ObjectiveSpawn, rather
-// than from the cached anchor, so a bunker that moves with its deployment keeps
-// spawning bots where it actually is.
-//
-// Within the bunkers this team owns, the emptiest is preferred and the roll
-// breaks ties, so 24 spawning bots distribute across the team's bunkers instead
-// of all landing on the same one. Returns -1 when the team owns no bunker, and
-// the caller then leaves the bot at its spawner rather than dumping it on a
-// contested point.
+// Deployment placement, CustomConquest V15 AI_ObjectiveSpawn: the candidates are
+// the bunkers this team owns, and the bot goes to a random one. (The template
+// also skips points with an enemy within 40 m; the mode owner dropped that.) Bunkers only - the energy, proto, war, air
+// and naval AreaTriggers are attack targets, not spawn targets (a playtest once
+// landed bots on resource points). roll is in [0, 1). Returns -1 when no bunker
+// qualifies, and the caller leaves the bot at its AI_Spawner. Zero FFI.
 export function pickSpawnObjective(team: number, roll: number): number {
-    let minOcc: number = -1;
-    for (let i: number = 0; i < objCount; i++) {
-        if (objKind[i] !== OBJ_BUNKER || objOwner[i] !== team) {
-            continue;
-        }
-        const occ: number = occupancy(i);
-        if (minOcc < 0 || occ < minOcc) {
-            minOcc = occ;
-        }
-    }
-    if (minOcc < 0) {
-        return -1;
-    }
     let n: number = 0;
     for (let i: number = 0; i < objCount; i++) {
-        if (objKind[i] === OBJ_BUNKER && objOwner[i] === team && occupancy(i) === minOcc) {
+        if (spawnable(i, team)) {
             n++;
         }
     }
@@ -220,7 +207,7 @@ export function pickSpawnObjective(team: number, roll: number): number {
         at = n - 1;
     }
     for (let i: number = 0; i < objCount; i++) {
-        if (objKind[i] === OBJ_BUNKER && objOwner[i] === team && occupancy(i) === minOcc) {
+        if (spawnable(i, team)) {
             if (at === 0) {
                 return i;
             }
@@ -228,6 +215,10 @@ export function pickSpawnObjective(team: number, roll: number): number {
         }
     }
     return -1;
+}
+
+function spawnable(idx: number, team: number): boolean {
+    return objKind[idx] === OBJ_BUNKER && objOwner[idx] === team;
 }
 
 // The native CapturePoint behind a bunker objective, or undefined for area
@@ -342,12 +333,58 @@ export function objectiveState(idx: number, team: number): number {
     return isContested(idx) ? OBJ_DEFEND : OBJ_HOLD;
 }
 
-// Squared distance from a point to an objective anchor. Zero FFI.
-export function distSqTo(idx: number, x: number, y: number, z: number): number {
-    scratch.x = x;
-    scratch.y = y;
-    scratch.z = z;
-    return InterleavedVectors.sliceToVectorDistanceSquared(objPos, idx, scratch);
+// Squared horizontal distance from a point to an objective anchor. Zero FFI.
+// Horizontal because the capture volumes are columns: a bot on the upper floor
+// of a bunker is on the point, and height said nothing useful about arrival.
+// The y argument is kept in the signature so callers do not change.
+export function distSqTo(idx: number, x: number, _y: number, z: number): number {
+    const dx: number = x - objPos[idx * 3];
+    const dz: number = z - objPos[idx * 3 + 2];
+    return dx * dx + dz * dz;
+}
+
+// Closest objective this team does not own, -1 when it owns everything. Used to
+// give a driver that boarded on its own (or was put in by a player) somewhere
+// to drive. Zero FFI.
+export function nearestEnemyObjective(team: number, x: number, z: number): number {
+    let best: number = -1;
+    let bestSq: number = 0;
+    for (let i: number = 0; i < objCount; i++) {
+        if (objOwner[i] === team) {
+            continue;
+        }
+        const dSq: number = distSqTo(i, x, 0, z);
+        if (best < 0 || dSq < bestSq) {
+            best = i;
+            bestSq = dSq;
+        }
+    }
+    return best;
+}
+
+// Cached anchor coordinates, for the navigation graph. Zero FFI.
+export function objectiveX(idx: number): number {
+    return objPos[idx * 3];
+}
+
+export function objectiveY(idx: number): number {
+    return objPos[idx * 3 + 1];
+}
+
+export function objectiveZ(idx: number): number {
+    return objPos[idx * 3 + 2];
+}
+
+export function objectiveRadius(idx: number): number {
+    const r: number | undefined = objRadius[idx];
+    return r === undefined ? 4 : r;
+}
+
+// True while the trigger or capture point reports this player inside the
+// objective. Event-fed, zero FFI.
+export function isOccupant(idx: number, pid: number): boolean {
+    const occ: number[] | undefined = occByIdx[idx];
+    return occ !== undefined && occ.indexOf(pid) >= 0;
 }
 
 // Claims ledger: which objective each bot has picked, counted per team. This is
@@ -420,11 +457,13 @@ export function refreshScoreSnapshot(team: number): void {
             const w: number | undefined = BOT_KIND_WEIGHT[k];
             o = {
                 x: objPos[i * 3], y: objPos[i * 3 + 1], z: objPos[i * 3 + 2],
-                owner: 0, weight: w === undefined ? 1 : w, claims: 0, pressure: 0
+                owner: 0, weight: w === undefined ? 1 : w, claims: 0, pressure: 0, quota: 0
             };
             arr[i] = o;
         }
         o.owner = objOwner[i];
+        o.quota = objKind[i] !== OBJ_PROTO ? 0
+            : objOwner[i] === team ? BOT_PROTO_DEFENDERS : BOT_PROTO_ATTACKERS;
         o.claims = claimsOn(i, team);
         o.pressure = enemyPressure(i, team, BOT_THREAT_REACH_M);
     }
@@ -471,28 +510,19 @@ export function enemyPressure(idx: number, team: number, radius: number): number
     );
 }
 
-// A per-bot offset around an objective anchor. Without this every bot on a team
-// aimed at the same metre, walked to the same metre, and shoved each other off
-// it. The offset is a pure function of the player id, so a bot keeps the same
-// spot between sweeps instead of jittering. Cached mod.Vector per bot: the
-// behavior APIs take a Vector and the spread never changes for a given bot.
-const spreadX: { [pid: number]: number } = {};
-const spreadZ: { [pid: number]: number } = {};
-const spreadVec: { [pid: number]: mod.Vector } = {};
-
-export function spreadOffset(pid: number, idx: number): mod.Vector {
-    let vec: mod.Vector = spreadVec[pid];
-    if (vec === undefined) {
-        // Stable per-pid pseudo-random direction and radius.
-        const h: number = (pid * 2654435761 + idx * 40503) % 10007;
-        const ang: number = (h / 10007) * Math.PI * 2;
-        const rad: number = BOT_SPREAD_M * (0.35 + ((h % 977) / 977) * 0.65);
-        spreadX[pid] = Math.cos(ang) * rad;
-        spreadZ[pid] = Math.sin(ang) * rad;
-        vec = mod.CreateVector(spreadX[pid], 0, spreadZ[pid]);
-        spreadVec[pid] = vec;
-    }
-    return vec;
+// A bot's own target point on an objective: the anchor nudged by a stable
+// per-bot offset, so bots heading for the same objective spread around it
+// instead of shoving each other off one metre. The offset is scaled to the
+// objective's capture radius (at most half of it), so every spot is still
+// inside the capture volume. One CreateVector per issued behavior.
+export function targetVector(pid: number, idx: number): mod.Vector {
+    const h: number = ((pid * 2654435761 + idx * 40503) >>> 0) % 10007;
+    const ang: number = (h / 10007) * Math.PI * 2;
+    const rad: number = objectiveRadius(idx) * 0.5 * (0.2 + ((h % 977) / 977) * 0.8);
+    return mod.CreateVector(
+        objPos[idx * 3] + Math.cos(ang) * rad,
+        objPos[idx * 3 + 1],
+        objPos[idx * 3 + 2] + Math.sin(ang) * rad);
 }
 
 function onEnterTrigger(p: mod.Player, at: mod.AreaTrigger): void {

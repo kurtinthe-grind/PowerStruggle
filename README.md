@@ -1,5 +1,9 @@
 # Power Struggle
 
+<p align="center">
+  <img src="ps_poster_1.jpg" alt="Power Struggle poster" width="420">
+</p>
+
 A Battlefield 6 Portal game mode (TypeScript) inspired by Crysis Wars' Power
 Struggle. Two teams, **NATO (team 1)** and **PAX (team 2)**, fight over bunkers,
 energy sites and factories. Holding them earns prestige and powers up the
@@ -35,7 +39,9 @@ The **buy menu** opens from the Portal gadget and has these tabs:
   Rorsch Mk 2, ...).
 - **Equipment** and **Add-ons**: tools, ammo, scopes.
 - **Factory**: buy a vehicle at a factory your team owns. It spawns on a free
-  vehicle spawner slot, or you're told to try again later.
+  pad. A placed vehicle spawner that is still tied to an earlier vehicle is
+  replaced by a spawner created at runtime, so a purchase only fails when every
+  pad is physically blocked; if nothing appears, the prestige is refunded.
 - **Tactical**: a list of every strategic location showing Friendly / Enemy /
   Neutral. Picking one highlights its world icon for you only.
 
@@ -60,17 +66,28 @@ the attack zone, the shot:
 
 ## Bots
 
-Each team is filled with 24 script-controlled bots (`src/bots*.ts`). Every few
+Each team is filled with up to 32 script-controlled bots (`src/bots*.ts`),
+leaving room for the humans on that team. Bots stay in the game when they die
+and redeploy as the same soldier, so their name and scoreboard row last the
+whole match. Some deploy straight onto a bunker their team owns. Every few
 seconds each bot scores every objective and picks one:
 
 - **attack** anything its team doesn't own;
 - **defend** an owned objective with enemies nearby;
 - **hold** a safe one for a while, then **roam** to another.
 
-Bots heading to the same place count against it, so the team spreads out. A bot
-that can't reach an objective skips it for 90 s. When shot, a bot fights for
-10 s, then goes back to its objective. Bots with a long trip will get into an
-empty vehicle nearby and get out near their objective.
+Bots heading to the same place count against it, so the team spreads out. Long
+walks follow a waypoint graph built from small props placed on the map (ObjIds
+9000-9199, read from the map export at build time); a route a bot swam on or got
+stuck on becomes more expensive for everyone. A bot that can't reach an
+objective skips it for 90 s, and one stuck in place for a while jumps, re-plans,
+and as a last resort respawns. When shot, a bot fights for 10 s, then goes back
+to its objective.
+
+Vehicles: bots with a long trip get into a free vehicle nearby and drive or fly
+it toward their objective. Teammate bots near a player's vehicle that has
+landed or stopped climb in as passengers, ride along, and get out once the
+player has carried them somewhere and stopped.
 
 ## Project layout
 
@@ -81,11 +98,14 @@ empty vehicle nearby and get out near their objective.
 | `src/spawns.ts` | Bunker capture points and spawning |
 | `src/turrets.ts`, `nuke.ts`, `rorschshot.ts`, `raygeom.ts` | Turret zones, Rorsch shot detection and hit tests |
 | `src/winner.ts` | End-of-match rules |
-| `src/bots.ts`, `botbrain.ts`, `botscore.ts`, `botobjectives.ts` | Bot AI |
+| `src/bots.ts`, `botbrain.ts`, `botscore.ts`, `botobjectives.ts`, `botnames.ts` | Bot AI |
+| `src/botnav.ts`, `botnavgraph.ts`, `navpoints.ts` | Waypoint graph and routing (`navpoints.ts` is generated) |
+| `src/slots.ts` | Vehicle purchases, pads and runtime spawners |
 | `src/objids.ts` | The map's object IDs (see `PS_ObjIds.md`) |
 | `src/config.ts` | Every tunable number |
 | `src/strings.json` | All on-screen text |
 | `PS_Isolated.tscn` / `.spatial.json` | The Godot test map and its Portal export |
+| `ps_poster_1.jpg` | Poster art |
 | `scripts/` | Node unit tests for the pure modules, and the build guard |
 | `dist/` | Built output to upload to Portal |
 
@@ -99,8 +119,8 @@ npm install
 npm run build
 ```
 
-`npm run build` runs the source guard and unit tests, type-checks, bundles, and
-type-checks the bundle. Upload `dist/bundle.ts` and `dist/bundle.strings.json`
+`npm run build` regenerates the waypoint table from the map export, runs the
+source guard and unit tests, type-checks, bundles, and type-checks the bundle. Upload `dist/bundle.ts` and `dist/bundle.strings.json`
 to the Portal web editor together with the map export.
 
 ## Credits

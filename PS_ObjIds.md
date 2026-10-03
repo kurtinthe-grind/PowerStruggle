@@ -151,6 +151,16 @@ in favour of an on-screen notification (§6.3).
 
 ---
 
+## 9000–9199 — BOT NAVIGATION WAYPOINTS
+
+| ObjId range | Object | Class | Max | Godot notes |
+|---|---|---|---|---|
+| `9000–9199` | Bot navigation waypoint | any object with an ObjId | 200 | Any prop with an ObjId (PS_Isolated uses `AmmoChest_Small_Int_01` scaled to 0.001). Place it **on walkable ground** where bot pathing is poor. Any two nodes within 160 m (`BOT_NAV_LINK_M`) are linked automatically: waypoint to waypoint, waypoint to objective, and objective to objective. Keep neighbours within 160 m with dry, walkable ground between them. The start-up log lists any waypoint with no neighbour and any objective with no waypoint nearby. |
+
+**Positions are read from the map file at build time.** In the 2026-10-02 playtest the props never resolved at runtime (`GetSpatialObject` returned invalid for all 14), so `scripts/gen-navpoints.js` (the first step of `npm run build`) reads every object with an ObjId in this block from `PS_Isolated.spatial.json` into `src/navpoints.ts`. **After moving or adding waypoints: export the map, then `npm run build`.** If the build has no map file, the script falls back to a runtime lookup (SpatialObject, then WorldIcon, numbered from 9000 without gaps of 25 or more; a WorldIcon found that way is hidden unless `BOT_NAV_SHOW`). The start-up line says which source was used: `[nav] graph: N waypoints (map file) + ...`.
+
+---
+
 ## §4 — Buy menu placement (no terminals)
 
 **Design decision — the user removed all purchase terminals.**
@@ -249,5 +259,6 @@ Choose one and set it in config; do not mix types across the 7000 block.
 | HQ explosion VFX | 1 per base | 7400+ |
 | Enemy-base gate AreaTrigger | 1 per base | 7500+ |
 | *(fallback)* Turret VFX | 1 per turret, if §6.1 fails | 7200+ |
+| Bot navigation waypoint (tiny prop or WorldIcon) | where bot pathing is poor | 9000–9199 |
 
-**Total reserved: 7 blocks, 20 slots per sub-block, ~199 usable slots.**
+**Total reserved: 8 blocks: seven gameplay blocks of 20 slots per sub-block (~199 usable), plus the 200-slot waypoint block.**
