@@ -70,17 +70,12 @@ export const CHARGE_REQUIRES_FACTORY: boolean = true;
 export const CHARGE_UNLOCK_50: number = 50;
 export const CHARGE_UNLOCK_100: number = 100;
 
-export const TURRET_WARNING_SECS: number = 3;
-export const TURRET_CLUSTER_REQ: number = 3;
-export const TURRET_HIT_RADIUS_M: number = 12;
-// Upright cylinder around each turret base for the Rorsch path test (RayCast
-// passes through the AA turrets). Sized from the 17:38 playtest: shots aimed
-// at a turret passed 2.3-6 m from its axis at 6-14 m above its base.
-export const TURRET_RAY_RADIUS_M: number = 7;
-export const TURRET_RAY_BELOW_M: number = 3;
-export const TURRET_RAY_ABOVE_M: number = 16;
-
-export const HQ_HIT_RADIUS_M: number = 100;
+// Rocket sites (src/rocketsites/, sitewire.ts) replaced the HQ turrets. An
+// enemy HQ takes Rorsch hits once this many of its team's sites are down
+// (owner, 2026-10-03: 3 sites per team, 2 must fall), from anywhere: a hit
+// counts when the Rorsch lands within HQ_HIT_RADIUS_M of the HQ.
+export const SITES_TO_OPEN_HQ: number = 2;
+export const HQ_HIT_RADIUS_M: number = 350;
 export const HQ_HITS_REQUIRED: number = 3;
 
 export const RAY_MAX_DIST_M: number = 900;

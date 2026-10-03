@@ -119,35 +119,41 @@ nuke unlock path.
 
 ---
 
-## 7000–7999 — BASE DEFENCES (turret + HQ kill system)
+## 7000–7999 — HQ
 
 | ObjId range | Object | Class | Max | Godot notes |
 |---|---|---|---|---|
-| `7000–7099` | **Turret emplacement** | `EmplacementSpawner` | 20 | Destructible target. Type via `SetEmplacementSpawnerType` → one of `BGM71TOW`, `GDF009`, `M2MG` (the complete `StationaryEmplacements` enum). **This is a stationary emplacement, not a plain SpatialObject** (user correction). |
-| `7100–7199` | Turret warning zone | `AreaTrigger` | 20 | 3s warning → `mod.Kill`. `EnableAreaTrigger(false)` on destruction. |
-| `7200–7299` | Turret destroyed VFX | `SpatialObject` | 20 | **Fallback only.** Shown if `UnspawnObject` cannot remove the emplacement. See §6. |
-| `7300–7309` | HQ dummy target | `SpatialObject` | 2 | One per base. Raycast proximity target for HQ damage. |
+| `7300–7309` | HQ dummy target | `SpatialObject` | 2 | One per base. A Rorsch hit within `HQ_HIT_RADIUS_M` (350 m) of it damages that HQ once it is open. |
 | `7400–7409` | HQ explosion VFX | `SpatialObject` | 2 | One per base. Fires on victory. |
-| `7500–7509` | Enemy-base proximity gate | `AreaTrigger` | 2 | **Raycast perf gate.** Only cast rays while the shooter is inside one of these. |
 
-### 7.1 Turret adjacency is config, NOT ObjId
+**Retired 2026-10-03** (the rocket sites replaced the turrets; delete them from
+the map): `7000–7099` turret emplacements, `7100–7199` turret warning zones,
+`7200–7299` turret destroyed VFX, `7500–7509` enemy-base proximity gates. The
+Rorsch now fires from anywhere, so the gates have no use.
 
-"3 adjacent turrets destroyed → line of sight to HQ" needs a *grouping*, which ObjIds
-cannot express. It lives in `config.ts` and is free to change without touching this file:
+---
 
-```ts
-interface TurretDef {
-    emplId:  number;   // 7000-block
-    zoneId:  number;   // 7100-block
-    vfxId:   number;   // 7200-block, 0 = none
-    base:    1 | 2;    // which team this turret defends
-    cluster: number;   // which group of turrets gates LOS to the HQ
-}
-```
+## 8100–8899 — ROCKET SITES
 
-Change the LOS requirement from 3 to 2 (or 4) by editing `cluster` maths only.
-**There is no "turret LOS marker" ObjId** — that idea was proposed and rejected
-in favour of an on-screen notification (§6.3).
+One 100-block per site (`src/rocketsites/`). Sites 8100, 8200, 8300, 8400
+belong to team 1; 8500, 8600, 8700, 8800 to team 2. PowerStruggle uses three
+per team; an enemy HQ opens when 2 of its team's sites are down
+(`SITES_TO_OPEN_HQ`). A block without a kill zone is not a site.
+
+| ObjId (site 1) | Object | Rules |
+|---|---|---|
+| `8100` | Kill zone (AreaTrigger + PolygonVolume) | Required |
+| `8101` | Radar animation zone (AreaTrigger + PolygonVolume) | Required; centred on the radar, 190 m each way, 80 m tall |
+| `8110` | Radar pillar | Required; the pivot; the lowest radar number |
+| `8111–8119` | Other radar parts | Unscaled (scale 1); the build fails on a scaled part |
+| `8120–8139` | Silos | Launch points; any scale |
+| `8140–8159` | Lids | Scenery; ignored by the script |
+| `8160–8199` | Reserved for VFX | |
+
+**Positions are read from the map file at build time**: `npm run build` runs
+`scripts/rocketsites/gen-sitemap.js`, which writes `src/rocketsites/sitemap.ts`
+from `PS_Isolated.spatial.json`. Never rotate a scaled object from script; keep
+every radar part at scale 1 with no scaled parent.
 
 ---
 
@@ -212,7 +218,7 @@ removal path.
 
 - If it works: no 72xx VFX needed.
 - If it fails: reveal the 72xx `SpatialObject` and accept the emplacement visual remains.
-- **Test early — it gates turret destruction entirely.**
+- **Test early — it gates turret destruction entirely.** *(Moot since the turrets were retired.)*
 
 ### 6.2 WorldIcon parent anchor
 `mod.AddUIIcon(parentObject, image, verticalOffset, iconColour, iconText, visibility)`
@@ -224,13 +230,8 @@ union, but a volume's "position" semantics are unconfirmed.
 - **Test early** — affects every icon in the game.
 
 ### 6.3 Kill-zone UI
-No LOS marker object. Instead, while inside a `7100` zone: feed notification
-**"Death imminent — leave now!"**
-
-### 6.4 Turret types
-`StationaryEmplacements` has exactly three members: `BGM71TOW`, `GDF009`, `M2MG`.
-All turrets should use the **same** type so the destroy visual is consistent.
-Choose one and set it in config; do not mix types across the 7000 block.
+No LOS marker object. A human entering a live enemy rocket site's kill zone
+(`8x00`) gets the feed warning **"ENEMY ROCKET SITE - leave now!"**
 
 ---
 
@@ -253,12 +254,9 @@ Choose one and set it in config; do not mix types across the 7000 block.
 | Naval Factory AreaTrigger | 0–1 (water maps) | 6000+ |
 | Naval WorldIcon | 0–1 | 6100+ |
 | Naval VehicleSpawner | dock slots | 6200+ |
-| Turret EmplacementSpawner | as many as defend the bases | 7000+ |
-| Turret AreaTrigger | 1 per turret | 7100+ |
 | HQ dummy SpatialObject | 1 per base | 7300+ |
 | HQ explosion VFX | 1 per base | 7400+ |
-| Enemy-base gate AreaTrigger | 1 per base | 7500+ |
-| *(fallback)* Turret VFX | 1 per turret, if §6.1 fails | 7200+ |
+| Rocket site (kill zone, animation zone, radar, silos) | 3 per team | 8100–8300, 8500–8700 |
 | Bot navigation waypoint (tiny prop or WorldIcon) | where bot pathing is poor | 9000–9199 |
 
 **Total reserved: 8 blocks: seven gameplay blocks of 20 slots per sub-block (~199 usable), plus the 200-slot waypoint block.**

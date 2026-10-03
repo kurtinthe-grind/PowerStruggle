@@ -29,14 +29,14 @@ function walk(dir) {
 }
 
 // 3. The victory condition. Round victory belongs to mod.EndGameMode in
-//    turrets.ts and nowhere else. mod.SetGameModeScore / SetGameModeTargetScore
+//    hq.ts and nowhere else. mod.SetGameModeScore / SetGameModeTargetScore
 //    are forbidden outright: SetGameModeScore writes the live gamemode score,
 //    which is how the round is decided, so calling it with a player score total
 //    ended the match the instant the first capture paid out. That is a real bug
 //    this guard was added after.
 //    SetGameModeInitialScore is allowed only in stats.ts, where it merely
 //    zeroes tickets at round start.
-const VICTORY_OWNER = "turrets.ts";
+const VICTORY_OWNER = "hq.ts";
 const INITIAL_SCORE_OWNER = "stats.ts";
 const FORBIDDEN_ANYWHERE = ["SetGameModeScore", "SetGameModeTargetScore"];
 

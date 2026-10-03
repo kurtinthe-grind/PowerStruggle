@@ -1341,17 +1341,12 @@ export const CHARGE_REQUIRES_FACTORY: boolean = true;
 export const CHARGE_UNLOCK_50: number = 50;
 export const CHARGE_UNLOCK_100: number = 100;
 
-export const TURRET_WARNING_SECS: number = 3;
-export const TURRET_CLUSTER_REQ: number = 3;
-export const TURRET_HIT_RADIUS_M: number = 12;
-// Upright cylinder around each turret base for the Rorsch path test (RayCast
-// passes through the AA turrets). Sized from the 17:38 playtest: shots aimed
-// at a turret passed 2.3-6 m from its axis at 6-14 m above its base.
-export const TURRET_RAY_RADIUS_M: number = 7;
-export const TURRET_RAY_BELOW_M: number = 3;
-export const TURRET_RAY_ABOVE_M: number = 16;
-
-export const HQ_HIT_RADIUS_M: number = 100;
+// Rocket sites (src/rocketsites/, sitewire.ts) replaced the HQ turrets. An
+// enemy HQ takes Rorsch hits once this many of its team's sites are down
+// (owner, 2026-10-03: 3 sites per team, 2 must fall), from anywhere: a hit
+// counts when the Rorsch lands within HQ_HIT_RADIUS_M of the HQ.
+export const SITES_TO_OPEN_HQ: number = 2;
+export const HQ_HIT_RADIUS_M: number = 350;
 export const HQ_HITS_REQUIRED: number = 3;
 
 export const RAY_MAX_DIST_M: number = 900;
@@ -2579,15 +2574,6 @@ export function playSfxAll(key: SfxKey, amp: number): void {
 
 
 // --- SOURCE: src\objids.ts ---
-export interface TurretDef {
-    emplId: number;
-    zoneId: number;
-    vfxId: number;
-    base: 1 | 2;
-    cluster: number;
-    yOffset: number;
-}
-
 export interface AreaBuildingDef {
     id: string;
     kind: "energy" | "proto" | "war" | "air" | "naval";
@@ -2634,20 +2620,8 @@ export const NAVAL_FACTORY: AreaBuildingDef[] = [
     { id: "naval2", kind: "naval", areaTriggerId: 6001, worldIconId: 6101, vehicleSpawnerId: 6202, vehicleSpawnerIds: [6202, 6203], factoryName: "Naval Factory 2" }
 ];
 
-export const TURRETS: TurretDef[] = [
-    { emplId: 7000, zoneId: 7100, vfxId: 7200, base: 1, cluster: 0, yOffset: 15.267723 },
-    { emplId: 7001, zoneId: 7101, vfxId: 7201, base: 1, cluster: 0, yOffset: 15.267723 },
-    { emplId: 7002, zoneId: 7102, vfxId: 7202, base: 1, cluster: 0, yOffset: 15.267723 },
-    { emplId: 7003, zoneId: 7103, vfxId: 7203, base: 1, cluster: 0, yOffset: 15.267723 },
-    { emplId: 7004, zoneId: 7104, vfxId: 7204, base: 2, cluster: 1, yOffset: 15.267723 },
-    { emplId: 7005, zoneId: 7105, vfxId: 7205, base: 2, cluster: 1, yOffset: 15.267723 },
-    { emplId: 7006, zoneId: 7106, vfxId: 7206, base: 2, cluster: 1, yOffset: 15.267723 },
-    { emplId: 7007, zoneId: 7107, vfxId: 7207, base: 2, cluster: 1, yOffset: 15.267723 }
-];
-
 export const HQ_TARGETS: number[] = [7300, 7301];
 export const HQ_EXPLOSION: number[] = [7400, 7401];
-export const HQ_GATES: number[] = [7500, 7501];
 export const HQ_OBJIDS: number[] = [1, 2];
 
 export const DEFERRED_SLOTS: { what: string; note: string }[] = [
@@ -12935,7 +12909,7 @@ export function hqHitKeys(hits: number, required: number): HqHitKeys | null {
 }
 
 
-// --- SOURCE: src\turrets.ts ---
+// --- SOURCE: src\hq.ts ---
 
 
 
@@ -12943,23 +12917,17 @@ export function hqHitKeys(hits: number, required: number): HqHitKeys | null {
 
 
 
-
-
-
-
-const turretByZone: { [zoneId: number]: TurretDef } = {};
-const zoneHandles: { [zoneId: number]: mod.AreaTrigger } = {};
-const destroyed: { [emplId: number]: boolean } = {};
-const playerZones: { [pid: number]: number[] } = {};
-const pending: { [pid: number]: Timers.TimerID | null } = {};
-const clusterDestroyed: { [key: string]: number } = {};
-const losOpen: { [base: string]: boolean } = {};
+// HQ damage and the match end. Rorsch hits near an HQ count once that team's
+// rocket sites are down far enough (sitewire.ts hqOpenFor); HQ_HITS_REQUIRED
+// hits destroy it and the other team wins. Moved here from turrets.ts when the
+// rocket sites replaced the turrets; this is the only place that ends the
+// match (scripts/guard-sources.js).
 
 let hqHp: number[] = [0, 0, 0];
 let matchOver: boolean = false;
 
 // HQ damage listeners: (base, hits, required). index.ts uses this to drive the
-// HUD's HQ health, which turrets.ts cannot reach directly.
+// HUD's HQ health.
 export type HqHitListener = (base: number, hits: number, required: number) => void;
 const hqHitListeners: HqHitListener[] = [];
 
@@ -12967,304 +12935,9 @@ export function onHqHit(fn: HqHitListener): void {
     hqHitListeners.push(fn);
 }
 
-export function initTurrets(): void {
-    let zones: number = 0;
-    for (let ti: number = 0; ti < TURRETS.length; ti++) {
-        const t: TurretDef = TURRETS[ti];
-        if (!isConfigured(t.zoneId)) {
-            log("turrets", "skip turret " + t.emplId + " (zone id 0)");
-            continue;
-        }
-        zones++;
-        turretByZone[t.zoneId] = t;
-        const zone: mod.AreaTrigger = mod.GetAreaTrigger(t.zoneId);
-        if (!mod.IsValid(zone)) {
-            log("turrets", "FAIL zone " + t.zoneId + " did not resolve");
-            delete turretByZone[t.zoneId];
-            zones--;
-            continue;
-        }
-        // One-time position snapshot so the per-hit read path is FFI-free.
-        cacheTurretPos(ti, t);
-        zoneHandles[t.zoneId] = zone;
-        if (isConfigured(t.vfxId)) {
-            safe("turret.vfxhide", () => {
-                mod.EnableVFX(mod.GetVFX(t.vfxId), false);
-            });
-        }
-    }
-    log("turrets", "zones bound: " + zones + "/" + TURRETS.length);
-    if (zones === 0) {
-        log("turrets", "no turret zones configured - kill zones idle");
-    }
-    resetMatch();
-}
-
-export function resetMatch(): void {
+export function resetHq(): void {
     hqHp = [0, 0, 0];
     matchOver = false;
-    losOpen["1"] = false;
-    losOpen["2"] = false;
-    for (const k of Object.keys(clusterDestroyed)) {
-        delete clusterDestroyed[k];
-    }
-    for (const k of Object.keys(destroyed)) {
-        delete destroyed[Number(k)];
-    }
-    for (const t of TURRETS) {
-        if (isConfigured(t.vfxId)) {
-            safe("turret.vfxreset", () => {
-                mod.EnableVFX(mod.GetVFX(t.vfxId), false);
-            });
-        }
-        if (isConfigured(t.emplId)) {
-            safe("turret.modelreset", () => {
-                const o: mod.SpatialObject = mod.GetSpatialObject(t.emplId);
-                if (mod.IsType(o, mod.Types.SpatialObject)) {
-                    log("turret", "model " + t.emplId + " is a SpatialObject");
-                }
-            });
-        }
-    }
-}
-
-// Turret zone positions never move: the trigger layout in objids is static and
-// the AreaTriggers are fixed map geometry. Resolving each one cost a
-// GetAreaTrigger plus GetObjectPosition plus three component reads, and
-// resolveHit called this sixteen times per ray. They are resolved once into a
-// flat Float32Array at init, so the read path contains zero mod.* calls.
-//
-// Index layout is position * 3, with the y offset already applied.
-const turretXYZ: Float32Array = new Float32Array(TURRETS.length * 3);
-const turretResolved: { [index: number]: boolean } = {};
-
-function cacheTurretPos(index: number, t: TurretDef): void {
-    const base: number = index * 3;
-    try {
-        const v: Vectors.Vector3 = Vectors.toVector3(
-            mod.GetObjectPosition(mod.GetAreaTrigger(t.zoneId))
-        );
-        turretXYZ[base] = v.x;
-        turretXYZ[base + 1] = v.y + t.yOffset;
-        turretXYZ[base + 2] = v.z;
-        turretResolved[index] = true;
-    } catch (e) {
-        turretResolved[index] = false;
-        log("turrets", "pos failed for turret " + t.emplId + ": " + String(e));
-    }
-}
-
-// Squared distance from a hit point to a cached turret. No allocation, no mod.*.
-export function turretResolvedAt(index: number): boolean {
-    return turretResolved[index] === true;
-}
-// One cached coordinate of the turret base: axis 0 = x, 1 = y, 2 = z.
-export function turretCoord(index: number, axis: number): number {
-    return turretXYZ[index * 3 + axis];
-}
-
-export function turretDistSq(
-    index: number,
-    px: number,
-    py: number,
-    pz: number
-): number {
-    const base: number = index * 3;
-    const dx: number = px - turretXYZ[base];
-    const dy: number = py - turretXYZ[base + 1];
-    const dz: number = pz - turretXYZ[base + 2];
-    return dx * dx + dy * dy + dz * dz;
-}
-
-
-function addZone(pid: number, zoneId: number): void {
-    let list: number[] = playerZones[pid];
-    if (list === undefined) {
-        list = [];
-        playerZones[pid] = list;
-    }
-    if (list.indexOf(zoneId) < 0) {
-        list.push(zoneId);
-    }
-}
-
-function removeZone(pid: number, zoneId: number): void {
-    const list: number[] | undefined = playerZones[pid];
-    if (list === undefined) {
-        return;
-    }
-    const i: number = list.indexOf(zoneId);
-    if (i >= 0) {
-        list.splice(i, 1);
-    }
-    if (list.length === 0) {
-        delete playerZones[pid];
-    }
-}
-
-function clearWarning(pid: number): void {
-    const h: Timers.TimerID | null = pending[pid];
-    if (h !== null && h !== undefined) {
-        Timers.clear(h);
-        pending[pid] = null;
-    }
-}
-
-function armWarning(p: mod.Player, intruderTeam: number): void {
-    const pid: number = mod.GetObjId(p);
-    if (pid < 0) {
-        return;
-    }
-    if (pending[pid] !== undefined && pending[pid] !== null) {
-        return;
-    }
-    const h: Timers.TimerID | null = Timers.setTimeout(() => {
-        safe("turret.kill", () => {
-            pending[pid] = null;
-            const zones: number[] | undefined = playerZones[pid];
-            if (zones === undefined || zones.length === 0) {
-                return;
-            }
-            try {
-                mod.Kill(p);
-                logAdmin("turrets", "KILLED pid " + pid + " in zone " + String(zones[0]));
-            } catch (e) {
-                log("turrets", "kill failed pid " + pid);
-            }
-        });
-    }, TURRET_WARNING_SECS * 1000);
-    if (h !== null) {
-        pending[pid] = h;
-    }
-    playSfxTeam("killZone", intruderTeam, 0.5);
-    notifyTeam(intruderTeam, "killZone", 0, 0);
-}
-
-function onEnterZone(p: mod.Player, at: mod.AreaTrigger): void {
-    const zoneId: number = turretZoneId(at);
-    const t: TurretDef | undefined = turretByZone[zoneId];
-    if (!t) {
-        // Gated: the message calls mod.GetObjId twice more purely to build a
-        // string nobody reads at the default log level.
-        if (willLogDebug()) {
-            log("turrets", "UNMATCHED ENTER trigger=" + mod.GetObjId(at)
-                + " pid=" + mod.GetObjId(p));
-        }
-        return;
-    }
-    const pid: number = mod.GetObjId(p);
-    const team: number = teamIdOf(p);
-    if (pid < 0 || team === 0) {
-        log("turrets", "ENTER ignored invalid player/team zone=" + zoneId + " pid=" + pid + " team=" + team);
-        return;
-    }
-    if (destroyed[t.emplId]) {
-        log("turrets", "ENTER ignored destroyed turret zone=" + zoneId + " pid=" + pid);
-        return;
-    }
-    if (team === t.base) {
-        log("turrets", "ENTER friendly zone=" + zoneId + " pid=" + pid + " team=" + team);
-        return;
-    }
-    addZone(pid, zoneId);
-    log("turrets", "ENTER zone=" + zoneId + " pid=" + pid + " team=" + team + " base=" + t.base + " secs=" + String(TURRET_WARNING_SECS));
-    armWarning(p, team);
-}
-
-// Exact ObjId only - see the note in capture.ts about the removed mod.Equals
-// fallback, which mis-routed gates and turret zones.
-function turretZoneId(at: mod.AreaTrigger): number {
-    const id: number = mod.GetObjId(at);
-    return turretByZone[id] !== undefined ? id : 0;
-}
-
-function onExitZone(p: mod.Player, at: mod.AreaTrigger): void {
-    const pid: number = mod.GetObjId(p);
-    const zoneId: number = turretZoneId(at);
-    if (zoneId === 0) {
-        if (willLogDebug()) {
-            log("turrets", "UNMATCHED EXIT trigger=" + mod.GetObjId(at) + " pid=" + pid);
-        }
-        return;
-    }
-    removeZone(pid, zoneId);
-    log("turrets", "EXIT zone=" + zoneId + " pid=" + pid);
-    if (playerZones[pid] === undefined) {
-        clearWarning(pid);
-    }
-}
-
-export function destroyTurret(emplId: number): boolean {
-    if (destroyed[emplId]) {
-        return false;
-    }
-    let def: TurretDef | undefined;
-    for (const t of TURRETS) {
-        if (t.emplId === emplId) {
-            def = t;
-        }
-    }
-    if (!def) {
-        return false;
-    }
-    destroyed[emplId] = true;
-
-    if (isConfigured(def.vfxId)) {
-        safe("turret.vfxon", () => {
-            mod.EnableVFX(mod.GetVFX(def.vfxId), true);
-        });
-    }
-    playSfxAll("turretDown", 0.7);
-
-    if (isConfigured(def.emplId)) {
-        // Scene-placed emplacements resolve to an invalid handle (ObjId -1);
-        // UnspawnObject on those throws UnspawnObjectInvalidObject. Only try
-        // when the handle is genuinely valid, otherwise rely on the VFX above.
-        safe("turret.model", () => {
-            const model: mod.Object = mod.GetSpatialObject(def.emplId);
-            if (mod.IsValid(model)) {
-                mod.UnspawnObject(model);
-            } else {
-                log("turrets", "turret " + emplId + " handle invalid - skipping unspawn");
-            }
-        });
-    }
-
-    const key: string = String(def.base) + "_" + String(def.cluster);
-    clusterDestroyed[key] = (clusterDestroyed[key] || 0) + 1;
-    log("turrets", "turret " + emplId + " destroyed (cluster " + key + " now " + String(clusterDestroyed[key]) + ")");
-
-    notifyTeam(3 - def.base, "turretDestroyed", 0, 0);
-
-    const bk: string = String(def.base);
-    if (!losOpen[bk] && countDestroyed(def.base) >= TURRET_CLUSTER_REQ) {
-        losOpen[bk] = true;
-        playSfxAll("losOpen", 0.9);
-        logAdmin("turrets", "base " + bk + " LINE OF SIGHT OPEN");
-        notifyTeam(3 - Number(bk), "losOpen", 0, 0);
-    }
-    return true;
-}
-
-// Number of turrets actually destroyed at this base. This must count individual
-// kills, not members of a destroyed cluster: every turret in a base shares one
-// cluster, so counting per-cluster members opened the base after a single kill.
-function countDestroyed(base: number): number {
-    let n: number = 0;
-    for (const t of TURRETS) {
-        if (t.base === base && destroyed[t.emplId]) {
-            n++;
-        }
-    }
-    return n;
-}
-
-export function losOpenFor(base: number): boolean {
-    return losOpen[String(base)] === true;
-}
-
-export function turretIsDestroyed(emplId: number): boolean {
-    return destroyed[emplId] === true;
 }
 
 export function hqHitsFor(base: number): number {
@@ -13279,7 +12952,7 @@ export function hitHq(base: number): boolean {
     playSfxAll("hqHit", 0.9);
     const hits: number = hqHp[base];
     for (const fn of hqHitListeners) {
-        invokeSubscriber(fn, base, hits, HQ_HITS_REQUIRED, undefined, "turrets.hqHit");
+        invokeSubscriber(fn, base, hits, HQ_HITS_REQUIRED, undefined, "hq.hit");
     }
     // base owns the HQ, so the attackers are the other team. The final hit is
     // announced by endMatchFor instead (keys === null).
@@ -13289,7 +12962,7 @@ export function hitHq(base: number): boolean {
         notifyTeam(base, keys.defender, left, HQ_HITS_REQUIRED);
         notifyTeam(winnerForDestroyedBase(base), keys.attacker, left, HQ_HITS_REQUIRED);
     }
-    log("turrets", "HQ base " + base + " hit " + String(hqHp[base]) + "/" + String(HQ_HITS_REQUIRED));
+    log("hq", "HQ base " + base + " hit " + String(hqHp[base]) + "/" + String(HQ_HITS_REQUIRED));
     if (hqHp[base] >= HQ_HITS_REQUIRED) {
         matchOver = true;
         endMatchFor(base);
@@ -13298,47 +12971,2849 @@ export function hitHq(base: number): boolean {
 }
 
 function endMatchFor(base: number): void {
-    safe("turrets.end", () => {
+    safe("hq.end", () => {
         const idx: number = base === 1 ? 0 : 1;
         const vfx: number = HQ_EXPLOSION[idx];
         if (isConfigured(vfx)) {
-            safe("turrets.explosion", () => {
+            safe("hq.explosion", () => {
                 mod.EnableVFX(mod.GetVFX(vfx), true);
             });
         }
         playSfxAll("nukeFire", 1.0);
         // 'base' is the team that owned the destroyed HQ, so the winner is the
-        // other team. The previous GetTeam(base - 1) passed team 0 when HQ 1
-        // fell, and EndGameMode(team 0) is a draw (Tier 0). Both teams get the
-        // same factual message: "NATO destroyed the PAX HQ" or the reverse.
+        // other team. GetTeam(base - 1) once passed team 0 when HQ 1 fell, and
+        // EndGameMode(team 0) is a draw (Tier 0). Both teams get the same
+        // factual message: "NATO destroyed the PAX HQ" or the reverse.
         const winner: number = winnerForDestroyedBase(base);
         const msg: string = winMessageKey(winner);
         notifyTeam(1, msg, 0, 0);
         notifyTeam(2, msg, 0, 0);
-        logAdmin("turrets", "HQ " + base + " destroyed - team " + winner + " WINS - EndGameMode");
+        logAdmin("hq", "HQ " + base + " destroyed - team " + winner + " WINS - EndGameMode");
         flushAdminLog("match end");
         mod.EndGameMode(mod.GetTeam(winner));
     });
 }
 
-export function configureTurretEvents(): void {
+
+// --- SOURCE: src\rocketsites\sitemap.ts ---
+// GENERATED by scripts/rocketsites/gen-sitemap.js from PS_Isolated.spatial.json. Do not edit.
+// Empty until the rocket sites are added to PS_Isolated: then run
+// node scripts/rocketsites/gen-sitemap.js
+// One entry per rocket site.
+export interface SiloDef { siloId: number; x: number; y: number; z: number; }
+export interface RadarPartDef { id: number; name: string; x: number; y: number; z: number; basis: number[]; }
+// radarParts: the radar model's objects, the pivot (radarId) first; basis is the rest rotation, row-major.
+// animZoneId: the radar only turns while a player is inside this trigger.
+export interface SiteDef { n: number; team: number; zoneId: number; animZoneId: number; radarId: number; radarPos: [number, number, number];
+    gridCentre: [number, number, number]; radarParts: RadarPartDef[]; silos: SiloDef[]; }
+export const SITES: SiteDef[] = [];
+
+
+// --- SOURCE: src\rocketsites\geom.ts ---
+// Pure maths for the rocket sites. No mod.* here, so Node can test it.
+// Angles are degrees unless a name says otherwise. Yaw 0 faces +Z and yaw 90
+// faces +X (Godot's rotation about Y). Pitch is elevation above horizontal.
+
+export type V3 = [number, number, number];
+export type RotUnits = "deg" | "rad";
+
+export const DEG: number = Math.PI / 180;
+
+export function add(a: V3, b: V3): V3 {
+    return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+}
+
+export function sub(a: V3, b: V3): V3 {
+    return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+}
+
+export function scale(a: V3, k: number): V3 {
+    return [a[0] * k, a[1] * k, a[2] * k];
+}
+
+export function dot(a: V3, b: V3): number {
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+export function cross(a: V3, b: V3): V3 {
+    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+
+export function len(a: V3): number {
+    return Math.hypot(a[0], a[1], a[2]);
+}
+
+export function dist_2(a: V3, b: V3): number {
+    return len(sub(a, b));
+}
+
+export function norm(a: V3): V3 {
+    const l: number = len(a);
+    return l < 1e-9 ? [0, 1, 0] : [a[0] / l, a[1] / l, a[2] / l];
+}
+
+export function clamp(x: number, lo: number, hi: number): number {
+    return Math.min(hi, Math.max(lo, x));
+}
+
+export function wrapDeg(a: number): number {
+    const r: number = (((a + 180) % 360) + 360) % 360 - 180;
+    return r === -180 ? 180 : r;
+}
+
+// Moves cur toward want by at most maxStep degrees, the short way round.
+export function stepAngleDeg(cur: number, want: number, maxStep: number): number {
+    const d: number = wrapDeg(want - cur);
+    return Math.abs(d) <= maxStep ? cur + d : cur + Math.sign(d) * maxStep;
+}
+
+export function aimDeg(from: V3, to: V3): { yaw: number; pitch: number } {
+    const d: V3 = sub(to, from);
+    return {
+        yaw: Math.atan2(d[0], d[2]) / DEG,
+        pitch: Math.atan2(d[1], Math.hypot(d[0], d[2])) / DEG
+    };
+}
+
+// Godot-convention Euler degrees [x, y, 0] for a flight direction. A positive
+// X rotation tilts +Z downward, so climbing needs a negative X.
+export function dirToEulerDeg(d: V3): V3 {
+    const a = aimDeg([0, 0, 0], d);
+    return [-a.pitch, a.yaw, 0];
+}
+
+// Godot-style aim (yaw about world up, then tilt xDeg about the turned X
+// axis: M = Ry(yaw) * Rx(x)) as Euler angles in X-Y-Z order
+// (M = Rx(a) * Ry(b) * Rz(c)). NOT the engine's order: kept only behind
+// ENGINE_EULER_ORDER "XYZ". It was inferred from one readback, but a Y-middle
+// readback fits ZYX just as well, and under ZYX this conversion rolls the
+// dish (in-game 2026-10-03, second session).
+export function yxzToXyzDeg(xDeg: number, yawDeg: number): V3 {
+    const cy: number = Math.cos(yawDeg * DEG);
+    const sy: number = Math.sin(yawDeg * DEG);
+    const cx: number = Math.cos(xDeg * DEG);
+    const sx: number = Math.sin(xDeg * DEG);
+    // M rows: [cy, sy*sx, sy*cx], [0, cx, -sx], [-sy, cy*sx, cy*cx]
+    const m02: number = sy * cx;
+    if (Math.abs(m02) > 0.999999) {
+        // Gimbal lock: b = +-90; fold all of the remaining turn into a.
+        return [Math.atan2(cy * sx, cx) / DEG, Math.sign(m02) * 90, 0];
+    }
+    return [Math.atan2(sx, cy * cx) / DEG, Math.asin(m02) / DEG, Math.atan2(-sy * sx, cy) / DEG];
+}
+
+// The radar rests at X 45 in Godot. Reading that back as ~45 means the engine
+// uses degrees, ~0.785 means radians.
+export function detectUnits(restX: number, expectDeg: number): RotUnits | "unknown" {
+    const x: number = Math.abs(restX);
+    const e: number = Math.abs(expectDeg);
+    if (Math.abs(x - e) < 2) {
+        return "deg";
+    }
+    if (Math.abs(x - e * DEG) < 0.05) {
+        return "rad";
+    }
+    return "unknown";
+}
+
+export function toEngine(deg: number, units: RotUnits): number {
+    return units === "rad" ? deg * DEG : deg;
+}
+
+export function fromEngine(v: number, units: RotUnits): number {
+    return units === "rad" ? v / DEG : v;
+}
+
+export interface RocketKin {
+    pos: V3;
+    dir: V3;
+    speed: number;
+    age: number;
+}
+
+export interface KinParams {
+    riseSecs: number;
+    speedStart: number;
+    accel: number;
+    speedMax: number;
+    turnDegPerSec: number;
+    closeRangeM: number;
+}
+
+export function newRocket(origin: V3, p: KinParams): RocketKin {
+    return { pos: [origin[0], origin[1], origin[2]], dir: [0, 1, 0], speed: p.speedStart, age: 0 };
+}
+
+// Turns unit vector cur toward unit vector want by at most maxRad (slerp).
+export function turnToward(cur: V3, want: V3, maxRad: number): V3 {
+    const c: number = clamp(dot(cur, want), -1, 1);
+    const ang: number = Math.acos(c);
+    if (ang <= maxRad || ang < 1e-6) {
+        return want;
+    }
+    if (c < -0.9999) {
+        let perp: V3 = cross(cur, [1, 0, 0]);
+        if (len(perp) < 1e-3) {
+            perp = cross(cur, [0, 0, 1]);
+        }
+        perp = norm(perp);
+        return norm(add(scale(cur, Math.cos(maxRad)), scale(perp, Math.sin(maxRad))));
+    }
+    const t: number = maxRad / ang;
+    const s: number = Math.sin(ang);
+    return norm(add(scale(cur, Math.sin((1 - t) * ang) / s), scale(want, Math.sin(t * ang) / s)));
+}
+
+// One tick: straight up for riseSecs, then turn toward the target. The turn
+// rate grows inside closeRangeM so a target beside the silo is not circled.
+export function stepRocket(r: RocketKin, target: V3, dt: number, p: KinParams): void {
+    r.age += dt;
+    r.speed = Math.min(p.speedMax, r.speed + p.accel * dt);
+    if (r.age > p.riseSecs) {
+        const to: V3 = sub(target, r.pos);
+        const boost: number = Math.max(1, p.closeRangeM / Math.max(len(to), 1));
+        r.dir = turnToward(r.dir, norm(to), p.turnDegPerSec * boost * DEG * dt);
+    }
+    r.pos = add(r.pos, scale(r.dir, r.speed * dt));
+}
+
+// True when segment a-b passes within radius of c (fast rockets skip past).
+export function segmentHits(a: V3, b: V3, c: V3, radius: number): boolean {
+    const ab: V3 = sub(b, a);
+    const l2: number = dot(ab, ab);
+    const t: number = l2 < 1e-12 ? 0 : clamp(dot(sub(c, a), ab) / l2, 0, 1);
+    return dist_2(add(a, scale(ab, t)), c) <= radius;
+}
+
+export function beepIntervalMs(d: number, startDist: number, slowMs: number, fastMs: number): number {
+    const t: number = startDist <= 0 ? 1 : clamp(1 - d / startDist, 0, 1);
+    return Math.round(slowMs + (fastMs - slowMs) * t);
+}
+
+export type EulerOrder = "ZYX" | "XYZ";
+
+// The engine's Euler vector (degrees) for a Godot-style aim. The engine uses
+// Godot's ZYX order, M = Rz(c) * Ry(b) * Rx(a) (bf6-MultiObjectTransform:
+// "set the Rotation Order to ZYX" before copying Godot values; its
+// Quaternions.fromEuler is qz*qy*qx), so the aim is simply (x, yaw, 0).
+export function engineAimDeg(order: EulerOrder, xDeg: number, yawDeg: number): V3 {
+    return order === "XYZ" ? yxzToXyzDeg(xDeg, yawDeg) : [xDeg, yawDeg, 0];
+}
+
+// 3x3 rotation matrix, row-major: m[row * 3 + col].
+export type M3 = number[];
+
+// A basis from a spatial export's right/up/front vectors (its columns).
+export function basisFromAxes(right: V3, up: V3, front: V3): M3 {
+    return [right[0], up[0], front[0], right[1], up[1], front[1], right[2], up[2], front[2]];
+}
+
+export function mulM3(a: M3, b: M3): M3 {
+    const out: M3 = [];
+    for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+            out.push(a[r * 3] * b[c] + a[r * 3 + 1] * b[3 + c] + a[r * 3 + 2] * b[6 + c]);
+        }
+    }
+    return out;
+}
+
+export function mulM3V(m: M3, v: V3): V3 {
+    return [
+        m[0] * v[0] + m[1] * v[1] + m[2] * v[2],
+        m[3] * v[0] + m[4] * v[1] + m[5] * v[2],
+        m[6] * v[0] + m[7] * v[1] + m[8] * v[2]
+    ];
+}
+
+// Godot's turn about world up: +Z toward +X for a positive angle.
+export function rotY(rad: number): M3 {
+    const c: number = Math.cos(rad);
+    const s: number = Math.sin(rad);
+    return [c, 0, s, 0, 1, 0, -s, 0, c];
+}
+
+// The engine's Euler vector (radians) for m: m = Rz(c) * Ry(b) * Rx(a).
+export function eulerZYX(m: M3): V3 {
+    const sb: number = clamp(-m[6], -1, 1);
+    if (Math.abs(sb) > 0.999999) {
+        // Gimbal lock: b = +-90; fold the Z turn into X.
+        return [Math.atan2(-m[5], m[4]), Math.sign(sb) * Math.PI / 2, 0];
+    }
+    return [Math.atan2(m[7], m[8]), Math.asin(sb), Math.atan2(m[3], m[0])];
+}
+
+export interface PartPose {
+    pos: V3;
+    rot: V3;    // engine Euler, radians
+}
+
+// One part of a multi-object model turned yawRad about the vertical axis
+// through pivot. The spatial export flattens Godot's parenting into
+// separate world-placed objects, so every part is moved by this each tick.
+export function yawPart(pivot: V3, restPos: V3, restBasis: M3, yawRad: number): PartPose {
+    const r: M3 = rotY(yawRad);
+    return { pos: add(pivot, mulM3V(r, sub(restPos, pivot))), rot: eulerZYX(mulM3(r, restBasis)) };
+}
+
+
+// --- SOURCE: src\rocketsites\config.ts ---
+
+// RocketSiteTester tuning. Values marked PROBE were set from the one-off
+// probe run of 2026-10-03 (see the outcome table in the plan, Task 4 step 9;
+// the probe code was removed with the move to several sites).
+// Each site's team comes from its ObjId block (scripts/gen-sitemap.js):
+// sites 8100-8499 belong to team 1, 8500-8899 to team 2.
+
+// Logged at start, so a log shows which upload ran (2026-10-03: a session
+// ran an old script though the new bundle was built).
+export const SCRIPT_VERSION: string = "2026-10-03 log-levels";
+// 0 quiet (startup, problems, radars destroyed, server-load warnings, errors;
+// for release), 1 events (+ shots, locks, launches, hits, radar wake/sleep,
+// a stats line every STATS_EVERY_MS), 2 trace (+ zone enter/exit, alarm,
+// launcher presses, radar read-backs). Messages above the level are never built.
+export const LOG_LEVEL: number = 1;
+
+// Owner, 2026-10-03: "make it so it doesn't kill me for now". Off: rockets
+// still fly and explode on the target, but nobody is damaged or killed.
+export const DAMAGE_ENABLED: boolean = false;
+
+// Lock and fire
+export const LOCK_MS: number = 3000;
+export const SITE_COOLDOWN_MS: number = 1000;
+export const SILO_RELOAD_MS: number = 8000;
+export const MAX_ROCKETS_AIRBORNE: number = 4;
+export const ALARM_LINGER_MS: number = 5000;         // owner: the alarm plays on after the zone empties and the rockets land
+
+// Engine rotation conventions
+export const DEFAULT_UNITS: "deg" | "rad" = "rad";   // confirmed in-game 2026-10-03 (radar rest X read 0.79)
+// The engine's Euler order: Godot's ZYX, M = Rz*Ry*Rx (bf6-MultiObjectTransform
+// README + its quaternion code). "XYZ" (2026-10-03 second session) rolled the dish.
+export const ENGINE_EULER_ORDER: EulerOrder = "ZYX";
+export const ENGINE_YAW_SIGN: number = 1;            // PROBE P3b
+export const ENGINE_PITCH_SIGN: number = 1;          // PROBE P3c
+export const POS_MATCH_M: number = 2;                // a handle counts as resolved when it reads within this of the map
+
+// Radar: the owner's 7-object model (2026-10-03: pillar x10, the sheet at a
+// fixed Godot X 40, a stud and four walls in x11-x16). It only turns
+// left/right about the pillar's vertical axis; it never tilts. The Godot pose
+// faces +Z.
+export const RADAR_DRIVE: "absolute" | "off" = "absolute";
+export const RADAR_TURN_PILLAR: boolean = true;      // false: the pillar stays still and only the head turns
+export const RADAR_YAW_OFFSET_DEG: number = 0;       // turn this much extra if the sheet faces the wrong way
+export const RADAR_SLEW_DEG_PER_S: number = 120;
+export const RADAR_SWEEP_DEG_PER_S: number = 20;
+// Smaller turns are not sent (7 objects per update). bf6-portal-utils Spatial
+// only syncs a transform past 1 cm / ~10 deg by default; 1 deg is invisible
+// on a radar and cuts the moves sent while tracking a slow target.
+export const RADAR_MIN_STEP_DEG: number = 1;
+export const RADAR_IDLE_UPDATE_MS: number = 100;     // a sweeping radar (no target) is redrawn this often, not every tick
+// A tracking radar is redrawn this often rather than every tick
+// (bf6-portal-utils animations throttle with minUpdateDeltaMs the same way).
+export const RADAR_TRACK_UPDATE_MS: number = 50;
+// Below this bf6-portal-utils PerformanceStats health (1 = 30 ticks/s) every
+// radar drops to the idle cadence.
+export const RADAR_HEALTH_MIN: number = 0.8;
+export const SOUND_MOVE_MS: number = 100;            // a rocket's flight sound follows it this often
+export const STATS_EVERY_MS: number = 10000;         // at LOG_LEVEL 1+: log tick rate, script time and object moves this often
+export const RADAR_TRACE_READS: number = 3;          // at LOG_LEVEL 2: log a part's read-back pose this many times (all sites)
+export const RADAR_TRACE_EVERY_MS: number = 5000;
+
+// Rocket (homing numbers are pinned by scripts/test-geom.js)
+export const ROCKET_MODE: "drag" | "segments" = "drag"; // PROBE P4
+export const ROCKET_RISE_SECS: number = 0.4;
+export const ROCKET_SPEED_START: number = 40;
+export const ROCKET_ACCEL: number = 160;
+export const ROCKET_SPEED_MAX: number = 220;
+export const ROCKET_TURN_DEG_PER_S: number = 240;
+export const ROCKET_CLOSE_RANGE_M: number = 60;
+export const ROCKET_SPAWN_UP_M: number = 0.5;
+export const SEGMENT_MS: number = 250;
+export const HIT_RADIUS_M: number = 3;
+export const MAX_FLIGHT_MS: number = 6000;
+export const TARGET_AIM_UP_M: number = 1.0;
+export const TRAIL_YAW_OFFSET_DEG: number = 0;       // PROBE P3a
+export const TRAIL_PITCH_OFFSET_DEG: number = 0;     // PROBE P3a
+export const VEHICLE_DAMAGE: number = 9999;
+
+// Sound
+export const BEEP_SLOW_MS: number = 900;
+export const BEEP_FAST_MS: number = 120;
+export const BEEP_AMP: number = 1;
+export const BEEP_RANGE_M: number = 40;
+export const ALARM_AMP: number = 1;
+export const ALARM_RANGE_M: number = 250;
+export const FLIGHT_AMP: number = 1;
+export const FLIGHT_RANGE_M: number = 300;
+
+// Effects
+export const VFX_LIFETIME_MS: number = 12000;        // the Stinger streak lasts ~10 s
+export const BURST_LIFETIME_MS: number = 6000;
+export const PILLAR_MS: number = 1500;               // the smoke pillar at a silo after it fires
+export const PILLAR_MAX_MS: number = 6000;           // safety lifetime if the stop is missed
+export const MAX_LIVE_VFX: number = 80;
+export const SPAWNS_PER_TICK: number = 3;
+
+// Radar destruction. Owner, 2026-10-03: same method as the PowerStruggle
+// turrets (ray along the shooter's aim, tested against an upright cylinder
+// around the target), but with rocket launchers except lock-on ones; 8 hits (owner raised it from 4 after the 4th session);
+// the site stays destroyed for the rest of the round.
+export const RADAR_HITS: number = 8;
+export const ALLOWED_LAUNCHERS: { gadget: mod.Gadgets; name: string }[] = [
+    { gadget: mod.Gadgets.Launcher_Unguided_Rocket, name: "Unguided_Rocket" },
+    { gadget: mod.Gadgets.Launcher_High_Explosive, name: "High_Explosive" },
+    { gadget: mod.Gadgets.Launcher_Aim_Guided, name: "Aim_Guided" }
+];
+// HasEquipment means "carried", not "held" (PowerStruggle Rorsch finding), so
+// a press only counts while a gadget slot is active. If the trace shows the
+// slots never active with a launcher up, set this false.
+export const LAUNCHER_REQUIRE_ACTIVE_SLOT: boolean = true;
+export const LAUNCHER_TRACE_PRESSES: number = 12;    // at LOG_LEVEL 2: log slot states for the first presses
+export const LAUNCHER_RANGE_M: number = 400;          // only watch shooters this close to the radar
+export const LAUNCHER_ROCKET_SPEED_MPS: number = 120; // delays the hit until the real rocket arrives
+export const RAY_MAX_DIST_M_2: number = 900;           // PowerStruggle values
+// PowerStruggle starts 2.5 m out (past the body); a launcher's own rocket is
+// 4.7-6.5 m out when the ray is cast (in-game 2026-10-03), so start past it.
+export const RAY_START_OFFSET_M_2: number = 8;
+export const RAY_OWN_ROCKET_M: number = 15;          // a stop this close to the eye is the own rocket: judged as clear
+export const RAY_RESULT_TIMEOUT_MS: number = 1000;   // a ray with no answer by then is judged along its path
+export const RADAR_HIT_SHAPE = { radius: 4, below: 6, above: 5, pointRadius: 5 };
+export const RADAR_WRECK_DELAY_MS: number = 600;
+export const WRECK_LIFETIME_MS: number = 600000;     // the wreck effect ends on its own
+
+// Owner picks from SfxVfxShowcase (spec "Asset picks").
+export const ASSET = {
+    trail: mod.RuntimeSpawn_Common.FX_Missile_Stinger_Trail,
+    hit: mod.RuntimeSpawn_Common.FX_Rocket_RPG7V2_Hit,
+    hitWet: mod.RuntimeSpawn_Common.FX_Gadget_C4_Explosives_Detonation_Underwater, // with hit, target in water or a boat
+    burst: mod.RuntimeSpawn_Common.FX_Rocket_RPG7V2_Hit_Critical,
+    shockwave: mod.RuntimeSpawn_Common.VFX_Launchers_GroundShockwave_Dirt,
+    pillar: mod.RuntimeSpawn_Common.FX_BASE_Smoke_Pillar_White_L,
+    alarm: mod.RuntimeSpawn_Common.SFX_GameModes_BR_RespawnTower_Activate_Distant_SimpleLoop3D,
+    lockBeep: mod.RuntimeSpawn_Common.SFX_GameModes_BR_Mission_Wreckage_BombBeeping_Loop_SimpleLoop3D,
+    incomingBeep: mod.RuntimeSpawn_Common.SFX_GameModes_Gauntlet_Mission_Beacons_Beeping_SimpleLoop3D,
+    flight: mod.RuntimeSpawn_Common.SFX_Projectiles_Flybys_Shared_Projectile_MissileTrail_SimpleLoop3D,
+    radarExplosion: mod.RuntimeSpawn_Common.FX_Vehicle_Car_Destruction_Death_Explosion_PTV,
+    radarWreck: mod.RuntimeSpawn_Common.FX_Vehicle_Wreck_PTV
+};
+
+
+// --- SOURCE: src\rocketsites\lockcore.ts ---
+// Lock state machine for one site, free of mod.* so Node can test it.
+// One target at a time: track the nearest free intruder, fire after lockMs
+// once a silo can fire, then wait cooldownMs before tracking the next one.
+// A target that leaves (or is busy with a rocket) cancels the lock; coming
+// back starts the full lock again.
+
+export interface Intruder {
+    key: string;
+    pid: number;
+    x: number;
+    y: number;
+    z: number;
+}
+
+export type LockEvent =
+    | { kind: "track"; key: string; pid: number }
+    | { kind: "cancel"; key: string }
+    | { kind: "fire"; key: string; pid: number };
+
+export class LockCore {
+    private current: Intruder | null = null;
+    private lockStart: number = 0;
+    private cooldownUntil: number = 0;
+    private readonly lockMs: number;
+    private readonly cooldownMs: number;
+
+    constructor(lockMs: number, cooldownMs: number) {
+        this.lockMs = lockMs;
+        this.cooldownMs = cooldownMs;
+    }
+
+    get target(): string | null {
+        return this.current === null ? null : this.current.key;
+    }
+
+    get targetPid(): number | null {
+        return this.current === null ? null : this.current.pid;
+    }
+
+    update(now: number, intruders: Intruder[], busy: Set<string>, origin: number[], canFire: boolean): LockEvent[] {
+        const out: LockEvent[] = [];
+        const free: Intruder[] = intruders.filter(i => !busy.has(i.key));
+        if (this.current !== null) {
+            const key: string = this.current.key;
+            const still: Intruder | undefined = free.find(i => i.key === key);
+            if (still === undefined) {
+                out.push({ kind: "cancel", key });
+                this.current = null;
+            } else {
+                this.current = still;
+            }
+        }
+        if (this.current === null && now >= this.cooldownUntil && free.length > 0) {
+            let best: Intruder = free[0];
+            let bestD: number = distSq(best, origin);
+            for (const i of free) {
+                const d: number = distSq(i, origin);
+                if (d < bestD) {
+                    best = i;
+                    bestD = d;
+                }
+            }
+            this.current = best;
+            this.lockStart = now;
+            out.push({ kind: "track", key: best.key, pid: best.pid });
+        }
+        if (this.current !== null && canFire && now - this.lockStart >= this.lockMs) {
+            out.push({ kind: "fire", key: this.current.key, pid: this.current.pid });
+            this.current = null;
+            this.cooldownUntil = now + this.cooldownMs;
+        }
+        return out;
+    }
+}
+
+function distSq(i: Intruder, o: number[]): number {
+    const dx: number = i.x - o[0];
+    const dy: number = i.y - o[1];
+    const dz: number = i.z - o[2];
+    return dx * dx + dy * dy + dz * dz;
+}
+
+// The players each site has claimed: its lock target, its pending launches
+// and the targets of its rockets in the air.
+export interface SiteClaims {
+    site: number;
+    pids: number[];
+}
+
+// Keys of the intruders another site has claimed, for LockCore's busy set:
+// one site per player at a time (owner, 2026-10-03).
+export function busyFromOthers(all: SiteClaims[], me: number, intruders: Intruder[]): Set<string> {
+    const taken: Set<number> = new Set<number>();
+    for (const c of all) {
+        if (c.site !== me) {
+            for (const pid of c.pids) {
+                taken.add(pid);
+            }
+        }
+    }
+    return new Set<string>(intruders.filter(i => taken.has(i.pid)).map(i => i.key));
+}
+
+// Round-robin from start: the first silo whose reload is over, or -1.
+export function nextReadySilo(readyAt: number[], now: number, start: number): number {
+    for (let k = 0; k < readyAt.length; k++) {
+        const i: number = (start + k) % readyAt.length;
+        if (now >= readyAt[i]) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// What to do with a zone member this tick. Only a player who is no longer
+// valid (left the game) is dropped. A failed read or a valid-but-not-alive
+// player is skipped this tick and kept: membership only comes back through a
+// new zone entry, so dropping on one bad read would make the player immune.
+// Deaths are dropped separately by OnPlayerDied.
+export function memberAction(valid: boolean | undefined, alive: boolean | undefined): "drop" | "skip" | "keep" {
+    if (valid === false) {
+        return "drop";
+    }
+    if (valid !== true || alive !== true) {
+        return "skip";
+    }
+    return "keep";
+}
+
+// Owner, 2026-10-03: the alarm must not cut off the moment the zone empties.
+// It plays while the site is busy (enemies in the zone, a launch or a rocket
+// in flight) and for lingerMs after the last busy tick.
+export class AlarmLinger {
+    private lastBusyAt: number | undefined;
+
+    constructor(private readonly lingerMs: number) {}
+
+    wanted(now: number, busy: boolean): boolean {
+        if (busy) {
+            this.lastBusyAt = now;
+            return true;
+        }
+        return this.lastBusyAt !== undefined && now - this.lastBusyAt < this.lingerMs;
+    }
+}
+
+
+// --- SOURCE: src\rocketsites\log.ts ---
+
+
+// PortalLog only (the owner reads the log; no on-screen debug). PortalLog is
+// shared by every mode, so every line carries the [RST] prefix.
+// log() always prints (startup, problems, a radar destroyed, errors);
+// logAt() prints only at LOG_LEVEL or above, and builds its message only then.
+
+export const LOG_EVENTS: number = 1;    // shots, locks, launches, hits, radar wake/sleep, the stats line
+export const LOG_TRACE: number = 2;     // zone enter/exit, alarm, launcher presses, radar read-backs
+
+export function log_2(tag: string, msg: string): void {
+    console.log("[RST][" + tag + "] " + msg);
+}
+
+export function logOn(level: number): boolean {
+    return LOG_LEVEL >= level;
+}
+
+export function logAt(level: number, tag: string, msg: () => string): void {
+    if (LOG_LEVEL >= level) {
+        log_2(tag, msg());
+    }
+}
+
+const once: { [key: string]: boolean } = {};
+
+export function logOnce(key: string, tag: string, msg: string): void {
+    if (once[key]) {
+        return;
+    }
+    once[key] = true;
+    log_2(tag, msg);
+}
+
+// Runs fn; a throw is logged once per tag, never in a loop.
+export function safe_2(tag: string, fn: () => void): boolean {
+    try {
+        fn();
+        return true;
+    } catch (e) {
+        logOnce("err:" + tag, "error", tag + " threw: " + String(e));
+        return false;
+    }
+}
+
+export function tryGet<T>(tag: string, fn: () => T): T | undefined {
+    try {
+        return fn();
+    } catch (e) {
+        logOnce("err:" + tag, "error", tag + " threw: " + String(e));
+        return undefined;
+    }
+}
+
+export function fmt(v: readonly number[] | undefined): string {
+    return v === undefined ? "n/a" : v.map(n => n.toFixed(2)).join(", ");
+}
+
+
+// --- SOURCE: src\rocketsites\fx.ts ---
+
+
+
+
+// Thin wrappers over VFX/SFX/object calls. Non-critical spawns share a
+// per-tick budget (the SfxVfx crash: bursts of engine objects in one tick
+// are dangerous); force bypasses it for explosions and launch effects.
+
+const ZERO: mod.Vector = mod.CreateVector(0, 0, 0);
+const ONE: mod.Vector = mod.CreateVector(1, 1, 1);
+
+interface LiveVfx {
+    vfx: mod.VFX;
+    killAt: number;
+}
+
+const live: LiveVfx[] = [];
+let spawnsThisTick: number = 0;
+let transforms: number = 0;     // object moves since the last stats line
+let vfxMoves: number = 0;
+let spawns: number = 0;
+
+export function takeStats(): { transforms: number; vfxMoves: number; spawns: number; liveVfx: number } {
+    const out = { transforms, vfxMoves, spawns, liveVfx: live.length };
+    transforms = 0;
+    vfxMoves = 0;
+    spawns = 0;
+    return out;
+}
+
+// SetObjectTransform, counted for the stats line.
+export function setTransform(o: mod.SpatialObject | mod.SFX, pos: V3, rot: V3, tag: string): void {
+    transforms++;
+    safe_2(tag, () => mod.SetObjectTransform(o, mod.CreateTransform(vec(pos), vec(rot))));
+}
+
+export function vec(p: V3): mod.Vector {
+    return mod.CreateVector(p[0], p[1], p[2]);
+}
+
+export function toV3(v: mod.Vector): V3 {
+    return [mod.XComponentOf(v), mod.YComponentOf(v), mod.ZComponentOf(v)];
+}
+
+export function readPos_2(o: mod.Object): V3 | undefined {
+    return tryGet("readPos", () => toV3(mod.GetObjectPosition(o)));
+}
+
+export function readRot(o: mod.Object): V3 | undefined {
+    return tryGet("readRot", () => toV3(mod.GetObjectRotation(o)));
+}
+
+export function soldierPos(p: mod.Player): V3 | undefined {
+    return tryGet("soldierPos", () => toV3(mod.GetSoldierState(p, mod.SoldierStateVector.GetPosition)));
+}
+
+export function soldierFacing(p: mod.Player): V3 | undefined {
+    return tryGet("soldierFacing", () => toV3(mod.GetSoldierState(p, mod.SoldierStateVector.GetFacingDirection)));
+}
+
+export function newTick(): void {
+    spawnsThisTick = 0;
+}
+
+function takeBudget(force: boolean): boolean {
+    if (!force && spawnsThisTick >= SPAWNS_PER_TICK) {
+        return false;
+    }
+    spawnsThisTick++;
+    spawns++;
+    return true;
+}
+
+function killVfx(v: mod.VFX): void {
+    safe_2("killVfx", () => {
+        mod.EnableVFX(v, false);
+        mod.UnspawnObject(v);
+    });
+}
+
+export function spawnVfx(asset: mod.RuntimeSpawn_Common, pos: V3, rot: V3, lifeMs: number, now: number, force: boolean = false): mod.VFX | undefined {
+    if (!takeBudget(force)) {
+        return undefined;
+    }
+    if (live.length >= MAX_LIVE_VFX) {
+        const oldest: LiveVfx | undefined = live.shift();
+        if (oldest !== undefined) {
+            killVfx(oldest.vfx);
+        }
+    }
+    const v: mod.VFX | undefined = tryGet("spawnVfx", () => {
+        const o: mod.VFX = mod.SpawnObject(asset, vec(pos), vec(rot), ONE) as mod.VFX;
+        mod.EnableVFX(o, true);
+        return o;
+    });
+    if (v !== undefined) {
+        live.push({ vfx: v, killAt: now + lifeMs });
+    }
+    return v;
+}
+
+export function moveVfx(v: mod.VFX, pos: V3, rot: V3): void {
+    vfxMoves++;
+    safe_2("moveVfx", () => mod.MoveVFX(v, vec(pos), vec(rot)));
+}
+
+export function stopVfx(v: mod.VFX): void {
+    const i: number = live.findIndex(e => e.vfx === v);
+    if (i >= 0) {
+        live.splice(i, 1);
+    }
+    killVfx(v);
+}
+
+export function sweepVfx(now: number): void {
+    for (let i = live.length - 1; i >= 0; i--) {
+        if (now >= live[i].killAt) {
+            killVfx(live[i].vfx);
+            live.splice(i, 1);
+        }
+    }
+}
+
+export function spawnSfx(asset: mod.RuntimeSpawn_Common, pos: V3, force: boolean = false): mod.SFX | undefined {
+    if (!takeBudget(force)) {
+        return undefined;
+    }
+    return tryGet("spawnSfx", () => mod.SpawnObject(asset, vec(pos), ZERO, ONE) as mod.SFX);
+}
+
+// 3D sound at pos; with player, only that player hears it.
+export function playAt(sfx: mod.SFX, pos: V3, amp: number, range: number, player?: mod.Player): void {
+    safe_2("playAt", () => {
+        if (player !== undefined) {
+            mod.PlaySound(sfx, amp, vec(pos), range, player);
+        } else {
+            mod.PlaySound(sfx, amp, vec(pos), range);
+        }
+    });
+}
+
+export function moveSfx(sfx: mod.SFX, pos: V3): void {
+    transforms++;
+    safe_2("moveSfx", () => mod.SetObjectTransform(sfx, mod.CreateTransform(vec(pos), ZERO)));
+}
+
+// Restarts a loop for one player at pos (used to pulse the incoming beep).
+export function restartFor(sfx: mod.SFX, pos: V3, amp: number, range: number, player: mod.Player): void {
+    safe_2("restartFor", () => {
+        mod.StopSound(sfx, player);
+        mod.SetObjectTransform(sfx, mod.CreateTransform(vec(pos), ZERO));
+        mod.PlaySound(sfx, amp, vec(pos), range, player);
+    });
+}
+
+export function stopSfx(sfx: mod.SFX): void {
+    safe_2("stopSfx", () => {
+        mod.StopSound(sfx);
+        mod.UnspawnObject(sfx);
+    });
+}
+
+
+// --- SOURCE: src\rocketsites\shotcore.ts ---
+// Launcher shot bookkeeping, free of mod.* so scripts/test-shot.js can test it.
+
+// A launcher fires on the press (no charge, unlike the Rorsch), so the shot
+// is IsFiring's rising edge: once per press, however long it is held.
+export function pressed(wasFiring: boolean | undefined, firing: boolean): boolean {
+    return firing && wasFiring !== true;
+}
+
+// The radar's hit points (owner: 4 launcher hits, stays destroyed).
+export class RadarHealth {
+    private hitsLeft: number;
+
+    constructor(hits: number) {
+        this.hitsLeft = hits;
+    }
+
+    get left(): number {
+        return this.hitsLeft;
+    }
+
+    get destroyed(): boolean {
+        return this.hitsLeft <= 0;
+    }
+
+    hit(): "damaged" | "destroyed" | "ignored" {
+        if (this.hitsLeft <= 0) {
+            return "ignored";
+        }
+        this.hitsLeft--;
+        return this.hitsLeft === 0 ? "destroyed" : "damaged";
+    }
+
+    // PowerStruggle's raygun takes the radar down in one shot. False when it
+    // was already down.
+    kill(): boolean {
+        if (this.hitsLeft <= 0) {
+            return false;
+        }
+        this.hitsLeft = 0;
+        return true;
+    }
+}
+
+// A launcher's own rocket is in front of the eye when the ray is cast, and
+// the ray stops on it (in-game 2026-10-03: launcher rays stopped 4.7-6.5 m
+// out). Recasting past it failed (a RayCast sent from inside OnRayCastHit
+// never answered), so the ray starts past the rocket (PowerStruggle's
+// start-offset fix, pushed further) and a stop still within ownRocketM of the
+// eye is taken as the rocket: the shot is judged as if nothing blocked it.
+export function ownRocketStop(stopFromEyeM: number | undefined, ownRocketM: number): boolean {
+    return stopFromEyeM !== undefined && stopFromEyeM < ownRocketM;
+}
+
+// A ray with no answer after timeoutMs is given up and judged along its
+// path, so a lost answer cannot jam the shooter for the round.
+export function rayExpired(sentAt: number, now: number, timeoutMs: number): boolean {
+    return now - sentAt >= timeoutMs;
+}
+
+
+// --- SOURCE: src\rocketsites\rot.ts ---
+
+
+
+// Rotation units are detected from the radar's rest X at startup (P1).
+let units: RotUnits = DEFAULT_UNITS;
+
+export function setUnits(u: RotUnits): void {
+    units = u;
+}
+
+export function getUnits(): RotUnits {
+    return units;
+}
+
+// Godot-convention degrees to the engine's Euler vector.
+export function engRot(xDeg: number, yDeg: number, zDeg: number): V3 {
+    return [
+        toEngine(ENGINE_PITCH_SIGN * xDeg, units),
+        toEngine(ENGINE_YAW_SIGN * yDeg, units),
+        toEngine(zDeg, units)
+    ];
+}
+
+// An aim (turn to yawDeg, then tilt xDeg about the turned X axis) as the
+// engine's Euler vector. Use this whenever yaw and tilt are both non-zero.
+export function engAim(yawDeg: number, xDeg: number): V3 {
+    const y: number = ENGINE_YAW_SIGN * yawDeg;
+    const x: number = ENGINE_PITCH_SIGN * xDeg;
+    const e: V3 = engineAimDeg(ENGINE_EULER_ORDER, x, y);
+    return [toEngine(e[0], units), toEngine(e[1], units), toEngine(e[2], units)];
+}
+
+export function engToDeg(v: number): number {
+    return fromEngine(v, units);
+}
+
+// A radians Euler vector (geom's matrix maths) in the engine's units.
+export function engFromRad(r: V3): V3 {
+    return units === "rad" ? [r[0], r[1], r[2]] : [r[0] / DEG, r[1] / DEG, r[2] / DEG];
+}
+
+
+// --- SOURCE: src\rocketsites\hitcore.ts ---
+// Rocket hit decisions, free of mod.* so scripts/test-shot.js can test them.
+
+// What the game told us about the target at the hit; undefined = unreadable.
+export interface HitState {
+    inWater: boolean | undefined;
+    diving: boolean | undefined;
+    inVehicle: boolean | undefined;
+    boat: boolean | undefined;
+}
+
+// A wet hit also plays the underwater C4 detonation (owner 2026-10-03). The
+// engine has no water flag for vehicles, so a boat counts as in the water.
+export function wetHit(s: HitState): boolean {
+    if (s.inVehicle === true) {
+        return s.boat === true || s.inWater === true;
+    }
+    return s.inWater === true || s.diving === true;
+}
+
+// Whether a rocket keeps chasing. Only a definite end stops it: the death
+// event, the player gone from the game, or a read that says not alive. A
+// failed read (undefined) keeps it homing on the last aim: treating that as
+// "gone" burst rockets mid-air (owner, 2026-10-03).
+export function chaseVerdict(diedEvent: boolean, valid: boolean | undefined, alive: boolean | undefined): "chase" | "died" | "left" | "not alive" {
+    if (diedEvent) {
+        return "died";
+    }
+    if (valid === false) {
+        return "left";
+    }
+    if (valid === true && alive === false) {
+        return "not alive";
+    }
+    return "chase";
+}
+
+
+// --- SOURCE: src\rocketsites\rocket.ts ---
+
+
+
+
+
+
+
+
+// The script owns each rocket's position (one homing integrator, geom.ts);
+// ROCKET_MODE only changes how it is drawn. The hit and the damage are
+// scripted at the target, so the kill never depends on the VFX. A target
+// alive at MAX_FLIGHT_MS is hit anyway; only a target that died some other
+// way or left the game gets a mid-air burst (and is never damaged).
+// DAMAGE_ENABLED off (owner's test setting): the hit explodes, nobody dies.
+
+const KIN: KinParams = {
+    riseSecs: ROCKET_RISE_SECS,
+    speedStart: ROCKET_SPEED_START,
+    accel: ROCKET_ACCEL,
+    speedMax: ROCKET_SPEED_MAX,
+    turnDegPerSec: ROCKET_TURN_DEG_PER_S,
+    closeRangeM: ROCKET_CLOSE_RANGE_M
+};
+
+interface Rocket {
+    n: number;
+    key: string;
+    pid: number;
+    target: mod.Player;
+    site: number;                   // the rocket site that launched it
+    siloId: number;
+    kin: RocketKin;
+    aim: V3;
+    startDist: number;
+    launchedAt: number;
+    trail: mod.VFX | undefined;
+    segments: mod.VFX[];
+    flight: mod.SFX | undefined;
+    beep: mod.SFX | undefined;
+    nextBeepAt: number;
+    nextSegAt: number;
+    nextSoundMoveAt: number;
+    dead: boolean;
+}
+
+const rockets: Rocket[] = [];
+let launches: number = 0;
+
+export function airborneAll(): number {
+    return rockets.length;
+}
+
+export function airborne(site: number): number {
+    return rockets.filter(r => r.site === site).length;
+}
+
+export function busyKeys(site: number, into: Set<string>): void {
+    for (const r of rockets) {
+        if (r.site === site) {
+            into.add(r.key);
+        }
+    }
+}
+
+export function rocketTargets(site: number): number[] {
+    return rockets.filter(r => r.site === site).map(r => r.pid);
+}
+
+export function newestAim(site: number): V3 | undefined {
+    for (let i = rockets.length - 1; i >= 0; i--) {
+        if (rockets[i].site === site) {
+            return rockets[i].aim;
+        }
+    }
+    return undefined;
+}
+
+// OnPlayerDied / OnPlayerLeaveGame: the rocket bursts instead of killing the
+// player again after a redeploy.
+// Whether a hit damages: DAMAGE_ENABLED at start, switched by PowerStruggle's
+// debug menu for everyone on the server.
+let damageOn: boolean = DAMAGE_ENABLED;
+
+export function rocketDamageOn(): boolean {
+    return damageOn;
+}
+
+export function setRocketDamage(on: boolean): void {
+    damageOn = on;
+    log_2("rocket", "damage " + (on ? "ON" : "OFF"));
+}
+
+export function markDead(pid: number): void {
+    for (const r of rockets) {
+        if (r.pid === pid) {
+            r.dead = true;
+        }
+    }
+}
+
+function aimPoint(p: mod.Player): V3 | undefined {
+    const pos: V3 | undefined = soldierPos(p);
+    return pos === undefined ? undefined : [pos[0], pos[1] + TARGET_AIM_UP_M, pos[2]];
+}
+
+export function launchRocket(site: number, s: SiloDef, target: mod.Player, pid: number, key: string, now: number): void {
+    const origin: V3 = [s.x, s.y + ROCKET_SPAWN_UP_M, s.z];
+    const aim: V3 = aimPoint(target) ?? origin;
+    const r: Rocket = {
+        n: ++launches, key, pid, target, site, siloId: s.siloId,
+        kin: newRocket(origin, KIN), aim, startDist: Math.max(1, dist_2(origin, aim)), launchedAt: now,
+        trail: undefined, segments: [], flight: undefined, beep: undefined, nextBeepAt: now, nextSegAt: now, nextSoundMoveAt: now, dead: false
+    };
+    rockets.push(r);
+    logAt(LOG_TRACE, "rocket", () => "#" + r.n + " site " + site + " launch silo " + s.siloId + " mode=" + ROCKET_MODE + " target=pid " + pid
+        + (key.charAt(0) === "v" ? " (vehicle)" : " (foot)") + " dist " + r.startDist.toFixed(0) + "m"
+        + (damageOn ? "" : " damage off"));
+}
+
+export function tickRockets(now: number, dt: number): void {
+    for (let i = rockets.length - 1; i >= 0; i--) {
+        const r: Rocket = rockets[i];
+        const finished: boolean | undefined = tryGet("rocket.step", () => stepOne(r, now, dt));
+        if (finished === undefined) {
+            cleanup(r);
+        }
+        if (finished !== false) {
+            rockets.splice(i, 1);
+        }
+    }
+}
+
+// "chase" unless the target definitely died or left; a failed read keeps
+// the rocket homing on the last aim (hitcore.chaseVerdict). The zone plays
+// no part: a rocket follows its target anywhere.
+function chaseState(r: Rocket): string {
+    const valid: boolean | undefined = r.dead ? undefined : tryGet("rocket.valid", () => mod.IsPlayerValid(r.target));
+    const alive: boolean | undefined = valid === true ? tryGet("rocket.alive", () => mod.GetSoldierState(r.target, mod.SoldierStateBool.IsAlive)) : undefined;
+    return chaseVerdict(r.dead, valid, alive);
+}
+
+function stepOne(r: Rocket, now: number, dt: number): boolean {
+    const chase: string = chaseState(r);
+    if (chase !== "chase") {
+        explode(r, now, false, chase);
+        return true;
+    }
+    const aim: V3 | undefined = aimPoint(r.target);
+    if (aim !== undefined) {
+        r.aim = aim;
+    }
+    const prev: V3 = [r.kin.pos[0], r.kin.pos[1], r.kin.pos[2]];
+    stepRocket(r.kin, r.aim, dt, KIN);
+    if (segmentHits(prev, r.kin.pos, r.aim, HIT_RADIUS_M) || now - r.launchedAt >= MAX_FLIGHT_MS) {
+        explode(r, now, true, "");
+        return true;
+    }
+    draw(r, now);
+    sound(r, now);
+    return false;
+}
+
+function trailRot(r: Rocket): V3 {
+    const e: V3 = dirToEulerDeg(r.kin.dir);
+    return engAim(e[1] + TRAIL_YAW_OFFSET_DEG, e[0] + TRAIL_PITCH_OFFSET_DEG);
+}
+
+function draw(r: Rocket, now: number): void {
+    if (ROCKET_MODE === "drag") {
+        if (r.trail === undefined) {
+            r.trail = spawnVfx(ASSET.trail, r.kin.pos, trailRot(r), VFX_LIFETIME_MS, now);
+        } else {
+            moveVfx(r.trail, r.kin.pos, trailRot(r));
+        }
+    } else if (now >= r.nextSegAt) {
+        const seg: mod.VFX | undefined = spawnVfx(ASSET.trail, r.kin.pos, trailRot(r), VFX_LIFETIME_MS, now);
+        if (seg !== undefined) {
+            r.segments.push(seg);
+            r.nextSegAt = now + SEGMENT_MS;
+        }
+    }
+}
+
+function sound(r: Rocket, now: number): void {
+    if (r.flight === undefined) {
+        r.flight = spawnSfx(ASSET.flight, r.kin.pos);
+        if (r.flight !== undefined) {
+            playAt(r.flight, r.kin.pos, FLIGHT_AMP, FLIGHT_RANGE_M);
+        }
+    } else if (now >= r.nextSoundMoveAt) {
+        moveSfx(r.flight, r.kin.pos);
+        r.nextSoundMoveAt = now + SOUND_MOVE_MS;
+    }
+    if (r.beep === undefined) {
+        r.beep = spawnSfx(ASSET.incomingBeep, r.aim);
+        return;
+    }
+    if (now >= r.nextBeepAt) {
+        restartFor(r.beep, r.aim, BEEP_AMP, BEEP_RANGE_M, r.target);
+        r.nextBeepAt = now + beepIntervalMs(dist_2(r.kin.pos, r.aim), r.startDist, BEEP_SLOW_MS, BEEP_FAST_MS);
+    }
+}
+
+function explode(r: Rocket, now: number, hit: boolean, why: string): void {
+    spawnVfx(hit ? ASSET.hit : ASSET.burst, hit ? r.aim : r.kin.pos, [0, 0, 0], BURST_LIFETIME_MS, now, true);
+    let wet: string = "";
+    if (hit) {
+        const st: HitState = hitState(r.target);
+        if (wetHit(st)) {
+            spawnVfx(ASSET.hitWet, r.aim, [0, 0, 0], BURST_LIFETIME_MS, now, true);
+            wet = " WET";
+        }
+        wet += " (water " + st.inWater + ", diving " + st.diving + ", vehicle " + st.inVehicle + ", boat " + st.boat + ")";
+    }
+    if (hit && damageOn) {
+        damage(r.target);
+    }
+    cleanup(r);
+    const flightMs: number = now - r.launchedAt;
+    logAt(LOG_EVENTS, "rocket", () => "#" + r.n + " " + (hit ? "hit" : "burst mid-air (target " + why + ")") + " pid " + r.pid
+        + " flight " + (flightMs / 1000).toFixed(1) + "s" + (hit && flightMs >= MAX_FLIGHT_MS ? " (forced at timeout)" : "")
+        + (hit && !damageOn ? " (damage off)" : "") + wet);
+}
+
+function hitState(p: mod.Player): HitState {
+    const flag = (tag: string, b: mod.SoldierStateBool): boolean | undefined =>
+        tryGet("rocket." + tag, () => mod.GetSoldierState(p, b));
+    const inVehicle: boolean | undefined = flag("inVehicle", mod.SoldierStateBool.IsInVehicle);
+    const boat: boolean | undefined = inVehicle !== true ? undefined : tryGet("rocket.boat", () => {
+        const v: mod.Vehicle = mod.GetVehicleFromPlayer(p);
+        return mod.CompareVehicleName(v, mod.VehicleList.RHIB) || mod.CompareVehicleName(v, mod.VehicleList.RCB_90_Patrol_Boat)
+            || mod.CompareVehicleName(v, mod.VehicleList.RCB_90_Patrol_Boat_Pax);
+    });
+    return {
+        inWater: flag("inWater", mod.SoldierStateBool.IsInWater),
+        diving: flag("diving", mod.SoldierStateBool.IsDiving),
+        inVehicle,
+        boat
+    };
+}
+
+// Also removes the rocket's trail (owner, 2026-10-03: the rocket effect
+// stayed after the explosion).
+function cleanup(r: Rocket): void {
+    if (r.trail !== undefined) {
+        stopVfx(r.trail);
+    }
+    for (const seg of r.segments) {
+        stopVfx(seg);
+    }
+    r.trail = undefined;
+    r.segments = [];
+    if (r.flight !== undefined) {
+        stopSfx(r.flight);
+    }
+    if (r.beep !== undefined) {
+        stopSfx(r.beep);
+    }
+    r.flight = undefined;
+    r.beep = undefined;
+}
+
+function damage(p: mod.Player): void {
+    const inVehicle: boolean = tryGet("rocket.inVehicle", () => mod.GetSoldierState(p, mod.SoldierStateBool.IsInVehicle)) === true;
+    if (inVehicle) {
+        safe_2("rocket.vehicleDamage", () => mod.DealDamage(mod.GetVehicleFromPlayer(p), VEHICLE_DAMAGE));
+        safe_2("rocket.vehicleKill", () => mod.Kill(mod.GetVehicleFromPlayer(p)));
+    } else {
+        safe_2("rocket.kill", () => mod.Kill(p));
+    }
+}
+
+
+// --- SOURCE: src\rocketsites\site.ts ---
+
+
+
+
+
+
+
+
+
+
+
+
+// Every rocket site in sitemap.ts runs on its own: enemies of the site's
+// team in its zone set off the alarm at its silo grid centre; its radar locks
+// the nearest one for LOCK_MS; then its next ready silo plays the shockwave
+// and smoke pillar and launches (no lid animation: owner, 2026-10-03).
+// RADAR_HITS launcher hits on its radar take that site offline for the rest
+// of the round.
+
+// The radar is several objects (the spatial export flattens Godot's
+// parenting), so each part is placed every update from its rest pose in
+// sitemap.ts turned about the pillar's vertical axis.
+interface RadarPart {
+    id: number;
+    name: string;
+    obj: mod.SpatialObject;
+    rest: V3;
+    basis: M3;
+}
+
+interface Seen {
+    pid: number;
+    p: mod.Player;
+    pos: V3;
+    vehicle: mod.Vehicle | undefined;
+}
+
+// A live radar a launcher can shoot at (launcher.ts).
+export interface RadarTarget {
+    n: number;
+    team: number;
+    pos: V3;
+}
+
+let radarTraceLeft: number = RADAR_TRACE_READS;
+let nextRadarTraceAt: number = 0;
+
+class Site {
+    readonly def: SiteDef;
+    readonly n: number;
+    readonly team: number;
+    private readonly silos: SiloDef[];
+    private readonly radarAt: V3;           // the pillar: the pivot
+    private readonly radarParts: RadarPart[] = [];
+    private radarYaw: number = 0;           // degrees turned from the Godot pose (which faces +Z)
+    private drawnYaw: number | undefined;
+    private nextDrawAt: number;
+    private readonly siloReadyAt: number[];
+    private readonly pillars: (mod.VFX | undefined)[];
+    private nextSilo: number = 0;
+    private readonly intruders: { [pid: number]: mod.Player } = {};
+    private readonly watchers: Set<number> = new Set<number>();   // players in the animation zone, any team
+    private readonly lock: LockCore = new LockCore(LOCK_MS, SITE_COOLDOWN_MS);
+    private readonly alarmLinger: AlarmLinger = new AlarmLinger(ALARM_LINGER_MS);
+    private alarm: mod.SFX | undefined;
+    private lockBeep: mod.SFX | undefined;
+    private lockBeepFor: mod.Player | undefined;
+    readonly health: RadarHealth = new RadarHealth(RADAR_HITS);
+
+    constructor(def: SiteDef, staggerMs: number) {
+        this.def = def;
+        this.n = def.n;
+        this.team = def.team;
+        this.silos = def.silos;
+        this.radarAt = def.radarPos;
+        this.siloReadyAt = def.silos.map(() => 0);
+        this.pillars = def.silos.map(() => undefined);
+        this.nextDrawAt = Date.now() + staggerMs;
+    }
+
+    // Always printed: startup problems and the radar destroyed.
+    private log(msg: string): void {
+        log_2("site", "site " + this.n + ": " + msg);
+    }
+
+    // Printed at LOG_LEVEL >= level; the message is only built then.
+    private say(level: number, msg: () => string): void {
+        if (logOn(level)) {
+            this.log(msg());
+        }
+    }
+
+    init(): void {
+        this.initRadar();
+        this.say(LOG_EVENTS, () => "ready: team " + this.team + ", zone " + this.def.zoneId + ", " + this.silos.length + " silos, radar "
+            + this.radarParts.length + "/" + this.def.radarParts.length + " parts (" + RADAR_DRIVE + ")");
+    }
+
+    private initRadar(): void {
+        for (const d of this.def.radarParts) {
+            if (d.id === this.def.radarId && !RADAR_TURN_PILLAR) {
+                continue;
+            }
+            const map: V3 = [d.x, d.y, d.z];
+            const o: mod.SpatialObject | undefined = tryGet("site.getRadarPart", () => mod.GetSpatialObject(d.id));
+            const p: V3 | undefined = o === undefined ? undefined : readPos_2(o);
+            if (o === undefined || p === undefined || dist_2(p, map) > POS_MATCH_M) {
+                this.log("radar part " + d.id + " (" + d.name + ") not resolved (reads " + fmt(p) + "); it stays still");
+                continue;
+            }
+            this.radarParts.push({ id: d.id, name: d.name, obj: o, rest: map, basis: d.basis });
+        }
+    }
+
+    owns(at: mod.AreaTrigger): boolean {
+        return mod.GetObjId(at) === this.def.zoneId;
+    }
+
+    // The radar animation zone (x01): the radar is culled from view past
+    // ~190 m (owner, 2026-10-03), so it only turns while someone is inside.
+    ownsAnim(at: mod.AreaTrigger): boolean {
+        return mod.GetObjId(at) === this.def.animZoneId;
+    }
+
+    watch(pid: number, inside: boolean): void {
+        const was: number = this.watchers.size;
+        if (inside) {
+            this.watchers.add(pid);
+        } else {
+            this.watchers.delete(pid);
+        }
+        if (was === 0 && this.watchers.size > 0) {
+            this.say(LOG_EVENTS, () => "radar awake (pid " + pid + " entered the animation zone)");
+        } else if (was > 0 && this.watchers.size === 0) {
+            this.say(LOG_EVENTS, () => "radar asleep (animation zone empty)");
+        }
+    }
+
+    enter(p: mod.Player): void {
+        const pid: number = mod.GetObjId(p);
+        if (teamOf(p) === this.team) {
+            this.say(LOG_TRACE, () => "pid " + pid + " entered the zone (site's own team, ignored)");
+            return;
+        }
+        this.intruders[pid] = p;
+        this.say(LOG_TRACE, () => "pid " + pid + " entered the zone");
+    }
+
+    exit(p: mod.Player): void {
+        const pid: number = mod.GetObjId(p);
+        if (this.intruders[pid] !== undefined) {
+            delete this.intruders[pid];
+            this.say(LOG_TRACE, () => "pid " + pid + " left the zone");
+        }
+    }
+
+    gone(pid: number): void {
+        delete this.intruders[pid];
+        if (this.watchers.has(pid)) {
+            this.watch(pid, false);
+        }
+    }
+
+    // Live enemies in the zone. Everyone in one vehicle becomes a single
+    // intruder keyed "v<lowest pid aboard>", so a helicopter gets one rocket.
+    private liveIntruders(): { list: Intruder[]; byKey: { [key: string]: mod.Player } } {
+        const seen: Seen[] = [];
+        for (const k of Object.keys(this.intruders)) {
+            const pid: number = Number(k);
+            const p: mod.Player = this.intruders[pid];
+            const valid: boolean | undefined = tryGet("site.valid", () => mod.IsPlayerValid(p));
+            const alive: boolean | undefined = valid === true ? tryGet("site.alive", () => mod.GetSoldierState(p, mod.SoldierStateBool.IsAlive)) : undefined;
+            const action = memberAction(valid, alive);
+            if (action === "drop") {
+                delete this.intruders[pid];
+            }
+            if (action !== "keep") {
+                continue;
+            }
+            const pos: V3 | undefined = soldierPos(p);
+            if (pos === undefined) {
+                continue;
+            }
+            const inVehicle: boolean = tryGet("site.inVehicle", () => mod.GetSoldierState(p, mod.SoldierStateBool.IsInVehicle)) === true;
+            const vehicle: mod.Vehicle | undefined = inVehicle ? tryGet("site.vehicle", () => mod.GetVehicleFromPlayer(p)) : undefined;
+            seen.push({ pid, p, pos, vehicle });
+        }
+        seen.sort((a, b) => a.pid - b.pid);
+        const list: Intruder[] = [];
+        const byKey: { [key: string]: mod.Player } = {};
+        const vehicleKeys: mod.Vehicle[] = [];
+        for (const s of seen) {
+            let key: string = "p" + s.pid;
+            if (s.vehicle !== undefined) {
+                const v: mod.Vehicle = s.vehicle;
+                if (vehicleKeys.some(e => tryGet("site.sameVehicle", () => mod.Equals(e, v)) === true)) {
+                    continue;
+                }
+                vehicleKeys.push(v);
+                key = "v" + s.pid;
+            }
+            list.push({ key, pid: s.pid, x: s.pos[0], y: s.pos[1], z: s.pos[2] });
+            byKey[key] = s.p;
+        }
+        return { list, byKey };
+    }
+
+    // A launcher rocket reached the radar (launcher.ts schedules this for
+    // when the real rocket arrives).
+    hitBy(pid: number, launcher: string): void {
+        const res = this.health.hit();
+        if (res === "ignored") {
+            return;
+        }
+        this.say(LOG_EVENTS, () => "radar hit by pid " + pid + " (" + launcher + "): " + this.health.left + " of " + RADAR_HITS + " hits left");
+        if (res === "destroyed") {
+            this.destroy(pid);
+        }
+    }
+
+    // One shot that takes the radar down whatever its health (PowerStruggle's
+    // raygun).
+    destroyBy(pid: number, weapon: string): void {
+        if (!this.health.kill()) {
+            return;
+        }
+        this.log("radar hit by pid " + pid + " (" + weapon + "): destroyed in one shot");
+        this.destroy(pid);
+    }
+
+    // Owner: explosion, then the wreck effect; the radar stops where it is
+    // (it never tilts); the site is offline for the rest of the round.
+    // Rockets already in the air finish their flight.
+    private destroy(pid: number): void {
+        const now: number = Date.now();
+        this.log("radar DESTROYED: site offline for the rest of the round");
+        for (const fn of destroyListeners) {
+            safe_2("site.destroyed", () => fn(this.n, this.team, pid));
+        }
+        spawnVfx(ASSET.radarExplosion, this.radarAt, [0, 0, 0], BURST_LIFETIME_MS, now, true);
+        const at: V3 = this.radarAt;
+        Timers.setTimeout(() => {
+            safe_2("site.wreck", () => {
+                spawnVfx(ASSET.radarWreck, at, [0, 0, 0], WRECK_LIFETIME_MS, Date.now(), true);
+            });
+        }, RADAR_WRECK_DELAY_MS);
+        this.updateAlarm(false);
+        this.stopLockBeep();
+    }
+
+    tick(now: number, dt: number): void {
+        if (this.health.destroyed) {
+            return;
+        }
+        const { list, byKey } = this.liveIntruders();
+        const flying: number = airborne(this.n);
+        this.updateAlarm(this.alarmLinger.wanted(now, list.length > 0 || flying > 0));
+        // One site per player: whoever another site is tracking, launching at
+        // or has a rocket on is busy here.
+        const busy: Set<string> = busyFromOthers(allClaims(), this.n, list);
+        busyKeys(this.n, busy);
+        const silo: number = nextReadySilo(this.siloReadyAt, now, this.nextSilo);
+        const canFire: boolean = silo >= 0 && flying < MAX_ROCKETS_AIRBORNE;
+        for (const ev of this.lock.update(now, list, busy, this.radarAt, canFire)) {
+            if (ev.kind === "track") {
+                this.startTrack(ev.key, ev.pid, byKey[ev.key]);
+            } else if (ev.kind === "cancel") {
+                this.stopLockBeep();
+                this.say(LOG_EVENTS, () => "lock on " + ev.key + " cancelled (left the zone or died)");
+            } else {
+                this.fire(ev.key, ev.pid, byKey[ev.key], silo, now);
+            }
+        }
+        this.followLockBeep();
+        this.driveRadar(byKey, dt, now);
+    }
+
+    // The players this site has claimed. A destroyed site's lock no longer
+    // counts; its rockets still do until they land.
+    claims(): SiteClaims {
+        const pids: number[] = rocketTargets(this.n);
+        const t: number | null = this.lock.targetPid;
+        if (t !== null && !this.health.destroyed) {
+            pids.push(t);
+        }
+        return { site: this.n, pids };
+    }
+
+    private updateAlarm(on: boolean): void {
+        const at: V3 = this.def.gridCentre;
+        if (on && this.alarm === undefined) {
+            this.alarm = spawnSfx(ASSET.alarm, at, true);
+            if (this.alarm !== undefined) {
+                playAt(this.alarm, at, ALARM_AMP, ALARM_RANGE_M);
+                this.say(LOG_TRACE, () => "alarm on");
+            }
+        } else if (!on && this.alarm !== undefined) {
+            stopSfx(this.alarm);
+            this.alarm = undefined;
+            this.say(LOG_TRACE, () => "alarm off");
+        }
+    }
+
+    // Bomb beeping for a vehicle target only, heard by that player only.
+    private startTrack(key: string, pid: number, p: mod.Player | undefined): void {
+        this.say(LOG_EVENTS, () => "tracking " + key + " (pid " + pid + "), lock in " + LOCK_MS + " ms");
+        this.stopLockBeep();
+        if (p === undefined || key.charAt(0) !== "v") {
+            return;
+        }
+        const pos: V3 | undefined = soldierPos(p);
+        if (pos === undefined) {
+            return;
+        }
+        this.lockBeep = spawnSfx(ASSET.lockBeep, pos, true);
+        if (this.lockBeep !== undefined) {
+            playAt(this.lockBeep, pos, BEEP_AMP, BEEP_RANGE_M, p);
+            this.lockBeepFor = p;
+        }
+    }
+
+    private followLockBeep(): void {
+        if (this.lockBeep === undefined || this.lockBeepFor === undefined) {
+            return;
+        }
+        const pos: V3 | undefined = soldierPos(this.lockBeepFor);
+        if (pos !== undefined) {
+            moveSfx(this.lockBeep, pos);
+        }
+    }
+
+    private stopLockBeep(): void {
+        if (this.lockBeep !== undefined) {
+            stopSfx(this.lockBeep);
+        }
+        this.lockBeep = undefined;
+        this.lockBeepFor = undefined;
+    }
+
+    private fire(key: string, pid: number, p: mod.Player | undefined, idx: number, now: number): void {
+        this.stopLockBeep();
+        if (p === undefined || idx < 0) {
+            return;
+        }
+        const s: SiloDef = this.silos[idx];
+        this.nextSilo = (idx + 1) % this.silos.length;
+        this.siloReadyAt[idx] = now + SILO_RELOAD_MS;
+        spawnVfx(ASSET.shockwave, this.def.gridCentre, [0, 0, 0], VFX_LIFETIME_MS, now, true);
+        this.pillars[idx] = spawnVfx(ASSET.pillar, [s.x, s.y, s.z], [0, 0, 0], PILLAR_MAX_MS, now, true);
+        this.say(LOG_EVENTS, () => "fire at " + key + " from silo " + s.siloId);
+        launchRocket(this.n, s, p, pid, key, now);
+        Timers.setTimeout(() => {
+            safe_2("site.pillar", () => this.stopPillar(idx));
+        }, PILLAR_MS);
+    }
+
+    private stopPillar(idx: number): void {
+        const v: mod.VFX | undefined = this.pillars[idx];
+        if (v !== undefined) {
+            stopVfx(v);
+        }
+        this.pillars[idx] = undefined;
+    }
+
+    // Tracks the locked target, else the newest rocket's target, else
+    // sweeps. Turns only (no tilt). Each draw sets every part of the radar,
+    // so a tracking radar is drawn every RADAR_TRACK_UPDATE_MS and a sweeping
+    // one (or any, while the server struggles) every RADAR_IDLE_UPDATE_MS,
+    // and only while a player is in the site's animation zone; otherwise the
+    // radar holds still.
+    private driveRadar(byKey: { [key: string]: mod.Player }, dt: number, now: number): void {
+        if (this.radarParts.length === 0 || RADAR_DRIVE === "off" || this.watchers.size === 0) {
+            return;
+        }
+        const key: string | null = this.lock.target;
+        let target: V3 | undefined = key !== null && byKey[key] !== undefined ? soldierPos(byKey[key]) : undefined;
+        if (target === undefined) {
+            target = newestAim(this.n);
+        }
+        const wantYaw: number = target !== undefined
+            ? aimDeg(this.radarAt, target).yaw + RADAR_YAW_OFFSET_DEG
+            : this.radarYaw + RADAR_SWEEP_DEG_PER_S * dt;
+        this.radarYaw = wrapDeg(stepAngleDeg(this.radarYaw, wantYaw, RADAR_SLEW_DEG_PER_S * dt));
+        if (this.drawnYaw !== undefined && Math.abs(wrapDeg(this.radarYaw - this.drawnYaw)) < RADAR_MIN_STEP_DEG) {
+            return;
+        }
+        if (now < this.nextDrawAt) {
+            return;
+        }
+        const struggling: boolean = PerformanceStats.getSpotHealthFactor() < RADAR_HEALTH_MIN;
+        this.nextDrawAt = now + (target !== undefined && !struggling ? RADAR_TRACK_UPDATE_MS : RADAR_IDLE_UPDATE_MS);
+        this.drawnYaw = this.radarYaw;
+        for (const part of this.radarParts) {
+            const pose: PartPose = yawPart(this.radarAt, part.rest, part.basis, this.radarYaw * DEG);
+            setTransform(part.obj, pose.pos, engFromRad(pose.rot), "site.radarPart");
+        }
+        this.traceRadar(now);
+    }
+
+    // Logs one moving part's read-back pose against the pose sent, a few
+    // times across all sites.
+    private traceRadar(now: number): void {
+        if (!logOn(LOG_TRACE) || radarTraceLeft <= 0 || now < nextRadarTraceAt) {
+            return;
+        }
+        radarTraceLeft--;
+        nextRadarTraceAt = now + RADAR_TRACE_EVERY_MS;
+        const part: RadarPart = this.radarParts.find(p => p.id !== this.def.radarId) ?? this.radarParts[0];
+        const want: PartPose = yawPart(this.radarAt, part.rest, part.basis, this.radarYaw * DEG);
+        this.say(LOG_TRACE, () => "radar yaw " + this.radarYaw.toFixed(0) + ": " + part.name + " reads pos " + fmt(readPos_2(part.obj)) + " rot " + fmt(readRot(part.obj))
+            + " (sent pos " + fmt(want.pos) + " rot " + fmt(engFromRad(want.rot)) + ")");
+    }
+}
+
+const sites: Site[] = [];
+
+// Told when a radar goes down: (site number, the site's team, the shooter).
+export type RadarDestroyedListener = (n: number, team: number, pid: number) => void;
+const destroyListeners: RadarDestroyedListener[] = [];
+
+export function onRadarDestroyed(fn: RadarDestroyedListener): void {
+    destroyListeners.push(fn);
+}
+
+function allClaims(): SiteClaims[] {
+    return sites.map(s => s.claims());
+}
+
+export function initSites(): void {
+    SITES.forEach((def, i) => {
+        const site: Site = new Site(def, (RADAR_IDLE_UPDATE_MS * i) / Math.max(1, SITES.length));
+        sites.push(site);
+        safe_2("site.init", () => site.init());
+    });
+    log_2("site", sites.length + " sites: " + sites.map(s => s.n + " (team " + s.team + ")").join(", "));
+}
+
+export function teamOf(p: mod.Player): number {
+    return tryGet("site.team", () => mod.GetObjId(mod.GetTeam(p))) ?? 0;
+}
+
+export function onEnter_2(p: mod.Player, at: mod.AreaTrigger): void {
+    for (const s of sites) {
+        if (s.owns(at)) {
+            s.enter(p);
+        } else if (s.ownsAnim(at)) {
+            s.watch(mod.GetObjId(p), true);
+        }
+    }
+}
+
+export function onExit_2(p: mod.Player, at: mod.AreaTrigger): void {
+    for (const s of sites) {
+        if (s.owns(at)) {
+            s.exit(p);
+        } else if (s.ownsAnim(at)) {
+            s.watch(mod.GetObjId(p), false);
+        }
+    }
+}
+
+export function onGone(pid: number): void {
+    for (const s of sites) {
+        s.gone(pid);
+    }
+}
+
+// Separate guards: one failing site must not stop the others.
+export function tickSites(now: number, dt: number): void {
+    for (const s of sites) {
+        safe_2("tick.site" + s.n, () => s.tick(now, dt));
+    }
+}
+
+// Radars still standing, for launcher.ts.
+export function liveRadars(): RadarTarget[] {
+    return sites.filter(s => !s.health.destroyed).map(s => ({ n: s.n, team: s.team, pos: s.def.radarPos }));
+}
+
+export function radarHitBy(n: number, pid: number, launcher: string): void {
+    const s: Site | undefined = sites.find(e => e.n === n);
+    if (s !== undefined) {
+        s.hitBy(pid, launcher);
+    }
+}
+
+export function destroyRadarBy(n: number, pid: number, weapon: string): void {
+    const s: Site | undefined = sites.find(e => e.n === n);
+    if (s !== undefined) {
+        s.destroyBy(pid, weapon);
+    }
+}
+
+
+// --- SOURCE: src\rocketsites\players.ts ---
+
+
+
+
+// Players who are deployed (OnPlayerDeployed until OnPlayerDied or leaving).
+// Reading a soldier state of a player on the deploy screen throws
+// PlayerNotDeployed: 223 of them in the 2026-10-03 14:14 log. The team is
+// read once per deploy, and positions once per tick.
+
+interface Deployed {
+    p: mod.Player;
+    pid: number;
+    team: number;
+}
+
+export interface Located extends Deployed {
+    pos: V3;
+}
+
+const deployed_2: { [pid: number]: Deployed } = {};
+let posTick: number = -1;
+let located: Located[] = [];
+
+export function markDeployed(p: mod.Player): void {
+    const pid: number = mod.GetObjId(p);
+    const team: number = tryGet("players.team", () => mod.GetObjId(mod.GetTeam(p))) ?? 0;
+    deployed_2[pid] = { p, pid, team };
+}
+
+export function markUndeployed(pid: number): void {
+    delete deployed_2[pid];
+}
+
+export function deployedCount(): number {
+    return Object.keys(deployed_2).length;
+}
+
+// Every deployed soldier with its position, read once per tick.
+export function deployedNow(tick: number): Located[] {
+    if (tick !== posTick) {
+        posTick = tick;
+        located = [];
+        for (const k of Object.keys(deployed_2)) {
+            const d: Deployed = deployed_2[Number(k)];
+            const pos: V3 | undefined = soldierPos(d.p);
+            if (pos !== undefined) {
+                located.push({ p: d.p, pid: d.pid, team: d.team, pos });
+            }
+        }
+    }
+    return located;
+}
+
+
+// --- SOURCE: node_modules\bf6-portal-utils\raycast\index.ts ---
+
+
+
+
+
+// version: 3.0.0
+export namespace Raycast {
+    const logging = new Logging('Raycast');
+
+    /**
+     * A re-export of the `Logging.LogLevel` enum.
+     */
+    export const LogLevel = Logging.LogLevel;
+
+    /**
+     * Attaches a logger and defines a minimum log level and whether to attempt to append a string form of the error to
+     * the text of the log message.
+     * @param log - The logger function: `(formattedText, error?) => void | Promise<void>`. `error` is the same value
+     *              passed to `log()` (if any), for inspection (e.g. `instanceof Error`, `stack`). `formattedText` may
+     *              also include ` - Error: …` when `includeRawError` is true.
+     * @param logLevel - The minimum log level to use.
+     * @param includeRawError - When true and `log()` receives an error, attempts to append a string form of the error
+     *                          to the text of the log message.
+     */
+    export function setLogging(
+        log?: (text: string, error?: unknown) => Promise<void> | void,
+        logLevel?: Logging.LogLevel,
+        includeRawError?: boolean
+    ): void {
+        logging.setLogging(log, logLevel, includeRawError);
+    }
+
+    /**
+     * A re-export of the `Vectors.Vector3` type.
+     */
+    export type Vector3 = Vectors.Vector3;
+
+    /**
+     * A callback function type for ray hits or misses.
+     * @param hit - True if the ray struck geometry, false if missed or timed out.
+     * @param hitPoint - The intersection point (defined when hit is true).
+     * @param hitNormal - The surface normal at the intersection (defined when hit is true).
+     */
+    export type RaycastCallback = (hit: boolean, hitPoint?: Vector3, hitNormal?: Vector3) => Promise<void> | void;
+
+    /**
+     * Options for raycast dispatch and lifecycle management.
+     */
+    export interface CastOptions {
+        /** Request priority level (default: Priority.Standard). */
+        priority?: Priority;
+        /** Maximum age in server ticks before this request is automatically dropped if not yet dispatched. */
+        maxAgeTicks?: number;
+        /** Maximum age in milliseconds before this request is automatically dropped if not yet dispatched. */
+        timeoutMs?: number;
+    }
+
+    /**
+     * Unique generation-encoded identifier for an enqueued or in-flight raycast request.
+     */
+    export type RaycastID = number & { readonly __brand: 'RaycastID' };
+
+    /**
+     * Constant representing an invalid/unallocated RaycastID.
+     */
+    export const INVALID_RAYCAST_ID = -1 as RaycastID;
+
+    /**
+     * Priority levels for raycast requests.
+     */
+    export const enum Priority {
+        /** Immediate player actions: weapon hitscans, grapple hooks, instant melee (front of queue). */
+        Critical = 0,
+        /** Time-sensitive simulation: dynamic physics collision sweeps, terrain probes, anti-tunneling. */
+        Physics = 1,
+        /** Default: general gameplay scripts, placement previews, custom trigger logic, line-of-sight. */
+        Standard = 2,
+        /** Low-urgency background tasks: distant AI perception, audio occlusion probes, cosmetic FX. */
+        Ambient = 3,
+    }
+
+    const NUM_PRIORITIES = 4;
+    const DEFAULT_PRIORITY = Priority.Standard;
+
+    const MAX_PLAYERS = 100;
+    const GLOBAL_SLOT_INDEX = 100; // Slot index for player-less global raycasts
+    const TOTAL_WORKER_SLOTS = 101; // 0..99 for players, 100 for global
+
+    const QUEUE_CAPACITY = 512;
+    const TOTAL_QUEUE_ENTRIES = QUEUE_CAPACITY * NUM_PRIORITIES;
+    const MAX_GENERATIONS = 65_535;
+    const GENERATION_MULTIPLIER = 10_000;
+    const TIMEOUT_MS = 2_000;
+    const SERVER_START_TIME = Date.now();
+
+    const FLAG_IN_FLIGHT = 1 << 0;
+    const FLAG_PLAYER_CONNECTED = 1 << 1;
+    const FLAG_CANCELED = 1 << 2;
+
+    // --- Circular Ring Buffers for 4 Priority Levels (32-bit Float Coordinate Storage) ---
+    const _queueHead = new Uint16Array(NUM_PRIORITIES);
+    const _queueTail = new Uint16Array(NUM_PRIORITIES);
+    const _queueCount = new Uint16Array(NUM_PRIORITIES);
+    let _totalQueueCount = 0;
+
+    const _queueStartX = new Float32Array(TOTAL_QUEUE_ENTRIES);
+    const _queueStartY = new Float32Array(TOTAL_QUEUE_ENTRIES);
+    const _queueStartZ = new Float32Array(TOTAL_QUEUE_ENTRIES);
+    const _queueEndX = new Float32Array(TOTAL_QUEUE_ENTRIES);
+    const _queueEndY = new Float32Array(TOTAL_QUEUE_ENTRIES);
+    const _queueEndZ = new Float32Array(TOTAL_QUEUE_ENTRIES);
+    const _queueFlags = new Uint8Array(TOTAL_QUEUE_ENTRIES);
+    const _queueGenerations = new Uint16Array(TOTAL_QUEUE_ENTRIES);
+    const _queueExpiryTick = new Uint32Array(TOTAL_QUEUE_ENTRIES);
+    const _queueExpiryTime = new Uint32Array(TOTAL_QUEUE_ENTRIES);
+    const _queueCallback = new Array<RaycastCallback | null>(TOTAL_QUEUE_ENTRIES);
+
+    // --- In-Flight Worker Slots (0..99: player ID, 100: global) ---
+    let _inFlightCount = 0;
+    let _initializedPlayers = false;
+    let _currentTick = 0;
+
+    const _inFlightFlags = new Uint8Array(TOTAL_WORKER_SLOTS);
+    const _inFlightCallback = new Array<RaycastCallback | null>(TOTAL_WORKER_SLOTS);
+    const _inFlightTimestamp = new Uint32Array(TOTAL_WORKER_SLOTS);
+    const _inFlightRayIds = new Int32Array(TOTAL_WORKER_SLOTS).fill(INVALID_RAYCAST_ID);
+
+    function getUptime(): number {
+        return Date.now() - SERVER_START_TIME;
+    }
+
+    function _setFlag(slotIndex: number, flag: number): void {
+        _inFlightFlags[slotIndex] |= flag;
+    }
+
+    function _clearFlag(slotIndex: number, flag: number): void {
+        _inFlightFlags[slotIndex] &= ~flag;
+    }
+
+    function _isInFlight(slotIndex: number): boolean {
+        return (_inFlightFlags[slotIndex] & FLAG_IN_FLIGHT) !== 0;
+    }
+
+    function _isConnected(slotIndex: number): boolean {
+        return (_inFlightFlags[slotIndex] & FLAG_PLAYER_CONNECTED) !== 0;
+    }
+
+    function _getSlotIndex(eventPlayer: mod.Player): number {
+        try {
+            const objId = mod.GetObjId(eventPlayer);
+            return objId >= 0 && objId < MAX_PLAYERS ? objId : GLOBAL_SLOT_INDEX;
+        } catch {
+            return GLOBAL_SLOT_INDEX;
+        }
+    }
+
+    // Subscribed to OnTickStart at priority Normal (0) to dispatch queued raycast requests to the engine
+    // as early in the frame as possible, allowing ray hits/misses to be resolved promptly.
+    Events.OnTickStart.subscribe(_handleOngoingGlobal);
+    Events.OnRayCastHit.subscribe(_handleHit);
+    Events.OnRayCastMissed.subscribe(_handleMiss);
+    Events.OnPlayerJoinGame.subscribe(_handlePlayerJoin);
+    Events.OnPlayerLeaveGame.subscribe(_handlePlayerLeave);
+
+    function _handlePlayerJoin(player: mod.Player): void {
+        const playerId = mod.GetObjId(player);
+
+        if (playerId >= 0 && playerId < MAX_PLAYERS) {
+            _setFlag(playerId, FLAG_PLAYER_CONNECTED);
+        }
+    }
+
+    function _handlePlayerLeave(playerId: number): void {
+        if (playerId >= 0 && playerId < MAX_PLAYERS) {
+            _clearFlag(playerId, FLAG_PLAYER_CONNECTED);
+        }
+    }
+
+    function _initConnectedPlayers(): void {
+        _initializedPlayers = true;
+
+        const all = mod.AllPlayers();
+        const count = mod.CountOf(all);
+
+        for (let i = 0; i < count; ++i) {
+            const id = mod.GetObjId(mod.ValueInArray(all, i) as mod.Player);
+
+            if (id >= 0 && id < MAX_PLAYERS) {
+                _setFlag(id, FLAG_PLAYER_CONNECTED);
+            }
+        }
+    }
+
+    function _freeSlot(slotIndex: number): void {
+        _clearFlag(slotIndex, FLAG_IN_FLIGHT | FLAG_CANCELED);
+        _inFlightCallback[slotIndex] = null;
+        _inFlightTimestamp[slotIndex] = 0;
+        _inFlightRayIds[slotIndex] = INVALID_RAYCAST_ID;
+
+        if (_inFlightCount > 0) {
+            --_inFlightCount;
+        }
+    }
+
+    function _dequeue(prio: number, head: number): void {
+        _queueCallback[head] = null;
+        _queueExpiryTick[head] = 0;
+        _queueExpiryTime[head] = 0;
+        _queueFlags[head] = 0;
+        _queueHead[prio] = (_queueHead[prio] + 1) % QUEUE_CAPACITY;
+        --_queueCount[prio];
+        --_totalQueueCount;
+    }
+
+    function _getEntryIndex(id: RaycastID): number {
+        if (typeof id !== 'number' || id <= 0) return -1;
+
+        const entryIndex = id % GENERATION_MULTIPLIER;
+
+        if (entryIndex < 0 || entryIndex >= TOTAL_QUEUE_ENTRIES) return -1;
+
+        const expectedGen = (id - entryIndex) / GENERATION_MULTIPLIER - 1;
+
+        if (expectedGen !== _queueGenerations[entryIndex]) return -1;
+
+        return entryIndex;
+    }
+
+    function _checkTimeouts(now: number): void {
+        for (let i = 0; i < TOTAL_WORKER_SLOTS; ++i) {
+            if (!_isInFlight(i)) continue;
+
+            if (now - _inFlightTimestamp[i] <= TIMEOUT_MS) continue;
+
+            const callback = _inFlightCallback[i];
+            const isCanceled = (_inFlightFlags[i] & FLAG_CANCELED) !== 0;
+            _freeSlot(i);
+
+            if (callback && !isCanceled) {
+                CallbackHandler.invoke(callback, false, undefined, undefined, undefined, logging, 'timeout');
+            }
+        }
+    }
+
+    function _tryDispatchSlot(slotIndex: number, player: mod.Player | null, now: number): boolean {
+        if (_totalQueueCount === 0) return false;
+
+        let prio = 0;
+
+        while (prio < NUM_PRIORITIES) {
+            if (_queueCount[prio] === 0) {
+                ++prio;
+                continue;
+            }
+
+            const head = prio * QUEUE_CAPACITY + _queueHead[prio];
+            const flags = _queueFlags[head];
+            const callback = _queueCallback[head];
+
+            // If ray was canceled while sitting in queue, discard without native dispatch
+            if ((flags & FLAG_CANCELED) !== 0 || callback === null) {
+                _dequeue(prio, head);
+                continue;
+            }
+
+            // If ray exceeded its queue deadline, discard without native dispatch
+            const expiryTick = _queueExpiryTick[head];
+            const expiryTime = _queueExpiryTime[head];
+
+            if ((expiryTick !== 0 && _currentTick > expiryTick) || (expiryTime !== 0 && now > expiryTime)) {
+                _dequeue(prio, head);
+                continue;
+            }
+
+            try {
+                const startVec = mod.CreateVector(_queueStartX[head], _queueStartY[head], _queueStartZ[head]);
+                const endVec = mod.CreateVector(_queueEndX[head], _queueEndY[head], _queueEndZ[head]);
+
+                if (player !== null) {
+                    mod.RayCast(player, startVec, endVec);
+                } else {
+                    mod.RayCast(startVec, endVec);
+                }
+            } catch (error: unknown) {
+                logging.log(`Failed to dispatch raycast for slot ${slotIndex}`, Logging.LogLevel.Warning, error);
+
+                if (player !== null) {
+                    _clearFlag(slotIndex, FLAG_PLAYER_CONNECTED);
+                }
+
+                return false;
+            }
+
+            _dequeue(prio, head);
+
+            _setFlag(slotIndex, FLAG_IN_FLIGHT);
+            _inFlightCallback[slotIndex] = callback;
+            _inFlightTimestamp[slotIndex] = now;
+            _inFlightRayIds[slotIndex] = ((_queueGenerations[head] + 1) * GENERATION_MULTIPLIER + head) as RaycastID;
+            ++_inFlightCount;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    function _handleOngoingGlobal(): void {
+        ++_currentTick;
+        const now = getUptime();
+
+        if (_inFlightCount > 0) {
+            _checkTimeouts(now);
+        }
+
+        if (_totalQueueCount === 0) return;
+
+        if (!_initializedPlayers) {
+            _initConnectedPlayers();
+        }
+
+        // 1. Dispatch global player-less slot if idle
+        if (!_isInFlight(GLOBAL_SLOT_INDEX)) {
+            _tryDispatchSlot(GLOBAL_SLOT_INDEX, null, now);
+        }
+
+        // 2. Dispatch available player slots
+        for (let playerId = 0; playerId < MAX_PLAYERS; ++playerId) {
+            if (_totalQueueCount === 0) break;
+
+            if (!_isConnected(playerId) || _isInFlight(playerId)) continue;
+
+            const player = mod.GetPlayer(playerId);
+
+            if (player === undefined) {
+                _clearFlag(playerId, FLAG_PLAYER_CONNECTED);
+                continue;
+            }
+
+            _tryDispatchSlot(playerId, player, now);
+        }
+    }
+
+    function _handleHit(eventPlayer: mod.Player, eventPoint: mod.Vector, eventNormal: mod.Vector): void {
+        const slotIndex = _getSlotIndex(eventPlayer);
+
+        if (!_isInFlight(slotIndex)) return;
+
+        const isCanceled = (_inFlightFlags[slotIndex] & FLAG_CANCELED) !== 0;
+        const callback = _inFlightCallback[slotIndex];
+
+        _freeSlot(slotIndex);
+
+        if (!callback || isCanceled) return;
+
+        CallbackHandler.invoke(
+            callback,
+            true,
+            Vectors.toVector3(eventPoint),
+            Vectors.toVector3(eventNormal),
+            undefined,
+            logging,
+            'callback'
+        );
+    }
+
+    function _handleMiss(eventPlayer: mod.Player): void {
+        const slotIndex = _getSlotIndex(eventPlayer);
+
+        if (!_isInFlight(slotIndex)) return;
+
+        const isCanceled = (_inFlightFlags[slotIndex] & FLAG_CANCELED) !== 0;
+        const callback = _inFlightCallback[slotIndex];
+
+        _freeSlot(slotIndex);
+
+        if (!callback || isCanceled) return;
+
+        CallbackHandler.invoke(callback, false, undefined, undefined, undefined, logging, 'callback');
+    }
+
+    /**
+     * Casts a ray with a unified callback `(hit, hitPoint?, hitNormal?) => void`.
+     * Requests are queued and dispatched across available worker slots strictly in priority order
+     * (`Critical` -> `Physics` -> `Standard` -> `Ambient`).
+     * @param start - The start position of the ray.
+     * @param end - The end position of the ray.
+     * @param callback - The callback invoked upon hit, miss, or timeout.
+     * @param options - Optional priority level, maxAgeTicks, or timeoutMs.
+     * @returns The unique RaycastID handle, or null if rejected.
+     */
+    export function cast(
+        start: Vector3,
+        end: Vector3,
+        callback: RaycastCallback,
+        options?: CastOptions
+    ): RaycastID | null {
+        const prio =
+            options?.priority !== undefined &&
+            options.priority >= Priority.Critical &&
+            options.priority <= Priority.Ambient
+                ? options.priority
+                : DEFAULT_PRIORITY;
+
+        if (_queueCount[prio] >= QUEUE_CAPACITY) {
+            logging.log(`Queue for priority ${prio} is full`, Logging.LogLevel.Error);
+            return null;
+        }
+
+        const tail = prio * QUEUE_CAPACITY + _queueTail[prio];
+        _queueStartX[tail] = start.x;
+        _queueStartY[tail] = start.y;
+        _queueStartZ[tail] = start.z;
+        _queueEndX[tail] = end.x;
+        _queueEndY[tail] = end.y;
+        _queueEndZ[tail] = end.z;
+        _queueFlags[tail] = 0;
+        _queueCallback[tail] = callback;
+
+        _queueExpiryTick[tail] =
+            options?.maxAgeTicks && options.maxAgeTicks > 0 ? _currentTick + options.maxAgeTicks : 0;
+
+        _queueExpiryTime[tail] = options?.timeoutMs && options.timeoutMs > 0 ? getUptime() + options.timeoutMs : 0;
+
+        if (_queueGenerations[tail] < MAX_GENERATIONS) {
+            _queueGenerations[tail]++;
+        } else {
+            _queueGenerations[tail] = 0;
+        }
+
+        const id = ((_queueGenerations[tail] + 1) * GENERATION_MULTIPLIER + tail) as RaycastID;
+
+        _queueTail[prio] = (_queueTail[prio] + 1) % QUEUE_CAPACITY;
+        ++_queueCount[prio];
+        ++_totalQueueCount;
+
+        return id;
+    }
+
+    /**
+     * Updates the start and end coordinates (and optional deadline options) of an enqueued raycast in-place.
+     * Preserves the ray's priority position in the queue.
+     * @param id - The RaycastID to update.
+     * @param start - The new start coordinate vector.
+     * @param end - The new end coordinate vector.
+     * @param options - Optional updated timeout/expiry options (calculated relative to current tick/time).
+     * @returns True if successfully updated in the queue, false if invalid, completed, or already in flight.
+     */
+    export function update(id: RaycastID, start: Vector3, end: Vector3, options?: CastOptions): boolean {
+        const entryIndex = _getEntryIndex(id);
+
+        if (entryIndex === -1) return false;
+
+        // If already in flight on a worker slot, native engine execution cannot be altered
+        for (let s = 0; s < TOTAL_WORKER_SLOTS; ++s) {
+            if (_isInFlight(s) && _inFlightRayIds[s] === id) return false;
+        }
+
+        // Must be currently active in queue
+        if (_queueCallback[entryIndex] === null || (_queueFlags[entryIndex] & FLAG_CANCELED) !== 0) return false;
+
+        _queueStartX[entryIndex] = start.x;
+        _queueStartY[entryIndex] = start.y;
+        _queueStartZ[entryIndex] = start.z;
+        _queueEndX[entryIndex] = end.x;
+        _queueEndY[entryIndex] = end.y;
+        _queueEndZ[entryIndex] = end.z;
+        _queueFlags[entryIndex] = 0;
+
+        if (options !== undefined) {
+            if (options.maxAgeTicks !== undefined) {
+                _queueExpiryTick[entryIndex] = options.maxAgeTicks > 0 ? _currentTick + options.maxAgeTicks : 0;
+            }
+
+            if (options.timeoutMs !== undefined) {
+                _queueExpiryTime[entryIndex] = options.timeoutMs > 0 ? getUptime() + options.timeoutMs : 0;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Cancels an enqueued or in-flight raycast request.
+     * If the ray is still in the queue, it is dropped so native `mod.RayCast` is skipped.
+     * If the ray is already in-flight in the native engine, its callback is suppressed upon resolution.
+     * @param id - The RaycastID to cancel.
+     * @returns True if the raycast was successfully marked canceled, false if invalid or already completed.
+     */
+    export function cancel(id: RaycastID): boolean {
+        const entryIndex = _getEntryIndex(id);
+
+        if (entryIndex === -1) return false;
+
+        // 1. Check if currently in-flight on a worker slot
+        for (let s = 0; s < TOTAL_WORKER_SLOTS; ++s) {
+            if (!_isInFlight(s) || _inFlightRayIds[s] !== id) continue;
+
+            if ((_inFlightFlags[s] & FLAG_CANCELED) !== 0) return false;
+
+            _setFlag(s, FLAG_CANCELED);
+            _inFlightCallback[s] = null;
+
+            return true;
+        }
+
+        // 2. Check if currently waiting in the queue
+        if (_queueCallback[entryIndex] === null) return false;
+
+        if ((_queueFlags[entryIndex] & FLAG_CANCELED) !== 0) return false;
+
+        _queueFlags[entryIndex] |= FLAG_CANCELED;
+        _queueCallback[entryIndex] = null;
+        _queueExpiryTick[entryIndex] = 0;
+        _queueExpiryTime[entryIndex] = 0;
+
+        return true;
+    }
+
+    /**
+     * Checks whether a RaycastID is currently active (either waiting in queue or in-flight on a worker slot).
+     * Returns false if the request has completed, was canceled, expired, or was never allocated.
+     * @param id - The RaycastID to query.
+     * @returns True if active, false otherwise.
+     */
+    export function isActive(id: RaycastID): boolean {
+        const entryIndex = _getEntryIndex(id);
+
+        if (entryIndex === -1) return false;
+
+        // 1. Check if currently in-flight on a worker slot
+        for (let s = 0; s < TOTAL_WORKER_SLOTS; ++s) {
+            if (_isInFlight(s) && _inFlightRayIds[s] === id) {
+                return (_inFlightFlags[s] & FLAG_CANCELED) === 0;
+            }
+        }
+
+        // 2. Check if active in queue (has callback, not canceled, and not expired)
+        if (_queueCallback[entryIndex] === null || (_queueFlags[entryIndex] & FLAG_CANCELED) !== 0) {
+            return false;
+        }
+
+        const expiryTick = _queueExpiryTick[entryIndex];
+        const expiryTime = _queueExpiryTime[entryIndex];
+
+        if ((expiryTick !== 0 && _currentTick > expiryTick) || (expiryTime !== 0 && getUptime() > expiryTime)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Gets the number of currently queued raycast requests (globally or for a specific priority).
+     * @param priority - Optional priority level to query. If omitted, returns total across all priority levels.
+     * @returns The number of queued raycasts awaiting dispatch.
+     */
+    export function getPendingRayCount(priority?: Priority): number {
+        return priority === undefined
+            ? _totalQueueCount
+            : priority >= Priority.Critical && priority <= Priority.Ambient
+              ? _queueCount[priority]
+              : 0;
+    }
+
+    /**
+     * Gets the number of currently in-flight raycast requests.
+     * @returns The number of dispatched raycasts awaiting physics engine resolution.
+     */
+    export function getInFlightRayCount(): number {
+        return _inFlightCount;
+    }
+}
+
+
+// --- SOURCE: src\rocketsites\raygeom.ts ---
+// Ray geometry for launcher shots at the radar, kept free of mod.* so
+// scripts/test-shot.js can test it in Node. Same method as PowerStruggle's
+// Rorsch turret test (PowerStruggle/src/raygeom.ts): mod.RayCast can pass
+// through models, so a hit is the ray's PATH crossing an upright cylinder
+// around the target, or its hit point landing next to the target.
+
+// True when the segment start + dir * [0, len] passes through the vertical
+// cylinder of the given radius around (cx, cz), spanning cy - below to
+// cy + above. dir must be normalised. (Copied from PowerStruggle.)
+export function rayThroughUpright(
+    sx: number, sy: number, sz: number,
+    dx: number, dy: number, dz: number,
+    len: number,
+    cx: number, cy: number, cz: number,
+    radius: number, below: number, above: number
+): boolean {
+    // Horizontal part: the s range where the ray is within radius of the axis.
+    const ox: number = sx - cx;
+    const oz: number = sz - cz;
+    const a: number = dx * dx + dz * dz;
+    const c: number = ox * ox + oz * oz - radius * radius;
+    let s0: number;
+    let s1: number;
+    if (a < 1e-9) {
+        // Straight up or down: inside the circle for the whole ray, or never.
+        if (c > 0) {
+            return false;
+        }
+        s0 = 0;
+        s1 = len;
+    } else {
+        const b: number = ox * dx + oz * dz;
+        const disc: number = b * b - a * c;
+        if (disc < 0) {
+            return false;
+        }
+        const root: number = Math.sqrt(disc);
+        s0 = (-b - root) / a;
+        s1 = (-b + root) / a;
+    }
+    if (s0 < 0) {
+        s0 = 0;
+    }
+    if (s1 > len) {
+        s1 = len;
+    }
+    if (s0 > s1) {
+        return false;
+    }
+    // Vertical part: y is linear in s, so the highest and lowest points of that
+    // stretch are its ends.
+    const y0: number = sy + dy * s0;
+    const y1: number = sy + dy * s1;
+    const lo: number = y0 < y1 ? y0 : y1;
+    const hi: number = y0 < y1 ? y1 : y0;
+    return hi >= cy - below && lo <= cy + above;
+}
+
+export interface RadarHitShape {
+    radius: number;
+    below: number;
+    above: number;
+    pointRadius: number;
+}
+
+// len is how far the ray got (it stops at cover); hit is where it stopped,
+// or undefined when it hit nothing.
+export function radarShotHits(
+    start: number[], dir: number[], len: number, hit: number[] | undefined, radar: number[], shape: RadarHitShape
+): boolean {
+    if (rayThroughUpright(start[0], start[1], start[2], dir[0], dir[1], dir[2], len,
+        radar[0], radar[1], radar[2], shape.radius, shape.below, shape.above)) {
+        return true;
+    }
+    if (hit === undefined) {
+        return false;
+    }
+    return Math.hypot(hit[0] - radar[0], hit[1] - radar[1], hit[2] - radar[2]) <= shape.pointRadius;
+}
+
+// Several radars: the index of the one the shot hits nearest the shooter,
+// or -1. A ray that stops at cover cannot reach the radars behind it.
+export function pickRadar(
+    start: number[], dir: number[], len: number, hit: number[] | undefined, radars: number[][], shape: RadarHitShape
+): number {
+    let best: number = -1;
+    let bestDist: number = Infinity;
+    radars.forEach((radar, i) => {
+        if (!radarShotHits(start, dir, len, hit, radar, shape)) {
+            return;
+        }
+        const d: number = Math.hypot(radar[0] - start[0], radar[1] - start[1], radar[2] - start[2]);
+        if (d < bestDist) {
+            best = i;
+            bestDist = d;
+        }
+    });
+    return best;
+}
+
+
+// --- SOURCE: src\rocketsites\launcher.ts ---
+
+
+
+
+
+
+
+
+
+
+
+// Launcher shots at the radar, the PowerStruggle Rorsch-turret method: on
+// the shot, cast mod.RayCast along the shooter's aim; the radar is hit when
+// the ray's path crosses an upright cylinder around it (RayCast can pass
+// through models) or the ray stops next to it. A launcher fires on the
+// press, so the shot is IsFiring's rising edge with an allowed launcher up.
+// The ray starts RAY_START_OFFSET_M out, past the shooter's own rocket, and
+// the path is judged from the eye so close shots still count. With several
+// sites, the shot is judged against every enemy radar in range that still
+// stands, and the nearest one on the shot's path takes the hit.
+
+interface PendingRay {
+    eye: V3;
+    dir: V3;
+    launcher: string;
+    sentAt: number;
+    radars: RadarTarget[];          // enemy radars in range when the shot went off
+}
+
+const firingWas: { [pid: number]: boolean } = {};
+const inFlight: { [pid: number]: PendingRay } = {};
+let traced: number = 0;
+
+function slotActive(p: mod.Player, slot: mod.InventorySlots): boolean {
+    return tryGet("launch.slot", () => mod.IsInventorySlotActive(p, slot)) === true;
+}
+
+// The allowed launcher in hand, or undefined. Logs the slot states for the
+// first presses so the "in hand" test can be checked against the game.
+function launcherInHand(p: mod.Player, pid: number): string | undefined {
+    let carried: string | undefined;
+    for (const l of ALLOWED_LAUNCHERS) {
+        if (tryGet("launch.has", () => mod.HasEquipment(p, l.gadget)) === true) {
+            carried = l.name;
+            break;
+        }
+    }
+    const g1: boolean = slotActive(p, mod.InventorySlots.GadgetOne);
+    const g2: boolean = slotActive(p, mod.InventorySlots.GadgetTwo);
+    const cg: boolean = slotActive(p, mod.InventorySlots.ClassGadget);
+    const held: boolean = !LAUNCHER_REQUIRE_ACTIVE_SLOT || g1 || g2 || cg;
+    if (logOn(LOG_TRACE) && traced < LAUNCHER_TRACE_PRESSES) {
+        traced++;
+        log_2("launcher", "PRESS pid " + pid + " carried=" + (carried ?? "none") + " slots gadget1=" + g1
+            + " gadget2=" + g2 + " class=" + cg + " primary=" + slotActive(p, mod.InventorySlots.PrimaryWeapon)
+            + " -> " + (carried !== undefined && held ? "counts" : "ignored"));
+    }
+    return carried !== undefined && held ? carried : undefined;
+}
+
+// The radars a player could be shooting at: other teams', still standing,
+// within LAUNCHER_RANGE_M of the eye.
+function enemyRadarsInRange(team: number, eye: V3, standing: RadarTarget[]): RadarTarget[] {
+    return standing.filter(r => r.team !== team && dist_2(eye, r.pos) <= LAUNCHER_RANGE_M);
+}
+
+// Only players near an enemy radar (by the shared per-tick position) have
+// their eye and trigger read.
+export function tickLaunchers(now: number, tickNo: number): void {
+    expireRays(now);
+    const standing: RadarTarget[] = liveRadars();
+    if (standing.length === 0) {
+        return;
+    }
+    for (const d of deployedNow(tickNo)) {
+        const p: mod.Player = d.p;
+        const pid: number = d.pid;
+        const team: number = d.team;
+        if (enemyRadarsInRange(team, d.pos, standing).length === 0) {
+            firingWas[pid] = false;
+            continue;
+        }
+        const eye: V3 | undefined = tryGet("launch.eye", () => toV3(mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition)));
+        const radars: RadarTarget[] = eye === undefined ? [] : enemyRadarsInRange(team, eye, standing);
+        if (eye === undefined || radars.length === 0) {
+            firingWas[pid] = false;
+            continue;
+        }
+        const firing: boolean = tryGet("launch.firing", () => mod.GetSoldierState(p, mod.SoldierStateBool.IsFiring)) === true;
+        const press: boolean = pressed(firingWas[pid], firing);
+        firingWas[pid] = firing;
+        if (!press) {
+            continue;
+        }
+        const launcher: string | undefined = launcherInHand(p, pid);
+        if (launcher !== undefined) {
+            cast(p, pid, eye, launcher, radars, now);
+        }
+    }
+}
+
+// A ray with no answer is judged along its path rather than left to block
+// that shooter's later shots.
+function expireRays(now: number): void {
+    for (const k of Object.keys(inFlight)) {
+        const pid: number = Number(k);
+        const ray: PendingRay = inFlight[pid];
+        if (rayExpired(ray.sentAt, now, RAY_RESULT_TIMEOUT_MS)) {
+            delete inFlight[pid];
+            log_2("launcher", "pid " + pid + " ray never answered; judged along its path");
+            judge(pid, ray, RAY_MAX_DIST_M_2, undefined, "no answer");
+        }
+    }
+}
+
+function cast(p: mod.Player, pid: number, eye: V3, launcher: string, radars: RadarTarget[], now: number): void {
+    if (inFlight[pid] !== undefined) {
+        return;
+    }
+    const facing: V3 | undefined = tryGet("launch.facing", () => toV3(mod.GetSoldierState(p, mod.SoldierStateVector.GetFacingDirection)));
+    if (facing === undefined) {
+        return;
+    }
+    const dir: V3 = norm(facing);
+    const start: V3 = add(eye, scale(dir, RAY_START_OFFSET_M_2));
+    const end: V3 = add(eye, scale(dir, RAY_MAX_DIST_M_2));
+    const ray: PendingRay = { eye, dir, launcher, sentAt: now, radars };
+    inFlight[pid] = ray;
+    // Through the shared Raycast queue (PowerStruggle's Rorsch casts too): the
+    // result comes back to this ray's own callback, so the two never get each
+    // other's answers. A result for a ray that already expired is dropped.
+    const id = Raycast.cast(
+        { x: start[0], y: start[1], z: start[2] }, { x: end[0], y: end[1], z: end[2] },
+        (hit: boolean, point?: Raycast.Vector3) => {
+            safe_2("launch.result", () => {
+                if (inFlight[pid] !== ray) {
+                    return;
+                }
+                delete inFlight[pid];
+                if (hit && point !== undefined) {
+                    onRayHit(pid, ray, [point.x, point.y, point.z]);
+                } else {
+                    judge(pid, ray, RAY_MAX_DIST_M_2, undefined, "clear");
+                }
+            });
+        },
+        { priority: Raycast.Priority.Critical });
+    if (id === null) {
+        delete inFlight[pid];
+        return;
+    }
+    logAt(LOG_EVENTS, "launcher", () => "SHOT pid " + pid + " " + launcher + ", enemy radars in range: "
+        + radars.map(r => "site " + r.n + " " + dist_2(eye, r.pos).toFixed(0) + " m").join(", "));
+}
+
+// lenFromEye: how far along the aim the ray got; hit: where it stopped.
+function judge(pid: number, ray: PendingRay, lenFromEye: number, hit: V3 | undefined, why: string): void {
+    const where: string = why + (hit === undefined ? "" : ", stopped " + lenFromEye.toFixed(0) + " m out");
+    const idx: number = pickRadar(ray.eye, ray.dir, lenFromEye, hit, ray.radars.map(r => r.pos), RADAR_HIT_SHAPE);
+    if (idx < 0) {
+        logAt(LOG_EVENTS, "launcher", () => "pid " + pid + " missed every radar (ray " + where + ")");
+        return;
+    }
+    const radar: RadarTarget = ray.radars[idx];
+    const delayMs: number = (dist_2(ray.eye, radar.pos) / LAUNCHER_ROCKET_SPEED_MPS) * 1000;
+    logAt(LOG_EVENTS, "launcher", () => "pid " + pid + " on target: site " + radar.n + " radar (ray " + where + "), impact in " + delayMs.toFixed(0) + " ms");
+    const land = (): void => {
+        safe_2("launch.land", () => radarHitBy(radar.n, pid, ray.launcher));
+    };
+    if (Timers.setTimeout(land, delayMs) === null) {
+        land();
+    }
+}
+
+function onRayHit(pid: number, ray: PendingRay, hit: V3): void {
+    const fromEye: number = dist_2(ray.eye, hit);
+    if (ownRocketStop(fromEye, RAY_OWN_ROCKET_M)) {
+        judge(pid, ray, RAY_MAX_DIST_M_2, undefined, "stopped " + fromEye.toFixed(1) + " m out on the own rocket, judged as clear");
+        return;
+    }
+    judge(pid, ray, fromEye, hit, "hit");
+}
+
+
+
+// --- SOURCE: src\sitewire.ts ---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// PowerStruggle's side of the rocket sites (src/rocketsites/, which replaced
+// the HQ turrets). Owner decisions, 2026-10-03:
+//   - the sites lock and fire at humans only: bots never enter the system, so
+//     their deploys, zone entries and launcher shots are not passed on;
+//   - an enemy HQ takes Rorsch hits once SITES_TO_OPEN_HQ of its team's sites
+//     are down (fewer when the team has fewer sites; none placed = open);
+//   - the Rorsch destroys an enemy radar in one shot when its ray's path goes
+//     through it (the launcher test, from anywhere); own sites are immune;
+//   - a site going down is announced to both teams, and the HQ opening too;
+//   - a human entering a live enemy site's kill zone gets the old turret
+//     zone warning;
+//   - rocket damage starts off and is switched from the debug menu.
+
+let ready: boolean = false;
+let tickNo: number = 0;
+let lastMs: number = 0;
+
+function teamSites(team: number): number {
+    let n: number = 0;
+    for (const s of SITES) {
+        if (s.team === team) {
+            n++;
+        }
+    }
+    return n;
+}
+
+function sitesUp(team: number): number {
+    let n: number = 0;
+    for (const r of liveRadars()) {
+        if (r.team === team) {
+            n++;
+        }
+    }
+    return n;
+}
+
+function sitesNeeded(team: number): number {
+    return Math.min(SITES_TO_OPEN_HQ, teamSites(team));
+}
+
+export function sitesDown(team: number): number {
+    return teamSites(team) - sitesUp(team);
+}
+
+// Whether team base's HQ takes Rorsch hits.
+export function hqOpenFor(base: number): boolean {
+    return sitesDown(base) >= sitesNeeded(base);
+}
+
+export function initSiteWire(): void {
+    if (SITES.length === 0) {
+        log("sites", "no rocket sites on the map: both HQs are open");
+        return;
+    }
+    initSites();
+    ready = true;
+    log("sites", "team 1 has " + teamSites(1) + " sites, team 2 " + teamSites(2) + "; "
+        + SITES_TO_OPEN_HQ + " down open an HQ; rocket damage " + (rocketDamageOn() ? "ON" : "OFF"));
+}
+
+function onSiteDown(n: number, team: number, pid: number): void {
+    const down: number = sitesDown(team);
+    const total: number = teamSites(team);
+    const needed: number = sitesNeeded(team);
+    log("sites", "site " + n + " (team " + team + ") destroyed by pid " + pid + ": " + down + "/" + total
+        + " down, " + needed + " open the HQ");
+    notifyTeam(3 - team, "siteDestroyed", down, total);
+    notifyTeam(team, "siteLost", down, total);
+    if (down === needed) {
+        notifyTeam(3 - team, "losOpen", 0, 0);
+        notifyTeam(team, "hqExposed", 0, 0);
+    }
+}
+
+function liveEnemyZone(at: mod.AreaTrigger, team: number): SiteDef | undefined {
+    const id: number = mod.GetObjId(at);
+    for (const s of SITES) {
+        if (s.zoneId !== id || s.team === team) {
+            continue;
+        }
+        for (const r of liveRadars()) {
+            if (r.n === s.n) {
+                return s;
+            }
+        }
+    }
+    return undefined;
+}
+
+function human(pid: number): boolean {
+    return pid >= 0 && !isBotPid(pid);
+}
+
+function gone(pid: number): void {
+    markUndeployed(pid);
+    onGone(pid);
+    markDead(pid);
+}
+
+export function configureSiteEvents(): void {
+    onRadarDestroyed(onSiteDown);
+    Events.OnPlayerDeployed.subscribe((p: mod.Player) => {
+        safe("sites.deployed", () => {
+            if (ready && human(mod.GetObjId(p))) {
+                markDeployed(p);
+            }
+        });
+    });
+    Events.OnPlayerDied.subscribe((p: mod.Player) => {
+        safe("sites.died", () => {
+            if (ready) {
+                gone(mod.GetObjId(p));
+            }
+        });
+    });
+    Events.OnPlayerUndeploy.subscribe((p: mod.Player) => {
+        safe("sites.undeploy", () => {
+            if (ready) {
+                gone(mod.GetObjId(p));
+            }
+        });
+    });
+    Events.OnPlayerLeaveGame.subscribe((pid: number) => {
+        safe("sites.leave", () => {
+            if (ready) {
+                gone(pid);
+            }
+        });
+    });
     Events.OnPlayerEnterAreaTrigger.subscribe((p: mod.Player, at: mod.AreaTrigger) => {
-        safe("turret.enter", () => { onEnterZone(p, at); });
+        safe("sites.enter", () => {
+            if (!ready || !human(mod.GetObjId(p))) {
+                return;
+            }
+            onEnter_2(p, at);
+            if (liveEnemyZone(at, teamIdOf(p)) !== undefined) {
+                notifyPlayer(p, "killZone", 0, 0);
+            }
+        });
     });
     Events.OnPlayerExitAreaTrigger.subscribe((p: mod.Player, at: mod.AreaTrigger) => {
-        safe("turret.exit", () => { onExitZone(p, at); });
-    });
-    Events.OnPlayerLeaveGame.subscribe((id: number) => {
-        safe("turret.leave", () => {
-            clearWarning(id);
-            delete playerZones[id];
+        safe("sites.exit", () => {
+            if (ready && human(mod.GetObjId(p))) {
+                onExit_2(p, at);
+            }
         });
     });
 }
 
-export function playerZoneCount(pid: number): number {
-    const l: number[] | undefined = playerZones[pid];
-    return l === undefined ? 0 : l.length;
+// Every tick: launchers, sites, rockets, then the effect sweep, each guarded
+// so one failing step cannot freeze the others.
+export function tickSiteWire(): void {
+    if (!ready) {
+        return;
+    }
+    const now: number = Date.now();
+    const dt: number = lastMs === 0 ? 0 : Math.min(0.1, (now - lastMs) / 1000);
+    lastMs = now;
+    tickNo++;
+    newTick();
+    safe("sites.launchers", () => { tickLaunchers(now, tickNo); });
+    safe("sites.sites", () => { tickSites(now, dt); });
+    safe("sites.rockets", () => { tickRockets(now, dt); });
+    safe("sites.vfx", () => { sweepVfx(now); });
+}
+
+export interface P3 {
+    x: number;
+    y: number;
+    z: number;
+}
+
+// A Rorsch shot (nuke.ts): the nearest enemy radar its ray's path goes through
+// goes down. len is how far the ray got from the eye: to its hit point, or its
+// full length on a miss, so a wall in front of a radar shields it.
+export function raygunAtRadars(team: number, pid: number, eye: P3, dir: P3, len: number, hit: P3 | undefined): void {
+    if (!ready) {
+        return;
+    }
+    const enemy: RadarTarget[] = liveRadars().filter((r: RadarTarget) => r.team !== team);
+    if (enemy.length === 0) {
+        return;
+    }
+    const idx: number = pickRadar([eye.x, eye.y, eye.z], [dir.x, dir.y, dir.z], len,
+        hit === undefined ? undefined : [hit.x, hit.y, hit.z], enemy.map((r: RadarTarget) => r.pos), RADAR_HIT_SHAPE);
+    if (idx < 0) {
+        return;
+    }
+    destroyRadarBy(enemy[idx].n, pid, "Rorsch");
+}
+
+export function siteDamageOn(): boolean {
+    return rocketDamageOn();
+}
+
+export function toggleSiteDamage(): void {
+    setRocketDamage(!rocketDamageOn());
 }
 
 
@@ -13427,7 +15902,7 @@ export type BuyResult = {
 const factories: { [facId: string]: Factory } = {};
 // Spawner key -> ObjId of the live vehicle it spawned.
 const ownedBy: { [key: number]: number } = {};
-const pending_2: Pending[] = [];
+const pending: Pending[] = [];
 // Spawns already reported as failed, still matchable for VEHICLE_LATE_MATCH_MS.
 const late: Pending[] = [];
 let nextRuntimeKey: number = -1;
@@ -13499,7 +15974,7 @@ function nearestEntry(list: Pending[]): number {
 }
 
 function onVehicleSpawned(v: mod.Vehicle): void {
-    if (pending_2.length === 0 && late.length === 0) {
+    if (pending.length === 0 && late.length === 0) {
         return;
     }
     if (!vehiclePos_2(v)) {
@@ -13508,10 +15983,10 @@ function onVehicleSpawned(v: mod.Vehicle): void {
     const now: number = Date.now();
     dropExpiredLate(now);
     const vid: number = mod.GetObjId(v);
-    let at: number = nearestEntry(pending_2);
+    let at: number = nearestEntry(pending);
     if (at >= 0) {
-        const pe: Pending = pending_2[at];
-        pending_2.splice(at, 1);
+        const pe: Pending = pending[at];
+        pending.splice(at, 1);
         ownedBy[pe.key] = vid;
         delete suspectUntil[pe.key];
         log("shop", keyName(pe.key) + " (" + pe.facId + " pad " + pe.pad + ") spawned vehicle " + vid
@@ -13566,7 +16041,7 @@ function isOwned(vid: number): boolean {
 }
 
 function keyPending(key: number): boolean {
-    for (const pe of pending_2) {
+    for (const pe of pending) {
         if (pe.key === key) {
             return true;
         }
@@ -13575,7 +16050,7 @@ function keyPending(key: number): boolean {
 }
 
 function padPending(facId: string, pad: number): boolean {
-    for (const pe of pending_2) {
+    for (const pe of pending) {
         if (pe.facId === facId && pe.pad === pad) {
             return true;
         }
@@ -13726,15 +16201,15 @@ function issue(
         facId: facId, pad: pad, key: key, x: p.x, y: p.y, z: p.z, at: Date.now(),
         near: near, veh: veh, label: label, retried: retried, done: done
     };
-    pending_2.push(pe);
+    pending.push(pe);
     const h: Timers.TimerID | null = Timers.setTimeout(() => {
         safe("slots.confirm", () => { onConfirmTimeout(pe); });
     }, VEHICLE_SPAWN_CONFIRM_MS);
     if (h === null) {
         // No timer: keep the purchase rather than refund blindly.
-        const at: number = pending_2.indexOf(pe);
+        const at: number = pending.indexOf(pe);
         if (at >= 0) {
-            pending_2.splice(at, 1);
+            pending.splice(at, 1);
         }
         done(true);
     }
@@ -13742,11 +16217,11 @@ function issue(
 }
 
 function onConfirmTimeout(pe: Pending): void {
-    const at: number = pending_2.indexOf(pe);
+    const at: number = pending.indexOf(pe);
     if (at < 0) {
         return;
     }
-    pending_2.splice(at, 1);
+    pending.splice(at, 1);
     // No spawn event. Look at the pad itself before calling it a failure, in
     // case the event did not fire; only a vehicle that was not there before
     // the purchase counts.
@@ -14156,6 +16631,15 @@ export function onRorschBought(p: mod.Player): void {
             }
         });
     }, 500);
+}
+
+// Debug menu "replenish": the carried Rorsch back to its full shots.
+export function refillRorsch(pid: number): boolean {
+    if (carrying[pid] !== true) {
+        return false;
+    }
+    shotsLeft[pid] = RORSCH_SHOTS;
+    return true;
 }
 
 // One discharge of the Rorsch (nuke.ts). The last one takes the weapon away.
@@ -14961,68 +17445,6 @@ export function configureNukeFxEvents(): void {
 }
 
 
-// --- SOURCE: src\raygeom.ts ---
-// Ray geometry for the Rorsch turret test, kept free of mod.* so
-// scripts/test-raygeom.js can unit-test it in node.
-//
-// mod.RayCast passes straight through the stationary AA turrets (17:38 log:
-// rays aimed at them carried on to the HQ or the sky), so a turret cannot be
-// found from the ray's hit point. Instead the ray's path is tested against an
-// upright cylinder around the turret's base.
-
-// True when the segment start + dir * [0, len] passes through the vertical
-// cylinder of the given radius around (cx, cz), spanning cy - below to
-// cy + above. dir must be normalised.
-export function rayThroughUpright(
-    sx: number, sy: number, sz: number,
-    dx: number, dy: number, dz: number,
-    len: number,
-    cx: number, cy: number, cz: number,
-    radius: number, below: number, above: number
-): boolean {
-    // Horizontal part: the s range where the ray is within radius of the axis.
-    const ox: number = sx - cx;
-    const oz: number = sz - cz;
-    const a: number = dx * dx + dz * dz;
-    const c: number = ox * ox + oz * oz - radius * radius;
-    let s0: number;
-    let s1: number;
-    if (a < 1e-9) {
-        // Straight up or down: inside the circle for the whole ray, or never.
-        if (c > 0) {
-            return false;
-        }
-        s0 = 0;
-        s1 = len;
-    } else {
-        const b: number = ox * dx + oz * dz;
-        const disc: number = b * b - a * c;
-        if (disc < 0) {
-            return false;
-        }
-        const root: number = Math.sqrt(disc);
-        s0 = (-b - root) / a;
-        s1 = (-b + root) / a;
-    }
-    if (s0 < 0) {
-        s0 = 0;
-    }
-    if (s1 > len) {
-        s1 = len;
-    }
-    if (s0 > s1) {
-        return false;
-    }
-    // Vertical part: y is linear in s, so the highest and lowest points of that
-    // stretch are its ends.
-    const y0: number = sy + dy * s0;
-    const y1: number = sy + dy * s1;
-    const lo: number = y0 < y1 ? y0 : y1;
-    const hi: number = y0 < y1 ? y1 : y0;
-    return hi >= cy - below && lo <= cy + above;
-}
-
-
 // --- SOURCE: src\rorschshot.ts ---
 // Rorsch shot detection, kept free of mod.* so scripts/test-rorsch.js can
 // unit-test it in node.
@@ -15076,31 +17498,28 @@ export function holdStep(st: HoldState | undefined, firing: boolean, nowMs: numb
 
 
 
-interface PendingRay {
+
+interface PendingRay_2 {
     pid: number;
+    // The shooter, for the nuke's kill credit.
+    player: mod.Player;
     team: number;
     start: Vectors.Vector3;
     // Wall-clock cast time, so a ray that never reports back is visible in
     // the RORSCH_TRACE "RAY skipped" line.
     castMs: number;
-    // Normalised ray direction, set at cast, for the turret path test.
+    // Normalised ray direction, set at cast, for the radar path test.
     dir: Vectors.Vector3 | undefined;
-    // Fired from an HQ attack zone: only then can it break turrets or hit the
-    // HQ. The nuke goes off on every impact.
-    inGate: boolean;
     // Where the current cast started (the first one RAY_START_OFFSET_M ahead
-    // of the eyes) and how many times it was cast again past an obstacle.
+    // of the eyes), its distance along the aim from the eyes, and how many
+    // times it was cast again past an obstacle.
     from: Vectors.Vector3 | undefined;
-    tries: number;
-    // Distance along the aim from the eyes where the current cast starts.
-    // due: a cast again past an obstacle waits for tickNukeRays (one RayCast
-    // per player per tick).
     u: number;
-    due: boolean;
+    tries: number;
 }
 
-const inFlight: { [pid: number]: PendingRay } = {};
-// Per-player trigger hold while in an HQ fire zone with the Rorsch; see
+const inFlight_2: { [pid: number]: PendingRay_2 } = {};
+// Per-player trigger hold while carrying the Rorsch; see
 // rorschshot.ts for why the shot is the IsFiring falling edge after a charge.
 const hold: { [pid: number]: HoldState } = {};
 // RORSCH_TRACE only: last IsReloading value, to log its edges.
@@ -15161,15 +17580,12 @@ function forgetHold(pid: number): void {
     delete reloadOnMs[pid];
     delete chargeAim[pid];
 }
-const gateOccupants: { [gateId: number]: number[] } = {};
-const gateHandles: { [gateId: number]: mod.AreaTrigger } = {};
-const playerGate: { [pid: number]: number } = {};
-const deployed_2: { [pid: number]: boolean } = {};
+const deployed_3: { [pid: number]: boolean } = {};
 
 // Zero FFI: HasEquipment and the other soldier reads throw PlayerNotDeployed
 // on a player who is not deployed (rorschammo's poll).
 export function isDeployedPid(pid: number): boolean {
-    return deployed_2[pid] === true;
+    return deployed_3[pid] === true;
 }
 
 let inited_2: boolean = false;
@@ -15177,96 +17593,8 @@ let inited_2: boolean = false;
 export function initNuke(): void {
     inited_2 = true;
     cacheHqTargets();
-    let gates: number = 0;
-    for (const g of HQ_GATES) {
-        if (!isConfigured(g)) {
-            continue;
-        }
-        const trigger: mod.AreaTrigger = mod.GetAreaTrigger(g);
-        if (!mod.IsValid(trigger)) {
-            log("nuke", "FAIL gate " + g + " did not resolve");
-            continue;
-        }
-        gateOccupants[g] = [];
-        gateHandles[g] = trigger;
-        gates++;
-    }
-    log("nuke", "ready: Rorsch-gated, ray on discharge (IsFiring off after charge), one ray per player, gates="
-        + String(gates) + "/" + String(HQ_GATES.length));
-}
-
-// Exact ObjId only - see the note in capture.ts about the removed mod.Equals
-// fallback, which mis-routed gates and turret zones.
-function gateIdFor(at: mod.AreaTrigger): number {
-    const id: number = mod.GetObjId(at);
-    return gateOccupants[id] !== undefined ? id : 0;
-}
-
-function onGateEnter(p: mod.Player, at: mod.AreaTrigger): void {
-    const gid: number = gateIdFor(at);
-    const list: number[] | undefined = gateOccupants[gid];
-    const pid: number = mod.GetObjId(p);
-    if (list === undefined) {
-        if (willLogDebug()) {
-            log("nuke", "UNMATCHED gate ENTER trigger=" + mod.GetObjId(at) + " pid=" + pid);
-        }
-        return;
-    }
-    if (pid < 0) {
-        return;
-    }
-    if (list.indexOf(pid) < 0) {
-        list.push(pid);
-    }
-    playerGate[pid] = gid;
-    log("nuke", "gate ENTER id=" + gid + " pid=" + pid);
-}
-
-function onGateExit(p: mod.Player, at: mod.AreaTrigger): void {
-    const gid: number = gateIdFor(at);
-    const list: number[] | undefined = gateOccupants[gid];
-    const pid: number = mod.GetObjId(p);
-    if (list === undefined) {
-        if (willLogDebug()) {
-            log("nuke", "UNMATCHED gate EXIT trigger=" + mod.GetObjId(at) + " pid=" + pid);
-        }
-        return;
-    }
-    if (list !== undefined) {
-        const i: number = list.indexOf(pid);
-        if (i >= 0) {
-            list.splice(i, 1);
-        }
-    }
-    if (playerGate[pid] === gid) {
-        delete playerGate[pid];
-    }
-    log("nuke", "gate EXIT id=" + gid + " pid=" + pid);
-}
-
-function onGateLeave(pid: number): void {
-    const gid: number | undefined = playerGate[pid];
-    if (gid !== undefined) {
-        const list: number[] | undefined = gateOccupants[gid];
-        if (list !== undefined) {
-            const i: number = list.indexOf(pid);
-            if (i >= 0) {
-                list.splice(i, 1);
-            }
-        }
-    }
-    delete playerGate[pid];
-}
-
-export function playerInGate(pid: number): boolean {
-    return playerGate[pid] !== undefined;
-}
-
-function nearEnemyBase(pid: number): boolean {
-    if (Object.keys(gateOccupants).length === 0) {
-        return true;
-    }
-    return playerGate[pid] !== undefined;
+    log("nuke", "ready: ray on discharge (IsFiring off after charge), one ray per player, HQ hit within "
+        + String(HQ_HIT_RADIUS_M) + " m once open");
 }
 
 function shootRay(p: mod.Player): void {
@@ -15274,7 +17602,7 @@ function shootRay(p: mod.Player): void {
     if (pid < 0) {
         return;
     }
-    const pending: PendingRay | undefined = inFlight[pid];
+    const pending: PendingRay_2 | undefined = inFlight_2[pid];
     // A ray still waiting after 4 s lost its result and gives way to the new
     // shot.
     if (pending !== undefined && Date.now() - pending.castMs < 4000) {
@@ -15294,12 +17622,11 @@ function shootRay(p: mod.Player): void {
     const eye: mod.Vector = aim !== undefined
         ? mod.CreateVector(aim.ex, aim.ey, aim.ez)
         : mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition);
-    const pendingRay: PendingRay = {
-        pid: pid, team: team, start: Vectors.toVector3(eye), castMs: Date.now(), dir: undefined,
-        inGate: nearEnemyBase(pid), from: undefined, tries: 0,
-        u: RAY_START_OFFSET_M, due: false
+    const pendingRay: PendingRay_2 = {
+        pid: pid, player: p, team: team, start: Vectors.toVector3(eye), castMs: Date.now(), dir: undefined,
+        from: undefined, u: RAY_START_OFFSET_M, tries: 0
     };
-    inFlight[pid] = pendingRay;
+    inFlight_2[pid] = pendingRay;
     safe("nuke.cast", () => {
         const facing: mod.Vector = aim !== undefined
             ? mod.CreateVector(aim.fx, aim.fy, aim.fz)
@@ -15310,7 +17637,7 @@ function shootRay(p: mod.Player): void {
         const e3: Vectors.Vector3 = Vectors.toVector3(eye);
         const f3: Vectors.Vector3 = pitchedDown(Vectors.toVector3(facing), RORSCH_PITCH_FIX_RAD);
         pendingRay.dir = f3;
-        castStraight(p, pendingRay);
+        castStraight(pendingRay);
         if (RORSCH_TRACE || willLogDebug()) {
             // After the cast, so the extra read adds no latency: the facing on
             // the discharge tick itself, to measure the kick the snapshot avoids.
@@ -15340,43 +17667,43 @@ function pitchedDown(f: Vectors.Vector3, rad: number): Vectors.Vector3 {
     return { x: f.x / h * c, y: Math.sin(pitch), z: f.z / h * c };
 }
 
-// The straight ray, from ray.u along the aim (the first cast starts
-// RAY_START_OFFSET_M out, past the shooter's own body) to the full range.
-function castStraight(p: mod.Player, ray: PendingRay): void {
+// The straight ray (the Rorsch is a raygun), from ray.u along the aim (the
+// first cast starts RAY_START_OFFSET_M out, past the shooter's own body) to the
+// full range. Cast through the bf6-portal-utils Raycast queue, shared with the
+// rocket-site launchers: each result comes back to this ray's own callback
+// (the engine reports results per player with no ray id), and the queue keeps
+// to one engine ray per player per tick.
+function castStraight(ray: PendingRay_2): void {
     const d: Vectors.Vector3 | undefined = ray.dir;
     if (d === undefined) {
         return;
     }
     const s: Vectors.Vector3 = ray.start;
     const u1: number = RAY_START_OFFSET_M + RAY_MAX_DIST_M;
-    ray.due = false;
-    ray.from = { x: s.x + d.x * ray.u, y: s.y + d.y * ray.u, z: s.z + d.z * ray.u };
-    mod.RayCast(p, mod.CreateVector(ray.from.x, ray.from.y, ray.from.z),
-        mod.CreateVector(s.x + d.x * u1, s.y + d.y * u1, s.z + d.z * u1));
-}
-
-// Every tick: a ray blocked right at its start is cast again past the
-// obstacle. Casting from inside the result event could break the
-// one-ray-per-player-per-tick limit.
-export function tickNukeRays(): void {
-    for (const key in inFlight) {
-        const ray: PendingRay = inFlight[key];
-        if (!ray.due) {
-            continue;
-        }
-        const p: mod.Player | undefined = playerById(ray.pid);
-        if (p === undefined || !mod.IsValid(p)) {
-            delete inFlight[key];
-            continue;
-        }
-        safe("nuke.recast", () => { castStraight(p, ray); });
+    const from: Vectors.Vector3 = { x: s.x + d.x * ray.u, y: s.y + d.y * ray.u, z: s.z + d.z * ray.u };
+    ray.from = from;
+    const id = Raycast.cast(from, { x: s.x + d.x * u1, y: s.y + d.y * u1, z: s.z + d.z * u1 },
+        (hit: boolean, point?: Raycast.Vector3) => {
+            if (inFlight_2[ray.pid] !== ray) {
+                return;
+            }
+            delete inFlight_2[ray.pid];
+            if (hit && point !== undefined) {
+                safe("nuke.hit", () => { resolveHit(ray, { x: point.x, y: point.y, z: point.z }); });
+            } else {
+                safe("nuke.miss", () => { resolveMiss(ray); });
+            }
+        },
+        { priority: Raycast.Priority.Critical });
+    if (id === null) {
+        log("nuke", "RAY rejected by the Raycast queue pid=" + ray.pid);
+        delete inFlight_2[ray.pid];
     }
 }
 
 // Aim captured on every tick the Rorsch is charging, used for the shot. By the
 // tick the discharge is seen, the weapon's kick has already pitched the view
-// up: the 16:32 log shows every turret shot ~0.06 (3.5 deg) higher than the
-// line to the turret while the yaw was exact, so rays passed over the turrets.
+// up. (The charging facing is still ~0.057 rad high: RORSCH_PITCH_FIX_RAD.)
 // Plain numbers, so no engine handle is held across ticks.
 interface Aim {
     ex: number;
@@ -15429,72 +17756,29 @@ function cacheHqTargets(): void {
     }
 }
 
-function dist_2(a: Vectors.Vector3, b: Vectors.Vector3): number {
+function dist_3(a: Vectors.Vector3, b: Vectors.Vector3): number {
     return Math.sqrt(Vectors.distanceSquared(a, b));
 }
 
-// Radius squared, computed once, so the hot loop never squares a literal.
-const TURRET_HIT_RADIUS_SQ: number = TURRET_HIT_RADIUS_M * TURRET_HIT_RADIUS_M;
-
-// Destroys every live enemy turret the ray hit. len is how far the ray got from
-// the eye (to the hit point, or its full length on a miss), so a wall in front
-// of a turret still shields it. Two tests, either is enough:
-//   - path: the ray crossed the upright cylinder around the turret. RayCast
-//     itself passes through the AA turrets, so this is the main test.
-//   - point: the ray's hit point landed within TURRET_HIT_RADIUS_M of the
-//     turret base, e.g. the ground at its foot. The original test, kept so
-//     nothing that destroyed a turret before stops doing so.
-function checkTurrets(ray: PendingRay, len: number, hit: Vectors.Vector3 | undefined): void {
-    const d: Vectors.Vector3 | undefined = ray.dir;
-    for (let ti: number = 0; ti < TURRETS.length; ti++) {
-        const t: TurretDef = TURRETS[ti];
-        if (!isConfigured(t.zoneId) || turretIsDestroyed(t.emplId) || t.base === ray.team) {
-            continue;
-        }
-        if (!turretResolvedAt(ti)) {
-            continue;
-        }
-        // Cached coordinates, no mod.* calls in this loop.
-        const byPath: boolean = d !== undefined && rayThroughUpright(
-            ray.start.x, ray.start.y, ray.start.z, d.x, d.y, d.z, len,
-            turretCoord(ti, 0), turretCoord(ti, 1), turretCoord(ti, 2),
-            TURRET_RAY_RADIUS_M, TURRET_RAY_BELOW_M, TURRET_RAY_ABOVE_M);
-        const byPoint: boolean = hit !== undefined
-            && turretDistSq(ti, hit.x, hit.y, hit.z) <= TURRET_HIT_RADIUS_SQ;
-        if (byPath || byPoint) {
-            if (RORSCH_TRACE || willLogDebug()) {
-                log("nuke", "turret " + t.emplId + " hit by "
-                    + (byPath && byPoint ? "path+point" : byPath ? "path" : "point"));
-            }
-            destroyTurret(t.emplId);
-        }
-    }
-}
-
-function resolveHit(p: mod.Player, point: mod.Vector): void {
-    const pid: number = mod.GetObjId(p);
-    const ray: PendingRay | undefined = inFlight[pid];
-    if (ray === undefined) {
-        return;
-    }
-    delete inFlight[pid];
+function resolveHit(ray: PendingRay_2, hit: Vectors.Vector3): void {
+    const pid: number = ray.pid;
+    const p: mod.Player = ray.player;
     const team: number = ray.team;
     if (team !== 1 && team !== 2) {
         return;
     }
-    const hit: Vectors.Vector3 = Vectors.toVector3(point);
-    const travelled: number = dist_2(ray.start, hit);
-    if (ray.from !== undefined && ray.dir !== undefined && dist_2(ray.from, hit) < RAY_PASS_M) {
+    const travelled: number = dist_3(ray.start, hit);
+    if (ray.from !== undefined && ray.dir !== undefined && dist_3(ray.from, hit) < RAY_PASS_M) {
         if (ray.tries >= RAY_PASS_TRIES) {
             log("nuke", "HIT ignored pid=" + pid + " - still blocked at " + String(travelled.toFixed(2))
                 + "m after " + ray.tries + " retries");
             return;
         }
-        // Cast again from just past the obstacle, next tick.
-        ray.u = ray.u + dist_2(ray.from, hit) + RAY_PASS_M;
+        // Cast again from just past the obstacle (the queue sends it next tick).
+        ray.u = ray.u + dist_3(ray.from, hit) + RAY_PASS_M;
         ray.tries++;
-        ray.due = true;
-        inFlight[pid] = ray;
+        inFlight_2[pid] = ray;
+        castStraight(ray);
         if (RORSCH_TRACE || willLogDebug()) {
             log("nuke", "HIT pid=" + pid + " blocked at " + String(travelled.toFixed(2))
                 + "m, cast again past it (" + ray.tries + ")");
@@ -15507,11 +17791,10 @@ function resolveHit(p: mod.Player, point: mod.Vector): void {
     }
 
     safe("nuke.detonate", () => { detonate(hit.x, hit.y, hit.z, p); });
-    if (!ray.inGate) {
-        return;
+    const d3: Vectors.Vector3 | undefined = ray.dir;
+    if (d3 !== undefined) {
+        safe("nuke.radars", () => { raygunAtRadars(team, pid, ray.start, d3, travelled, hit); });
     }
-
-    checkTurrets(ray, travelled, hit);
 
     for (const base of [1, 2]) {
         if (base === team) {
@@ -15521,7 +17804,7 @@ function resolveHit(p: mod.Player, point: mod.Vector): void {
         if (!isConfigured(target)) {
             continue;
         }
-        const losOk: boolean = losOpenFor(base);
+        const losOk: boolean = hqOpenFor(base);
         let d: number = -1;
         let inRange: boolean = false;
         safe("nuke.hq", () => {
@@ -15547,11 +17830,23 @@ function resolveHit(p: mod.Player, point: mod.Vector): void {
             }
         });
         // Log every attempt so a miss is distinguishable from a silent failure:
-        // "no LOS" and "out of range" need different fixes.
+        // "still protected" and "out of range" need different fixes.
         log("nuke", "hq base " + base + " dist=" + String(d.toFixed(1))
             + " range=" + String(HQ_HIT_RADIUS_M)
-            + " inRange=" + String(inRange) + " losOpen=" + String(losOk)
-            + (inRange && losOk ? " -> HIT" : (inRange ? " -> blocked by LOS" : " -> out of range")));
+            + " inRange=" + String(inRange) + " open=" + String(losOk)
+            + (inRange && losOk ? " -> HIT" : (inRange ? " -> protected by its rocket sites" : " -> out of range")));
+    }
+}
+
+// A ray that hit nothing: the radar path test still runs over its full length,
+// since RayCast passes through models.
+function resolveMiss(ray: PendingRay_2): void {
+    if (RORSCH_TRACE) {
+        log("nuke", "RAY miss pid=" + ray.pid + " - nothing hit within " + String(RAY_MAX_DIST_M) + "m");
+    }
+    const d3: Vectors.Vector3 | undefined = ray.dir;
+    if (d3 !== undefined && (ray.team === 1 || ray.team === 2)) {
+        raygunAtRadars(ray.team, ray.pid, ray.start, d3, RAY_START_OFFSET_M + RAY_MAX_DIST_M, undefined);
     }
 }
 
@@ -15573,7 +17868,7 @@ function probe(): void {
             if (pid < 0) {
                 continue;
             }
-            if (deployed_2[pid] !== true) {
+            if (deployed_3[pid] !== true) {
                 continue;
             }
             // Bots never fire the Rorsch: zero-FFI registry test, before any
@@ -15581,11 +17876,9 @@ function probe(): void {
             if (isBotPid(pid)) {
                 continue;
             }
-            // Zero-FFI filter first: a player is only read when standing in
-            // an HQ gate or carrying the Rorsch (rorschammo's 1 Hz poll). The
-            // nuke goes off on every Rorsch impact, so carriers are probed
-            // anywhere; turrets and the HQ still need the gate (PendingRay).
-            if (!nearEnemyBase(pid) && !isRorschCarrier(pid)) {
+            // Zero-FFI filter first: a player is only read while carrying the
+            // Rorsch (rorschammo's 1 Hz poll).
+            if (!isRorschCarrier(pid)) {
                 if (hold[pid] !== undefined) {
                     forgetHold(pid);
                 }
@@ -15654,58 +17947,29 @@ function logNukeOnce(pid: number, reason: string): void {
     }
     nukeDiag[pid] = reason;
     log("nuke", "probe pid=" + pid + " -> " + reason
-        + " deployed=" + String(deployed_2[pid] === true)
-        + " inGate=" + String(playerInGate(pid)));
+        + " deployed=" + String(deployed_3[pid] === true));
 }
 
 export function configureNukeEvents(): void {
     configureNukeFxEvents();
-    Events.OnRayCastHit.subscribe((p: mod.Player, point: mod.Vector, _n: mod.Vector) => {
-        safe("nuke.hit", () => { resolveHit(p, point); });
-    });
-    Events.OnRayCastMissed.subscribe((p: mod.Player) => {
-        const pid: number = mod.GetObjId(p);
-        const ray: PendingRay | undefined = inFlight[pid];
-        delete inFlight[pid];
-        if (ray === undefined) {
-            return;
-        }
-        if (RORSCH_TRACE) {
-            log("nuke", "RAY miss pid=" + pid + " - nothing hit within " + String(RAY_MAX_DIST_M) + "m");
-        }
-        // A ray aimed at a turret against the sky misses everything, because
-        // RayCast passes through the turret; the path test still finds it.
-        if (ray.inGate && (ray.team === 1 || ray.team === 2)) {
-            safe("nuke.miss", () => {
-                checkTurrets(ray, RAY_START_OFFSET_M + RAY_MAX_DIST_M, undefined);
-            });
-        }
-    });
-    Events.OnPlayerEnterAreaTrigger.subscribe((p: mod.Player, at: mod.AreaTrigger) => {
-        safe("nuke.gate.enter", () => { onGateEnter(p, at); });
-    });
-    Events.OnPlayerExitAreaTrigger.subscribe((p: mod.Player, at: mod.AreaTrigger) => {
-        safe("nuke.gate.exit", () => { onGateExit(p, at); });
-    });
     Events.OnPlayerLeaveGame.subscribe((pid: number) => {
-        safe("nuke.gate.leave", () => {
-            onGateLeave(pid);
-            delete inFlight[pid];
+        safe("nuke.leave", () => {
+            delete inFlight_2[pid];
             forgetHold(pid);
-            delete deployed_2[pid];
+            delete deployed_3[pid];
         });
     });
     Events.OnPlayerDeployed.subscribe((p: mod.Player) => {
         safe("nuke.deployed", () => {
-            deployed_2[mod.GetObjId(p)] = true;
+            deployed_3[mod.GetObjId(p)] = true;
         });
     });
     Events.OnPlayerUndeploy.subscribe((p: mod.Player) => {
         safe("nuke.undeployed", () => {
             const pid: number = mod.GetObjId(p);
-            deployed_2[pid] = false;
+            deployed_3[pid] = false;
             forgetHold(pid);
-            delete inFlight[pid];
+            delete inFlight_2[pid];
         });
     });
 }
@@ -15715,7 +17979,7 @@ export function tickNukeProbe(): void {
 }
 
 export function inFlightCount(): number {
-    return Object.keys(inFlight).length;
+    return Object.keys(inFlight_2).length;
 }
 
 
@@ -16056,6 +18320,7 @@ export function locationById(id: string): StrategicLocation | undefined {
 
 
 
+
 const MOCK_DATA: boolean = false;
 
 const PROTO_W: number = 96;
@@ -16317,6 +18582,12 @@ function dbgValueMsg(id: number, act: string): mod.Message {
     if (act === "adminlog") {
         return adminLogMode() ? mod.Message("dbgAdminLogOn", adminLogSends()) : mod.Message("dbgAdminLogOff");
     }
+    if (act === "sitedmg") {
+        return mod.Message(siteDamageOn() ? "dbgSiteDmgOn" : "dbgSiteDmgOff");
+    }
+    if (act === "replenish") {
+        return mod.Message("dbgAction");
+    }
 
     const slot: number = parseInt(act.substring(2, 3), 10);
     const st: number[] = siteState[dbgTeam(id, act.substring(1, 2))];
@@ -16551,6 +18822,28 @@ function runDebugAct(id: number, act: string): void {
         setAdminLogMode(!adminLogMode());
         return;
     }
+    if (act === "sitedmg") {
+        // Rocket sites: whether their rockets hurt anyone, for everyone.
+        toggleSiteDamage();
+        return;
+    }
+    if (act === "replenish") {
+        // The presser only: every weapon's ammo, grenades, launcher rockets
+        // and gadgets, and the Rorsch back to its full shots if carried.
+        const p: mod.Player | undefined = playerById_2(id);
+        if (p === undefined) {
+            return;
+        }
+        for (const kind of [mod.ResupplyTypes.AmmoCrate, mod.ResupplyTypes.SupplyBag]) {
+            try {
+                mod.Resupply(p, kind);
+            } catch (e) {
+                log("debug", "replenish " + String(kind) + " failed: " + String(e));
+            }
+        }
+        log("debug", "pid=" + id + " replenished" + (refillRorsch(id) ? ", Rorsch refilled" : ""));
+        return;
+    }
     if (act === "reset") {
         for (let t: number = 1; t <= 2; t++) {
             const st: number[] = siteState[t];
@@ -16734,6 +19027,8 @@ const TABS_DATA: PshTab[] = [
                       { key: "dbgPrestige", cost: 0, act: "prestige" },
                       { key: "dbgTabState", cost: 0, act: "tabstate" },
                       { key: "dbgAdminLog", cost: 0, act: "adminlog" },
+                      { key: "dbgSiteDmg", cost: 0, act: "sitedmg" },
+                      { key: "dbgReplenish", cost: 0, act: "replenish" },
                       { key: "dbgReset", cost: 0, act: "reset" },
                   ],
               },
@@ -16904,7 +19199,9 @@ const FEED_CHARS_BY_KEY: { [k: string]: number } = {
     bunkerYours: 34,
     bunkerFoe: 34,
     bunkerLost: 30,
-    turretDestroyed: 28,
+    siteDestroyed: 36,
+    siteLost: 38,
+    hqExposed: 36,
     pAwarded: 15,
     itemGiven: 34,
     prestigeUp: 26,
@@ -17618,7 +19915,7 @@ function stateSetPower(team: number, value: number): void {
 }
 
 // silent: skip the generic "baseHit" feed line. Real HQ hits pass true because
-// turrets.ts already sends the defender/attacker notifications for them.
+// hq.ts already sends the defender/attacker notifications for them.
 function stateSetBase(team: number, hp: number, silent: boolean = false): void {
     if (team !== 1 && team !== 2) {
         return;
@@ -18294,14 +20591,14 @@ function renderFeedChip(prefix: string, slot: number, key: string, a0: string | 
         col = FEED_RED;
         icon = "warn";
       } else if (key === "itemGiven" || key === "prestigeUp" || key === "capDone" || key === "shopNoSpawner"
-          || key === "turretDestroyed" || key === "pAwarded") {
+          || key === "siteDestroyed" || key === "pAwarded") {
           col = FEED_GRN;
       } else if (key === "protoYours" || key === "siteYours" || key === "capStarted" || key === "bunkerYours") {
           col = FEED_BLU;
       } else if (key === "killZone" || key === "capContested" || key === "hqHit" || key === "hqFoeCritical") {
           col = FEED_YEL;
           icon = "warn";
-      } else if (key === "hqUnderAttack" || key === "hqCritical") {
+      } else if (key === "hqUnderAttack" || key === "hqCritical" || key === "siteLost" || key === "hqExposed") {
           col = FEED_RED;
           icon = "warn";
       } else if (key === "winT1" || key === "winT2" || key === "losOpen") {
@@ -18311,7 +20608,7 @@ function renderFeedChip(prefix: string, slot: number, key: string, a0: string | 
 
       let msg: mod.Message = mod.Message(key);
       if (key === "baseHit" || key === "hqHit" || key === "hqUnderAttack"
-          || key === "hqCritical" || key === "hqFoeCritical") {
+          || key === "hqCritical" || key === "hqFoeCritical" || key === "siteDestroyed" || key === "siteLost") {
           msg = mod.Message(key, a0, a1);
       } else if (key === "prestigeUp" || key === "buyAvailable" || key === "capStarted" || key === "capDone"
           || key === "bunkerYours" || key === "bunkerFoe" || key === "bunkerLost"
@@ -18340,7 +20637,7 @@ function renderFeedChip(prefix: string, slot: number, key: string, a0: string | 
 const FEED_LANE_HIGH: string[] = [
     "nukeReady", "nukeFoeReady", "protoYours", "protoFoe", "baseHit",
     "hqHit", "hqUnderAttack", "hqCritical", "hqFoeCritical",
-    "bunkerYours", "bunkerFoe", "bunkerLost", "losOpen", "turretDestroyed"
+    "bunkerYours", "bunkerFoe", "bunkerLost", "losOpen", "siteDestroyed", "siteLost", "hqExposed"
 ];
 const COOLDOWN_FRAMES: number = 90;
 
@@ -18566,7 +20863,7 @@ function onGameModeStarted(): void {
     safe("init.spawns", initSpawns);
     safe("init.energy", initEnergy);
     safe("init.factory", initFactory);
-    safe("init.turrets", initTurrets);
+    safe("init.sites", initSiteWire);
     safe("init.bots", initBots);
     safe("init.nuke", initNuke);
     safe("init.worldicons", initWorldIcons);
@@ -18690,8 +20987,8 @@ function onOngoingGlobal(): void {
     }
     // Queued nuke damage and effects, and the Rorsch ammo poll: never skipped.
     safe("nuke.fx", tickNukeFx);
-    // A Rorsch ray blocked at its start is cast again here: never skipped.
-    safe("nuke.rays", tickNukeRays);
+    // Rocket sites: launchers, radars, rockets. Never skipped.
+    safe("sites.tick", tickSiteWire);
     expireFeedRows();
     if (artActive === undefined && artQueue.length === 0) {
         return;
@@ -18995,7 +21292,7 @@ onPrestige((id: number, total: number) => {
         setPrestige(id, total);
     });
 });
-configureTurretEvents();
+configureSiteEvents();
 configureNukeEvents();
 
 // Bunkers, energy points and factories each pay their own amount, and only to

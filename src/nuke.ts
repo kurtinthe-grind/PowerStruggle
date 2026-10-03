@@ -1,44 +1,39 @@
 import { Events } from "bf6-portal-utils/events";
 import { log, safe, willLogDebug } from "./util/log";
-import { TURRETS, HQ_TARGETS, HQ_GATES, isConfigured, TurretDef } from "./objids";
-import { TURRET_HIT_RADIUS_M, TURRET_RAY_RADIUS_M, TURRET_RAY_BELOW_M, TURRET_RAY_ABOVE_M, HQ_HIT_RADIUS_M, RAY_MAX_DIST_M, RAY_START_OFFSET_M, RAY_PASS_M, RAY_PASS_TRIES, RORSCH_TRACE, RORSCH_MIN_CHARGE_MS, RORSCH_PITCH_FIX_RAD } from "./config";
+import { HQ_TARGETS, isConfigured } from "./objids";
+import { HQ_HIT_RADIUS_M, RAY_MAX_DIST_M, RAY_START_OFFSET_M, RAY_PASS_M, RAY_PASS_TRIES, RORSCH_TRACE, RORSCH_MIN_CHARGE_MS, RORSCH_PITCH_FIX_RAD } from "./config";
 import { isRorschActive } from "./weapons";
 import { configureNukeFxEvents, detonate, startChargeAlarm, stopChargeAlarm } from "./nukefx";
 import { isRorschCarrier, onRorschShot } from "./rorschammo";
 import { isBotPid } from "./bots";
-import { playerById, teamIdOf } from "./util/roster";
-import {
-    destroyTurret, hitHq, turretIsDestroyed, losOpenFor, turretDistSq, turretResolvedAt, turretCoord
-} from "./turrets";
-import { rayThroughUpright } from "./raygeom";
+import { teamIdOf } from "./util/roster";
+import { hitHq } from "./hq";
+import { hqOpenFor, raygunAtRadars } from "./sitewire";
+import { Raycast } from "bf6-portal-utils/raycast";
 import { Vectors } from "bf6-portal-utils/vectors";
 import { holdStep, HoldResult, HoldState } from "./rorschshot";
 
 interface PendingRay {
     pid: number;
+    // The shooter, for the nuke's kill credit.
+    player: mod.Player;
     team: number;
     start: Vectors.Vector3;
     // Wall-clock cast time, so a ray that never reports back is visible in
     // the RORSCH_TRACE "RAY skipped" line.
     castMs: number;
-    // Normalised ray direction, set at cast, for the turret path test.
+    // Normalised ray direction, set at cast, for the radar path test.
     dir: Vectors.Vector3 | undefined;
-    // Fired from an HQ attack zone: only then can it break turrets or hit the
-    // HQ. The nuke goes off on every impact.
-    inGate: boolean;
     // Where the current cast started (the first one RAY_START_OFFSET_M ahead
-    // of the eyes) and how many times it was cast again past an obstacle.
+    // of the eyes), its distance along the aim from the eyes, and how many
+    // times it was cast again past an obstacle.
     from: Vectors.Vector3 | undefined;
-    tries: number;
-    // Distance along the aim from the eyes where the current cast starts.
-    // due: a cast again past an obstacle waits for tickNukeRays (one RayCast
-    // per player per tick).
     u: number;
-    due: boolean;
+    tries: number;
 }
 
 const inFlight: { [pid: number]: PendingRay } = {};
-// Per-player trigger hold while in an HQ fire zone with the Rorsch; see
+// Per-player trigger hold while carrying the Rorsch; see
 // rorschshot.ts for why the shot is the IsFiring falling edge after a charge.
 const hold: { [pid: number]: HoldState } = {};
 // RORSCH_TRACE only: last IsReloading value, to log its edges.
@@ -99,9 +94,6 @@ function forgetHold(pid: number): void {
     delete reloadOnMs[pid];
     delete chargeAim[pid];
 }
-const gateOccupants: { [gateId: number]: number[] } = {};
-const gateHandles: { [gateId: number]: mod.AreaTrigger } = {};
-const playerGate: { [pid: number]: number } = {};
 const deployed: { [pid: number]: boolean } = {};
 
 // Zero FFI: HasEquipment and the other soldier reads throw PlayerNotDeployed
@@ -115,96 +107,8 @@ let inited: boolean = false;
 export function initNuke(): void {
     inited = true;
     cacheHqTargets();
-    let gates: number = 0;
-    for (const g of HQ_GATES) {
-        if (!isConfigured(g)) {
-            continue;
-        }
-        const trigger: mod.AreaTrigger = mod.GetAreaTrigger(g);
-        if (!mod.IsValid(trigger)) {
-            log("nuke", "FAIL gate " + g + " did not resolve");
-            continue;
-        }
-        gateOccupants[g] = [];
-        gateHandles[g] = trigger;
-        gates++;
-    }
-    log("nuke", "ready: Rorsch-gated, ray on discharge (IsFiring off after charge), one ray per player, gates="
-        + String(gates) + "/" + String(HQ_GATES.length));
-}
-
-// Exact ObjId only - see the note in capture.ts about the removed mod.Equals
-// fallback, which mis-routed gates and turret zones.
-function gateIdFor(at: mod.AreaTrigger): number {
-    const id: number = mod.GetObjId(at);
-    return gateOccupants[id] !== undefined ? id : 0;
-}
-
-function onGateEnter(p: mod.Player, at: mod.AreaTrigger): void {
-    const gid: number = gateIdFor(at);
-    const list: number[] | undefined = gateOccupants[gid];
-    const pid: number = mod.GetObjId(p);
-    if (list === undefined) {
-        if (willLogDebug()) {
-            log("nuke", "UNMATCHED gate ENTER trigger=" + mod.GetObjId(at) + " pid=" + pid);
-        }
-        return;
-    }
-    if (pid < 0) {
-        return;
-    }
-    if (list.indexOf(pid) < 0) {
-        list.push(pid);
-    }
-    playerGate[pid] = gid;
-    log("nuke", "gate ENTER id=" + gid + " pid=" + pid);
-}
-
-function onGateExit(p: mod.Player, at: mod.AreaTrigger): void {
-    const gid: number = gateIdFor(at);
-    const list: number[] | undefined = gateOccupants[gid];
-    const pid: number = mod.GetObjId(p);
-    if (list === undefined) {
-        if (willLogDebug()) {
-            log("nuke", "UNMATCHED gate EXIT trigger=" + mod.GetObjId(at) + " pid=" + pid);
-        }
-        return;
-    }
-    if (list !== undefined) {
-        const i: number = list.indexOf(pid);
-        if (i >= 0) {
-            list.splice(i, 1);
-        }
-    }
-    if (playerGate[pid] === gid) {
-        delete playerGate[pid];
-    }
-    log("nuke", "gate EXIT id=" + gid + " pid=" + pid);
-}
-
-function onGateLeave(pid: number): void {
-    const gid: number | undefined = playerGate[pid];
-    if (gid !== undefined) {
-        const list: number[] | undefined = gateOccupants[gid];
-        if (list !== undefined) {
-            const i: number = list.indexOf(pid);
-            if (i >= 0) {
-                list.splice(i, 1);
-            }
-        }
-    }
-    delete playerGate[pid];
-}
-
-export function playerInGate(pid: number): boolean {
-    return playerGate[pid] !== undefined;
-}
-
-function nearEnemyBase(pid: number): boolean {
-    if (Object.keys(gateOccupants).length === 0) {
-        return true;
-    }
-    return playerGate[pid] !== undefined;
+    log("nuke", "ready: ray on discharge (IsFiring off after charge), one ray per player, HQ hit within "
+        + String(HQ_HIT_RADIUS_M) + " m once open");
 }
 
 function shootRay(p: mod.Player): void {
@@ -233,9 +137,8 @@ function shootRay(p: mod.Player): void {
         ? mod.CreateVector(aim.ex, aim.ey, aim.ez)
         : mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition);
     const pendingRay: PendingRay = {
-        pid: pid, team: team, start: Vectors.toVector3(eye), castMs: Date.now(), dir: undefined,
-        inGate: nearEnemyBase(pid), from: undefined, tries: 0,
-        u: RAY_START_OFFSET_M, due: false
+        pid: pid, player: p, team: team, start: Vectors.toVector3(eye), castMs: Date.now(), dir: undefined,
+        from: undefined, u: RAY_START_OFFSET_M, tries: 0
     };
     inFlight[pid] = pendingRay;
     safe("nuke.cast", () => {
@@ -248,7 +151,7 @@ function shootRay(p: mod.Player): void {
         const e3: Vectors.Vector3 = Vectors.toVector3(eye);
         const f3: Vectors.Vector3 = pitchedDown(Vectors.toVector3(facing), RORSCH_PITCH_FIX_RAD);
         pendingRay.dir = f3;
-        castStraight(p, pendingRay);
+        castStraight(pendingRay);
         if (RORSCH_TRACE || willLogDebug()) {
             // After the cast, so the extra read adds no latency: the facing on
             // the discharge tick itself, to measure the kick the snapshot avoids.
@@ -278,43 +181,43 @@ function pitchedDown(f: Vectors.Vector3, rad: number): Vectors.Vector3 {
     return { x: f.x / h * c, y: Math.sin(pitch), z: f.z / h * c };
 }
 
-// The straight ray, from ray.u along the aim (the first cast starts
-// RAY_START_OFFSET_M out, past the shooter's own body) to the full range.
-function castStraight(p: mod.Player, ray: PendingRay): void {
+// The straight ray (the Rorsch is a raygun), from ray.u along the aim (the
+// first cast starts RAY_START_OFFSET_M out, past the shooter's own body) to the
+// full range. Cast through the bf6-portal-utils Raycast queue, shared with the
+// rocket-site launchers: each result comes back to this ray's own callback
+// (the engine reports results per player with no ray id), and the queue keeps
+// to one engine ray per player per tick.
+function castStraight(ray: PendingRay): void {
     const d: Vectors.Vector3 | undefined = ray.dir;
     if (d === undefined) {
         return;
     }
     const s: Vectors.Vector3 = ray.start;
     const u1: number = RAY_START_OFFSET_M + RAY_MAX_DIST_M;
-    ray.due = false;
-    ray.from = { x: s.x + d.x * ray.u, y: s.y + d.y * ray.u, z: s.z + d.z * ray.u };
-    mod.RayCast(p, mod.CreateVector(ray.from.x, ray.from.y, ray.from.z),
-        mod.CreateVector(s.x + d.x * u1, s.y + d.y * u1, s.z + d.z * u1));
-}
-
-// Every tick: a ray blocked right at its start is cast again past the
-// obstacle. Casting from inside the result event could break the
-// one-ray-per-player-per-tick limit.
-export function tickNukeRays(): void {
-    for (const key in inFlight) {
-        const ray: PendingRay = inFlight[key];
-        if (!ray.due) {
-            continue;
-        }
-        const p: mod.Player | undefined = playerById(ray.pid);
-        if (p === undefined || !mod.IsValid(p)) {
-            delete inFlight[key];
-            continue;
-        }
-        safe("nuke.recast", () => { castStraight(p, ray); });
+    const from: Vectors.Vector3 = { x: s.x + d.x * ray.u, y: s.y + d.y * ray.u, z: s.z + d.z * ray.u };
+    ray.from = from;
+    const id = Raycast.cast(from, { x: s.x + d.x * u1, y: s.y + d.y * u1, z: s.z + d.z * u1 },
+        (hit: boolean, point?: Raycast.Vector3) => {
+            if (inFlight[ray.pid] !== ray) {
+                return;
+            }
+            delete inFlight[ray.pid];
+            if (hit && point !== undefined) {
+                safe("nuke.hit", () => { resolveHit(ray, { x: point.x, y: point.y, z: point.z }); });
+            } else {
+                safe("nuke.miss", () => { resolveMiss(ray); });
+            }
+        },
+        { priority: Raycast.Priority.Critical });
+    if (id === null) {
+        log("nuke", "RAY rejected by the Raycast queue pid=" + ray.pid);
+        delete inFlight[ray.pid];
     }
 }
 
 // Aim captured on every tick the Rorsch is charging, used for the shot. By the
 // tick the discharge is seen, the weapon's kick has already pitched the view
-// up: the 16:32 log shows every turret shot ~0.06 (3.5 deg) higher than the
-// line to the turret while the yaw was exact, so rays passed over the turrets.
+// up. (The charging facing is still ~0.057 rad high: RORSCH_PITCH_FIX_RAD.)
 // Plain numbers, so no engine handle is held across ticks.
 interface Aim {
     ex: number;
@@ -371,56 +274,13 @@ function dist(a: Vectors.Vector3, b: Vectors.Vector3): number {
     return Math.sqrt(Vectors.distanceSquared(a, b));
 }
 
-// Radius squared, computed once, so the hot loop never squares a literal.
-const TURRET_HIT_RADIUS_SQ: number = TURRET_HIT_RADIUS_M * TURRET_HIT_RADIUS_M;
-
-// Destroys every live enemy turret the ray hit. len is how far the ray got from
-// the eye (to the hit point, or its full length on a miss), so a wall in front
-// of a turret still shields it. Two tests, either is enough:
-//   - path: the ray crossed the upright cylinder around the turret. RayCast
-//     itself passes through the AA turrets, so this is the main test.
-//   - point: the ray's hit point landed within TURRET_HIT_RADIUS_M of the
-//     turret base, e.g. the ground at its foot. The original test, kept so
-//     nothing that destroyed a turret before stops doing so.
-function checkTurrets(ray: PendingRay, len: number, hit: Vectors.Vector3 | undefined): void {
-    const d: Vectors.Vector3 | undefined = ray.dir;
-    for (let ti: number = 0; ti < TURRETS.length; ti++) {
-        const t: TurretDef = TURRETS[ti];
-        if (!isConfigured(t.zoneId) || turretIsDestroyed(t.emplId) || t.base === ray.team) {
-            continue;
-        }
-        if (!turretResolvedAt(ti)) {
-            continue;
-        }
-        // Cached coordinates, no mod.* calls in this loop.
-        const byPath: boolean = d !== undefined && rayThroughUpright(
-            ray.start.x, ray.start.y, ray.start.z, d.x, d.y, d.z, len,
-            turretCoord(ti, 0), turretCoord(ti, 1), turretCoord(ti, 2),
-            TURRET_RAY_RADIUS_M, TURRET_RAY_BELOW_M, TURRET_RAY_ABOVE_M);
-        const byPoint: boolean = hit !== undefined
-            && turretDistSq(ti, hit.x, hit.y, hit.z) <= TURRET_HIT_RADIUS_SQ;
-        if (byPath || byPoint) {
-            if (RORSCH_TRACE || willLogDebug()) {
-                log("nuke", "turret " + t.emplId + " hit by "
-                    + (byPath && byPoint ? "path+point" : byPath ? "path" : "point"));
-            }
-            destroyTurret(t.emplId);
-        }
-    }
-}
-
-function resolveHit(p: mod.Player, point: mod.Vector): void {
-    const pid: number = mod.GetObjId(p);
-    const ray: PendingRay | undefined = inFlight[pid];
-    if (ray === undefined) {
-        return;
-    }
-    delete inFlight[pid];
+function resolveHit(ray: PendingRay, hit: Vectors.Vector3): void {
+    const pid: number = ray.pid;
+    const p: mod.Player = ray.player;
     const team: number = ray.team;
     if (team !== 1 && team !== 2) {
         return;
     }
-    const hit: Vectors.Vector3 = Vectors.toVector3(point);
     const travelled: number = dist(ray.start, hit);
     if (ray.from !== undefined && ray.dir !== undefined && dist(ray.from, hit) < RAY_PASS_M) {
         if (ray.tries >= RAY_PASS_TRIES) {
@@ -428,11 +288,11 @@ function resolveHit(p: mod.Player, point: mod.Vector): void {
                 + "m after " + ray.tries + " retries");
             return;
         }
-        // Cast again from just past the obstacle, next tick.
+        // Cast again from just past the obstacle (the queue sends it next tick).
         ray.u = ray.u + dist(ray.from, hit) + RAY_PASS_M;
         ray.tries++;
-        ray.due = true;
         inFlight[pid] = ray;
+        castStraight(ray);
         if (RORSCH_TRACE || willLogDebug()) {
             log("nuke", "HIT pid=" + pid + " blocked at " + String(travelled.toFixed(2))
                 + "m, cast again past it (" + ray.tries + ")");
@@ -445,11 +305,10 @@ function resolveHit(p: mod.Player, point: mod.Vector): void {
     }
 
     safe("nuke.detonate", () => { detonate(hit.x, hit.y, hit.z, p); });
-    if (!ray.inGate) {
-        return;
+    const d3: Vectors.Vector3 | undefined = ray.dir;
+    if (d3 !== undefined) {
+        safe("nuke.radars", () => { raygunAtRadars(team, pid, ray.start, d3, travelled, hit); });
     }
-
-    checkTurrets(ray, travelled, hit);
 
     for (const base of [1, 2]) {
         if (base === team) {
@@ -459,7 +318,7 @@ function resolveHit(p: mod.Player, point: mod.Vector): void {
         if (!isConfigured(target)) {
             continue;
         }
-        const losOk: boolean = losOpenFor(base);
+        const losOk: boolean = hqOpenFor(base);
         let d: number = -1;
         let inRange: boolean = false;
         safe("nuke.hq", () => {
@@ -485,11 +344,23 @@ function resolveHit(p: mod.Player, point: mod.Vector): void {
             }
         });
         // Log every attempt so a miss is distinguishable from a silent failure:
-        // "no LOS" and "out of range" need different fixes.
+        // "still protected" and "out of range" need different fixes.
         log("nuke", "hq base " + base + " dist=" + String(d.toFixed(1))
             + " range=" + String(HQ_HIT_RADIUS_M)
-            + " inRange=" + String(inRange) + " losOpen=" + String(losOk)
-            + (inRange && losOk ? " -> HIT" : (inRange ? " -> blocked by LOS" : " -> out of range")));
+            + " inRange=" + String(inRange) + " open=" + String(losOk)
+            + (inRange && losOk ? " -> HIT" : (inRange ? " -> protected by its rocket sites" : " -> out of range")));
+    }
+}
+
+// A ray that hit nothing: the radar path test still runs over its full length,
+// since RayCast passes through models.
+function resolveMiss(ray: PendingRay): void {
+    if (RORSCH_TRACE) {
+        log("nuke", "RAY miss pid=" + ray.pid + " - nothing hit within " + String(RAY_MAX_DIST_M) + "m");
+    }
+    const d3: Vectors.Vector3 | undefined = ray.dir;
+    if (d3 !== undefined && (ray.team === 1 || ray.team === 2)) {
+        raygunAtRadars(ray.team, ray.pid, ray.start, d3, RAY_START_OFFSET_M + RAY_MAX_DIST_M, undefined);
     }
 }
 
@@ -519,11 +390,9 @@ function probe(): void {
             if (isBotPid(pid)) {
                 continue;
             }
-            // Zero-FFI filter first: a player is only read when standing in
-            // an HQ gate or carrying the Rorsch (rorschammo's 1 Hz poll). The
-            // nuke goes off on every Rorsch impact, so carriers are probed
-            // anywhere; turrets and the HQ still need the gate (PendingRay).
-            if (!nearEnemyBase(pid) && !isRorschCarrier(pid)) {
+            // Zero-FFI filter first: a player is only read while carrying the
+            // Rorsch (rorschammo's 1 Hz poll).
+            if (!isRorschCarrier(pid)) {
                 if (hold[pid] !== undefined) {
                     forgetHold(pid);
                 }
@@ -592,42 +461,13 @@ function logNukeOnce(pid: number, reason: string): void {
     }
     nukeDiag[pid] = reason;
     log("nuke", "probe pid=" + pid + " -> " + reason
-        + " deployed=" + String(deployed[pid] === true)
-        + " inGate=" + String(playerInGate(pid)));
+        + " deployed=" + String(deployed[pid] === true));
 }
 
 export function configureNukeEvents(): void {
     configureNukeFxEvents();
-    Events.OnRayCastHit.subscribe((p: mod.Player, point: mod.Vector, _n: mod.Vector) => {
-        safe("nuke.hit", () => { resolveHit(p, point); });
-    });
-    Events.OnRayCastMissed.subscribe((p: mod.Player) => {
-        const pid: number = mod.GetObjId(p);
-        const ray: PendingRay | undefined = inFlight[pid];
-        delete inFlight[pid];
-        if (ray === undefined) {
-            return;
-        }
-        if (RORSCH_TRACE) {
-            log("nuke", "RAY miss pid=" + pid + " - nothing hit within " + String(RAY_MAX_DIST_M) + "m");
-        }
-        // A ray aimed at a turret against the sky misses everything, because
-        // RayCast passes through the turret; the path test still finds it.
-        if (ray.inGate && (ray.team === 1 || ray.team === 2)) {
-            safe("nuke.miss", () => {
-                checkTurrets(ray, RAY_START_OFFSET_M + RAY_MAX_DIST_M, undefined);
-            });
-        }
-    });
-    Events.OnPlayerEnterAreaTrigger.subscribe((p: mod.Player, at: mod.AreaTrigger) => {
-        safe("nuke.gate.enter", () => { onGateEnter(p, at); });
-    });
-    Events.OnPlayerExitAreaTrigger.subscribe((p: mod.Player, at: mod.AreaTrigger) => {
-        safe("nuke.gate.exit", () => { onGateExit(p, at); });
-    });
     Events.OnPlayerLeaveGame.subscribe((pid: number) => {
-        safe("nuke.gate.leave", () => {
-            onGateLeave(pid);
+        safe("nuke.leave", () => {
             delete inFlight[pid];
             forgetHold(pid);
             delete deployed[pid];

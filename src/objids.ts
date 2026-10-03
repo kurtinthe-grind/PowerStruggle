@@ -1,12 +1,3 @@
-export interface TurretDef {
-    emplId: number;
-    zoneId: number;
-    vfxId: number;
-    base: 1 | 2;
-    cluster: number;
-    yOffset: number;
-}
-
 export interface AreaBuildingDef {
     id: string;
     kind: "energy" | "proto" | "war" | "air" | "naval";
@@ -53,20 +44,8 @@ export const NAVAL_FACTORY: AreaBuildingDef[] = [
     { id: "naval2", kind: "naval", areaTriggerId: 6001, worldIconId: 6101, vehicleSpawnerId: 6202, vehicleSpawnerIds: [6202, 6203], factoryName: "Naval Factory 2" }
 ];
 
-export const TURRETS: TurretDef[] = [
-    { emplId: 7000, zoneId: 7100, vfxId: 7200, base: 1, cluster: 0, yOffset: 15.267723 },
-    { emplId: 7001, zoneId: 7101, vfxId: 7201, base: 1, cluster: 0, yOffset: 15.267723 },
-    { emplId: 7002, zoneId: 7102, vfxId: 7202, base: 1, cluster: 0, yOffset: 15.267723 },
-    { emplId: 7003, zoneId: 7103, vfxId: 7203, base: 1, cluster: 0, yOffset: 15.267723 },
-    { emplId: 7004, zoneId: 7104, vfxId: 7204, base: 2, cluster: 1, yOffset: 15.267723 },
-    { emplId: 7005, zoneId: 7105, vfxId: 7205, base: 2, cluster: 1, yOffset: 15.267723 },
-    { emplId: 7006, zoneId: 7106, vfxId: 7206, base: 2, cluster: 1, yOffset: 15.267723 },
-    { emplId: 7007, zoneId: 7107, vfxId: 7207, base: 2, cluster: 1, yOffset: 15.267723 }
-];
-
 export const HQ_TARGETS: number[] = [7300, 7301];
 export const HQ_EXPLOSION: number[] = [7400, 7401];
-export const HQ_GATES: number[] = [7500, 7501];
 export const HQ_OBJIDS: number[] = [1, 2];
 
 export const DEFERRED_SLOTS: { what: string; note: string }[] = [

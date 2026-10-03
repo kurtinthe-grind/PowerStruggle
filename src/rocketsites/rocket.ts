@@ -6,7 +6,7 @@ import {
 } from "./config";
 import { KinParams, RocketKin, V3, beepIntervalMs, dirToEulerDeg, dist, newRocket, segmentHits, stepRocket } from "./geom";
 import { HitState, chaseVerdict, wetHit } from "./hitcore";
-import { LOG_EVENTS, LOG_TRACE, logAt, safe, tryGet } from "./log";
+import { LOG_EVENTS, LOG_TRACE, log, logAt, safe, tryGet } from "./log";
 import { moveSfx, moveVfx, playAt, restartFor, soldierPos, spawnSfx, spawnVfx, stopSfx, stopVfx } from "./fx";
 import { engAim } from "./rot";
 import { SiloDef } from "./sitemap";
@@ -82,6 +82,19 @@ export function newestAim(site: number): V3 | undefined {
 
 // OnPlayerDied / OnPlayerLeaveGame: the rocket bursts instead of killing the
 // player again after a redeploy.
+// Whether a hit damages: DAMAGE_ENABLED at start, switched by PowerStruggle's
+// debug menu for everyone on the server.
+let damageOn: boolean = DAMAGE_ENABLED;
+
+export function rocketDamageOn(): boolean {
+    return damageOn;
+}
+
+export function setRocketDamage(on: boolean): void {
+    damageOn = on;
+    log("rocket", "damage " + (on ? "ON" : "OFF"));
+}
+
 export function markDead(pid: number): void {
     for (const r of rockets) {
         if (r.pid === pid) {
@@ -106,7 +119,7 @@ export function launchRocket(site: number, s: SiloDef, target: mod.Player, pid: 
     rockets.push(r);
     logAt(LOG_TRACE, "rocket", () => "#" + r.n + " site " + site + " launch silo " + s.siloId + " mode=" + ROCKET_MODE + " target=pid " + pid
         + (key.charAt(0) === "v" ? " (vehicle)" : " (foot)") + " dist " + r.startDist.toFixed(0) + "m"
-        + (DAMAGE_ENABLED ? "" : " damage off"));
+        + (damageOn ? "" : " damage off"));
 }
 
 export function tickRockets(now: number, dt: number): void {
@@ -204,14 +217,14 @@ function explode(r: Rocket, now: number, hit: boolean, why: string): void {
         }
         wet += " (water " + st.inWater + ", diving " + st.diving + ", vehicle " + st.inVehicle + ", boat " + st.boat + ")";
     }
-    if (hit && DAMAGE_ENABLED) {
+    if (hit && damageOn) {
         damage(r.target);
     }
     cleanup(r);
     const flightMs: number = now - r.launchedAt;
     logAt(LOG_EVENTS, "rocket", () => "#" + r.n + " " + (hit ? "hit" : "burst mid-air (target " + why + ")") + " pid " + r.pid
         + " flight " + (flightMs / 1000).toFixed(1) + "s" + (hit && flightMs >= MAX_FLIGHT_MS ? " (forced at timeout)" : "")
-        + (hit && !DAMAGE_ENABLED ? " (damage off)" : "") + wet);
+        + (hit && !damageOn ? " (damage off)" : "") + wet);
 }
 
 function hitState(p: mod.Player): HitState {
