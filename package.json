@@ -20,7 +20,9 @@
         "test:botscore": "node scripts/test-botscore.js",
         "test:botnav": "node scripts/test-botnav.js",
         "gen:nav": "node scripts/gen-navpoints.js",
-        "test:botnames": "node scripts/test-botnames.js"
+        "test:botnames": "node scripts/test-botnames.js",
+        "test:rocketsites": "node scripts/rocketsites/test-sitemap.js && node scripts/rocketsites/test-geom.js && node scripts/rocketsites/test-lockcore.js && node scripts/rocketsites/test-shot.js",
+        "gen:rocketsites": "node scripts/rocketsites/gen-sitemap.js"
     },
     "devDependencies": {
         "bf6-portal-bundler": "1.4.1",
