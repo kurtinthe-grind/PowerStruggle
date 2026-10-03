@@ -14876,6 +14876,13 @@ export function deployedNow(tick: number): Located[] {
         located = [];
         for (const k of Object.keys(deployed_2)) {
             const d: Deployed = deployed_2[Number(k)];
+            // A player can turn invalid without a leave or death event reaching
+            // us (2026-10-03 18:18 log: InvalidPlayer from GetSoldierState during
+            // a lag spike); the engine logs the throw even when it is caught.
+            if (tryGet("players.valid", () => mod.IsPlayerValid(d.p)) !== true) {
+                delete deployed_2[d.pid];
+                continue;
+            }
             const pos: V3 | undefined = soldierPos(d.p);
             if (pos !== undefined) {
                 located.push({ p: d.p, pid: d.pid, team: d.team, pos });
