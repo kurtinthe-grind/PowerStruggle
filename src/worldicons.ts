@@ -1,6 +1,6 @@
 import { log, safe } from "./util/log";
 import { Vectors } from "bf6-portal-utils/vectors";
-import { isConfigured, BUNKERS, allAreaBuildings, HQ_TARGETS, AreaBuildingDef } from "./objids";
+import { isConfigured, BUNKERS, allAreaBuildings, HQ_OBJIDS, AreaBuildingDef } from "./objids";
 import { buildingById as captureById, BuildingState, onCaptured } from "./capture";
 import { bunkerById, BunkerState, onBunkerCaptured } from "./buildings";
 
@@ -14,7 +14,7 @@ export interface StrategicLocation {
     label: string;
     state: LocationState;
     worldIconId: number;
-    parentKind: "capturePoint" | "areaTrigger" | "spatial";
+    parentKind: "capturePoint" | "areaTrigger" | "hq";
     parentId: number;
 }
 
@@ -57,9 +57,9 @@ export function initWorldIcons(): void {
         addLocation(a.id, a.kind, a.worldIconId, "areaTrigger", a.areaTriggerId);
     }
     for (const base of [0, 1]) {
-        const t: number = HQ_TARGETS[base];
+        const t: number = HQ_OBJIDS[base];
         if (isConfigured(t)) {
-            addLocation("hq" + String(base + 1), "hq", 0, "spatial", t);
+            addLocation("hq" + String(base + 1), "hq", 0, "hq", t);
         }
     }
     log("worldicons", "strategic locations: " + locations.length);
@@ -79,7 +79,7 @@ function addLocation(
     id: string,
     kind: string,
     worldIconId: number,
-    parentKind: "capturePoint" | "areaTrigger" | "spatial",
+    parentKind: "capturePoint" | "areaTrigger" | "hq",
     parentId: number
 ): void {
     if (byId[id] !== undefined) {
@@ -244,7 +244,7 @@ function resolveParent(loc: StrategicLocation): mod.Object | undefined {
         } else if (loc.parentKind === "areaTrigger") {
             parent = mod.GetAreaTrigger(loc.parentId);
         } else {
-            parent = mod.GetSpatialObject(loc.parentId);
+            parent = mod.GetHQ(loc.parentId);
         }
         return mod.IsValid(parent) ? parent : undefined;
     } catch (e) {

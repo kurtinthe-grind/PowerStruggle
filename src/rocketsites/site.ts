@@ -220,16 +220,29 @@ class Site {
         }
         this.say(LOG_EVENTS, () => "radar hit by pid " + pid + " (" + launcher + "): " + this.health.left + " of " + RADAR_HITS + " hits left");
         if (res === "destroyed") {
-            this.destroy();
+            this.destroy(pid);
         }
+    }
+
+    // One shot that takes the radar down whatever its health (PowerStruggle's
+    // raygun).
+    destroyBy(pid: number, weapon: string): void {
+        if (!this.health.kill()) {
+            return;
+        }
+        this.log("radar hit by pid " + pid + " (" + weapon + "): destroyed in one shot");
+        this.destroy(pid);
     }
 
     // Owner: explosion, then the wreck effect; the radar stops where it is
     // (it never tilts); the site is offline for the rest of the round.
     // Rockets already in the air finish their flight.
-    private destroy(): void {
+    private destroy(pid: number): void {
         const now: number = Date.now();
         this.log("radar DESTROYED: site offline for the rest of the round");
+        for (const fn of destroyListeners) {
+            safe("site.destroyed", () => fn(this.n, this.team, pid));
+        }
         spawnVfx(ASSET.radarExplosion, this.radarAt, [0, 0, 0], BURST_LIFETIME_MS, now, true);
         const at: V3 = this.radarAt;
         Timers.setTimeout(() => {
@@ -407,6 +420,14 @@ class Site {
 
 const sites: Site[] = [];
 
+// Told when a radar goes down: (site number, the site's team, the shooter).
+export type RadarDestroyedListener = (n: number, team: number, pid: number) => void;
+const destroyListeners: RadarDestroyedListener[] = [];
+
+export function onRadarDestroyed(fn: RadarDestroyedListener): void {
+    destroyListeners.push(fn);
+}
+
 function allClaims(): SiteClaims[] {
     return sites.map(s => s.claims());
 }
@@ -466,5 +487,12 @@ export function radarHitBy(n: number, pid: number, launcher: string): void {
     const s: Site | undefined = sites.find(e => e.n === n);
     if (s !== undefined) {
         s.hitBy(pid, launcher);
+    }
+}
+
+export function destroyRadarBy(n: number, pid: number, weapon: string): void {
+    const s: Site | undefined = sites.find(e => e.n === n);
+    if (s !== undefined) {
+        s.destroyBy(pid, weapon);
     }
 }

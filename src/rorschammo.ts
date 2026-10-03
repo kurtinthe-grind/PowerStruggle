@@ -102,6 +102,15 @@ export function onRorschBought(p: mod.Player): void {
     }, 500);
 }
 
+// Debug menu "replenish": the carried Rorsch back to its full shots.
+export function refillRorsch(pid: number): boolean {
+    if (carrying[pid] !== true) {
+        return false;
+    }
+    shotsLeft[pid] = RORSCH_SHOTS;
+    return true;
+}
+
 // One discharge of the Rorsch (nuke.ts). The last one takes the weapon away.
 export function onRorschShot(p: mod.Player, pid: number): void {
     const s: number | undefined = shotsLeft[pid];

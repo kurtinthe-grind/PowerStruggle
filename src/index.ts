@@ -47,13 +47,14 @@ import {
 import { playersFromIds, playersOnCapturePoint, teamIdOf } from "./util/roster";
 import { initEnergy, energyMultiplier } from "./energy";
 import { initFactory, factoryOwner, tickCharge, onCharge } from "./factory";
-import { initTurrets, configureTurretEvents, onHqHit } from "./turrets";
+import { onHqHit } from "./hq";
+import { configureSiteEvents, initSiteWire, siteDamageOn, tickSiteWire, toggleSiteDamage } from "./sitewire";
 import { hqHpPercent } from "./winner";
 import { buyVehicle, BuyResult, initSlots } from "./slots";
 import { factoryBuildings, isConfigured } from "./objids";
-import { initNuke, configureNukeEvents, tickNukeProbe, tickNukeRays } from "./nuke";
+import { initNuke, configureNukeEvents, tickNukeProbe } from "./nuke";
 import { tickNukeFx } from "./nukefx";
-import { onRorschBought } from "./rorschammo";
+import { onRorschBought, refillRorsch } from "./rorschammo";
 import { initWorldIcons, stateFor, highlightFor, highlightedFor, distanceMeters } from "./worldicons";
 import { debugWeaponReport, isRorschInHand } from "./weapons";
 import { setFeedSink, setPlayerFeedSink } from "./notify";
@@ -320,6 +321,12 @@ function dbgValueMsg(id: number, act: string): mod.Message {
     if (act === "adminlog") {
         return adminLogMode() ? mod.Message("dbgAdminLogOn", adminLogSends()) : mod.Message("dbgAdminLogOff");
     }
+    if (act === "sitedmg") {
+        return mod.Message(siteDamageOn() ? "dbgSiteDmgOn" : "dbgSiteDmgOff");
+    }
+    if (act === "replenish") {
+        return mod.Message("dbgAction");
+    }
 
     const slot: number = parseInt(act.substring(2, 3), 10);
     const st: number[] = siteState[dbgTeam(id, act.substring(1, 2))];
@@ -554,6 +561,28 @@ function runDebugAct(id: number, act: string): void {
         setAdminLogMode(!adminLogMode());
         return;
     }
+    if (act === "sitedmg") {
+        // Rocket sites: whether their rockets hurt anyone, for everyone.
+        toggleSiteDamage();
+        return;
+    }
+    if (act === "replenish") {
+        // The presser only: every weapon's ammo, grenades, launcher rockets
+        // and gadgets, and the Rorsch back to its full shots if carried.
+        const p: mod.Player | undefined = playerById(id);
+        if (p === undefined) {
+            return;
+        }
+        for (const kind of [mod.ResupplyTypes.AmmoCrate, mod.ResupplyTypes.SupplyBag]) {
+            try {
+                mod.Resupply(p, kind);
+            } catch (e) {
+                log("debug", "replenish " + String(kind) + " failed: " + String(e));
+            }
+        }
+        log("debug", "pid=" + id + " replenished" + (refillRorsch(id) ? ", Rorsch refilled" : ""));
+        return;
+    }
     if (act === "reset") {
         for (let t: number = 1; t <= 2; t++) {
             const st: number[] = siteState[t];
@@ -737,6 +766,8 @@ const TABS_DATA: PshTab[] = [
                       { key: "dbgPrestige", cost: 0, act: "prestige" },
                       { key: "dbgTabState", cost: 0, act: "tabstate" },
                       { key: "dbgAdminLog", cost: 0, act: "adminlog" },
+                      { key: "dbgSiteDmg", cost: 0, act: "sitedmg" },
+                      { key: "dbgReplenish", cost: 0, act: "replenish" },
                       { key: "dbgReset", cost: 0, act: "reset" },
                   ],
               },
@@ -907,7 +938,9 @@ const FEED_CHARS_BY_KEY: { [k: string]: number } = {
     bunkerYours: 34,
     bunkerFoe: 34,
     bunkerLost: 30,
-    turretDestroyed: 28,
+    siteDestroyed: 36,
+    siteLost: 38,
+    hqExposed: 36,
     pAwarded: 15,
     itemGiven: 34,
     prestigeUp: 26,
@@ -1621,7 +1654,7 @@ function stateSetPower(team: number, value: number): void {
 }
 
 // silent: skip the generic "baseHit" feed line. Real HQ hits pass true because
-// turrets.ts already sends the defender/attacker notifications for them.
+// hq.ts already sends the defender/attacker notifications for them.
 function stateSetBase(team: number, hp: number, silent: boolean = false): void {
     if (team !== 1 && team !== 2) {
         return;
@@ -2297,14 +2330,14 @@ function renderFeedChip(prefix: string, slot: number, key: string, a0: string | 
         col = FEED_RED;
         icon = "warn";
       } else if (key === "itemGiven" || key === "prestigeUp" || key === "capDone" || key === "shopNoSpawner"
-          || key === "turretDestroyed" || key === "pAwarded") {
+          || key === "siteDestroyed" || key === "pAwarded") {
           col = FEED_GRN;
       } else if (key === "protoYours" || key === "siteYours" || key === "capStarted" || key === "bunkerYours") {
           col = FEED_BLU;
       } else if (key === "killZone" || key === "capContested" || key === "hqHit" || key === "hqFoeCritical") {
           col = FEED_YEL;
           icon = "warn";
-      } else if (key === "hqUnderAttack" || key === "hqCritical") {
+      } else if (key === "hqUnderAttack" || key === "hqCritical" || key === "siteLost" || key === "hqExposed") {
           col = FEED_RED;
           icon = "warn";
       } else if (key === "winT1" || key === "winT2" || key === "losOpen") {
@@ -2314,7 +2347,7 @@ function renderFeedChip(prefix: string, slot: number, key: string, a0: string | 
 
       let msg: mod.Message = mod.Message(key);
       if (key === "baseHit" || key === "hqHit" || key === "hqUnderAttack"
-          || key === "hqCritical" || key === "hqFoeCritical") {
+          || key === "hqCritical" || key === "hqFoeCritical" || key === "siteDestroyed" || key === "siteLost") {
           msg = mod.Message(key, a0, a1);
       } else if (key === "prestigeUp" || key === "buyAvailable" || key === "capStarted" || key === "capDone"
           || key === "bunkerYours" || key === "bunkerFoe" || key === "bunkerLost"
@@ -2343,7 +2376,7 @@ function renderFeedChip(prefix: string, slot: number, key: string, a0: string | 
 const FEED_LANE_HIGH: string[] = [
     "nukeReady", "nukeFoeReady", "protoYours", "protoFoe", "baseHit",
     "hqHit", "hqUnderAttack", "hqCritical", "hqFoeCritical",
-    "bunkerYours", "bunkerFoe", "bunkerLost", "losOpen", "turretDestroyed"
+    "bunkerYours", "bunkerFoe", "bunkerLost", "losOpen", "siteDestroyed", "siteLost", "hqExposed"
 ];
 const COOLDOWN_FRAMES: number = 90;
 
@@ -2569,7 +2602,7 @@ function onGameModeStarted(): void {
     safe("init.spawns", initSpawns);
     safe("init.energy", initEnergy);
     safe("init.factory", initFactory);
-    safe("init.turrets", initTurrets);
+    safe("init.sites", initSiteWire);
     safe("init.bots", initBots);
     safe("init.nuke", initNuke);
     safe("init.worldicons", initWorldIcons);
@@ -2693,8 +2726,8 @@ function onOngoingGlobal(): void {
     }
     // Queued nuke damage and effects, and the Rorsch ammo poll: never skipped.
     safe("nuke.fx", tickNukeFx);
-    // A Rorsch ray blocked at its start is cast again here: never skipped.
-    safe("nuke.rays", tickNukeRays);
+    // Rocket sites: launchers, radars, rockets. Never skipped.
+    safe("sites.tick", tickSiteWire);
     expireFeedRows();
     if (artActive === undefined && artQueue.length === 0) {
         return;
@@ -2998,7 +3031,7 @@ onPrestige((id: number, total: number) => {
         setPrestige(id, total);
     });
 });
-configureTurretEvents();
+configureSiteEvents();
 configureNukeEvents();
 
 // Bunkers, energy points and factories each pay their own amount, and only to

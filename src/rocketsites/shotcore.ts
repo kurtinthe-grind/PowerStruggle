@@ -29,6 +29,16 @@ export class RadarHealth {
         this.hitsLeft--;
         return this.hitsLeft === 0 ? "destroyed" : "damaged";
     }
+
+    // PowerStruggle's raygun takes the radar down in one shot. False when it
+    // was already down.
+    kill(): boolean {
+        if (this.hitsLeft <= 0) {
+            return false;
+        }
+        this.hitsLeft = 0;
+        return true;
+    }
 }
 
 // A launcher's own rocket is in front of the eye when the ray is cast, and

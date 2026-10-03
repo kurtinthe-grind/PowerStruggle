@@ -51,6 +51,7 @@ throws("no silos", () => buildSitemap({ Portal_Dynamic: siteObjs(1, 0).filter(o 
 throws("no pillar x10", () => buildSitemap({ Portal_Dynamic: siteObjs(1, 0).filter(o => o.ObjId !== 8110) }), "no radar pillar 8110");
 throws("no animation zone x01", () => buildSitemap({ Portal_Dynamic: siteObjs(1, 0).filter(o => o.ObjId !== 8101) }), "no radar animation zone 8101");
 throws("objects but no zone", () => buildSitemap({ Portal_Dynamic: siteObjs(1, 0).filter(o => o.ObjId !== 8100) }), "no zone 8100");
+throws("a copied site that kept its ObjIds", () => buildSitemap({ Portal_Dynamic: [...siteObjs(1, 0), ...siteObjs(1, 30)] }), "used more than once");
 throws("no sites at all", () => buildSitemap({ Portal_Dynamic: [] }), "no rocket sites");
 const scaledPart = siteObjs(1, 0).map(o => (o.ObjId === 8111 ? { ...o, right: { x: 0.5, y: 0, z: 0 } } : o));
 throws("a scaled radar part", () => buildSitemap({ Portal_Dynamic: scaledPart }), "scaled");

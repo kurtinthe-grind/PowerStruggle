@@ -99,9 +99,24 @@ function buildSite(n, objs) {
     return { n, team: teamOfSite(n), zone, animZone, radar: rp[0], radarParts: rp, silos: silosById, centre };
 }
 
+// A site copied in Godot keeps the original's ObjIds; every copy then lands
+// in the same block and the build would merge them into one site.
+function checkUnique(objs) {
+    const seen = {};
+    for (const o of objs) {
+        if (o.id < siteBase(FIRST_SITE) || o.id > siteBase(LAST_SITE) + 99) continue;
+        if (seen[o.id]) {
+            throw new Error("ObjId " + o.id + " is used more than once (" + seen[o.id] + ", " + o.name
+                + "): give each copied site its own block (8100, 8200, ...)");
+        }
+        seen[o.id] = o.name;
+    }
+}
+
 function buildSitemap(json) {
     const objs = [];
     collect(json, objs);
+    checkUnique(objs);
     const sites = [];
     for (let n = FIRST_SITE; n <= LAST_SITE; n++) {
         const s = buildSite(n, objs);
@@ -148,7 +163,16 @@ function render(m) {
 }
 
 function main() {
-    const m = buildSitemap(JSON.parse(fs.readFileSync(SPATIAL, "utf8")));
+    const json = JSON.parse(fs.readFileSync(SPATIAL, "utf8"));
+    // Part of npm run build: until the sites are placed in PS_Isolated the
+    // build goes on with the empty sitemap.ts (both HQs open, no sites).
+    const found = [];
+    collect(json, found);
+    if (!found.some(o => o.id >= siteBase(FIRST_SITE) && o.id <= siteBase(LAST_SITE) + 99)) {
+        console.log("sitemap: no rocket sites in the map yet (ObjIds 8100-8899); sitemap.ts left as it is");
+        return;
+    }
+    const m = buildSitemap(json);
     fs.writeFileSync(OUT, render(m));
     console.log("sitemap: " + m.sites.length + " sites");
     for (const s of m.sites) {
