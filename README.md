@@ -53,16 +53,21 @@ charge). Both teams are told when either side passes 50%, 75% and 100%.
 
 ### 4. Break the base
 
-Each HQ is guarded by a line of **AA turrets**. Walking into a turret's zone
-gives you a 3-second warning, then kills you.
+Each team has three **rocket sites** (`src/rocketsites/`): a radar and a
+battery of missile silos. A human enemy entering a site's kill zone is warned,
+locked by the radar for 3 seconds, then hit by a homing rocket that cannot be
+escaped, on foot or in any vehicle. Bots are ignored. A site falls to 8 hits
+on its radar from unguided, high-explosive or aim-guided rocket launchers, and
+stays down for the rest of the match.
 
-The **Rorsch** charges for about 2 seconds and fires a hitscan shot. Fired from
-the attack zone, the shot:
+The **Rorsch** is a raygun: it charges for about 2 seconds and fires a hitscan
+shot. From anywhere, the shot:
 
-- **destroys any enemy turret** it passes through. Destroying 3 turrets next to
-  each other opens a line of sight to the HQ;
-- **damages the enemy HQ** when it lands near it. 3 hits (100 → 67 → 33 → 0%)
-  destroy it, and that team **loses the match**.
+- **destroys an enemy rocket site in one hit** when it passes through its
+  radar. Once 2 of a team's sites are down, its HQ is open, and both teams
+  are told;
+- **damages an open enemy HQ** when it lands within 350 m of it. 3 hits
+  (100 → 67 → 33 → 0%) destroy it, and that team **loses the match**.
 
 Wherever it lands, every Rorsch impact is a small tactical nuke, friendly fire
 included: anyone within 35 m dies, anyone within 55 m takes heavy damage and
@@ -103,7 +108,8 @@ player has carried them somewhere and stopped.
 | `src/index.ts` | Entry point: HUD, buy menu, events |
 | `src/capture.ts`, `energy.ts`, `factory.ts` | Custom capture, energy sites, power charge |
 | `src/spawns.ts` | Bunker capture points and spawning |
-| `src/turrets.ts`, `nuke.ts`, `rorschshot.ts`, `raygeom.ts` | Turret zones, Rorsch shot detection and hit tests |
+| `src/nuke.ts`, `rorschshot.ts`, `nukefx.ts`, `rorschammo.ts` | Rorsch shot detection, the nuke, Rorsch ammo |
+| `src/rocketsites/`, `sitewire.ts`, `hq.ts` | Rocket sites (`sitemap.ts` is generated), their link to the mode, HQ damage and the win |
 | `src/winner.ts` | End-of-match rules |
 | `src/bots.ts`, `botbrain.ts`, `botscore.ts`, `botobjectives.ts`, `botnames.ts` | Bot AI |
 | `src/botnav.ts`, `botnavgraph.ts`, `navpoints.ts` | Waypoint graph and routing (`navpoints.ts` is generated) |

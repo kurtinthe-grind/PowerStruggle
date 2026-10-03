@@ -42,8 +42,8 @@ function stripComments(src) {
 console.log("guard self-test - the exact bug that ended the match:");
 expectGuardFail("SetGameModeScore anywhere", "src/stats.ts", "mod.SetGameModeScore(h, 1);");
 expectGuardFail("SetGameModeTargetScore anywhere", "src/stats.ts", "mod.SetGameModeTargetScore(1);");
-expectGuardFail("EndGameMode outside turrets", "src/stats.ts", "mod.EndGameMode(t);");
-expectGuardFail("SetGameModeInitialScore outside stats", "src/turrets.ts", "mod.SetGameModeInitialScore(t, 0);");
+expectGuardFail("EndGameMode outside hq", "src/stats.ts", "mod.EndGameMode(t);");
+expectGuardFail("SetGameModeInitialScore outside stats", "src/hq.ts", "mod.SetGameModeInitialScore(t, 0);");
 expectGuardFail("backtick in comment", "src/stats.ts", "// a `b` c");
 expectGuardFail("pure re-export", "src/stats.ts", 'export { x } from "./state";');
 
@@ -51,9 +51,9 @@ const clean = guard();
 console.log("\nclean tree  exit=" + clean.status + "  " + (clean.stdout || "").trim());
 
 console.log("\nendgame integrity:");
-const turrets = stripComments(fs.readFileSync("src/turrets.ts", "utf8"));
-const hasEnd = turrets.indexOf("mod.EndGameMode(") >= 0;
-console.log("  turrets.ts still owns EndGameMode: " + (hasEnd ? "YES" : "NO -- REGRESSION"));
+const hqSrc = stripComments(fs.readFileSync("src/hq.ts", "utf8"));
+const hasEnd = hqSrc.indexOf("mod.EndGameMode(") >= 0;
+console.log("  hq.ts still owns EndGameMode: " + (hasEnd ? "YES" : "NO -- REGRESSION"));
 if (!hasEnd) {
   failures++;
 }

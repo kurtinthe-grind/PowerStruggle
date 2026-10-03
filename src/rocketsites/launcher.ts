@@ -1,4 +1,5 @@
 import { Timers } from "bf6-portal-utils/timers";
+import { Raycast } from "bf6-portal-utils/raycast";
 import {
     ALLOWED_LAUNCHERS, LAUNCHER_RANGE_M, LAUNCHER_REQUIRE_ACTIVE_SLOT, LAUNCHER_ROCKET_SPEED_MPS,
     LAUNCHER_TRACE_PRESSES, RADAR_HIT_SHAPE, RAY_MAX_DIST_M, RAY_OWN_ROCKET_M, RAY_RESULT_TIMEOUT_MS,
@@ -6,7 +7,7 @@ import {
 } from "./config";
 import { V3, add, dist, norm, scale } from "./geom";
 import { LOG_EVENTS, LOG_TRACE, log, logAt, logOn, safe, tryGet } from "./log";
-import { toV3, vec } from "./fx";
+import { toV3 } from "./fx";
 import { pickRadar } from "./raygeom";
 import { ownRocketStop, pressed, rayExpired } from "./shotcore";
 import { deployedNow } from "./players";
@@ -127,8 +128,28 @@ function cast(p: mod.Player, pid: number, eye: V3, launcher: string, radars: Rad
     const dir: V3 = norm(facing);
     const start: V3 = add(eye, scale(dir, RAY_START_OFFSET_M));
     const end: V3 = add(eye, scale(dir, RAY_MAX_DIST_M));
-    inFlight[pid] = { eye, dir, launcher, sentAt: now, radars };
-    if (!safe("launch.cast", () => mod.RayCast(p, vec(start), vec(end)))) {
+    const ray: PendingRay = { eye, dir, launcher, sentAt: now, radars };
+    inFlight[pid] = ray;
+    // Through the shared Raycast queue (PowerStruggle's Rorsch casts too): the
+    // result comes back to this ray's own callback, so the two never get each
+    // other's answers. A result for a ray that already expired is dropped.
+    const id = Raycast.cast(
+        { x: start[0], y: start[1], z: start[2] }, { x: end[0], y: end[1], z: end[2] },
+        (hit: boolean, point?: Raycast.Vector3) => {
+            safe("launch.result", () => {
+                if (inFlight[pid] !== ray) {
+                    return;
+                }
+                delete inFlight[pid];
+                if (hit && point !== undefined) {
+                    onRayHit(pid, ray, [point.x, point.y, point.z]);
+                } else {
+                    judge(pid, ray, RAY_MAX_DIST_M, undefined, "clear");
+                }
+            });
+        },
+        { priority: Raycast.Priority.Critical });
+    if (id === null) {
         delete inFlight[pid];
         return;
     }
@@ -155,14 +176,7 @@ function judge(pid: number, ray: PendingRay, lenFromEye: number, hit: V3 | undef
     }
 }
 
-export function onRayHit(p: mod.Player, point: mod.Vector): void {
-    const pid: number = mod.GetObjId(p);
-    const ray: PendingRay | undefined = inFlight[pid];
-    if (ray === undefined) {
-        return;
-    }
-    delete inFlight[pid];
-    const hit: V3 = toV3(point);
+function onRayHit(pid: number, ray: PendingRay, hit: V3): void {
     const fromEye: number = dist(ray.eye, hit);
     if (ownRocketStop(fromEye, RAY_OWN_ROCKET_M)) {
         judge(pid, ray, RAY_MAX_DIST_M, undefined, "stopped " + fromEye.toFixed(1) + " m out on the own rocket, judged as clear");
@@ -171,12 +185,3 @@ export function onRayHit(p: mod.Player, point: mod.Vector): void {
     judge(pid, ray, fromEye, hit, "hit");
 }
 
-export function onRayMiss(p: mod.Player): void {
-    const pid: number = mod.GetObjId(p);
-    const ray: PendingRay | undefined = inFlight[pid];
-    if (ray === undefined) {
-        return;
-    }
-    delete inFlight[pid];
-    judge(pid, ray, RAY_MAX_DIST_M, undefined, "clear");
-}
