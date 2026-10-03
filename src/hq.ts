@@ -1,5 +1,4 @@
 import { flushAdminLog, log, safe, logAdmin, invokeSubscriber } from "./util/log";
-import { HQ_EXPLOSION, isConfigured } from "./objids";
 import { HQ_HITS_REQUIRED } from "./config";
 import { playSfxAll } from "./audio";
 import { notifyTeam } from "./notify";
@@ -60,13 +59,6 @@ export function hitHq(base: number): boolean {
 
 function endMatchFor(base: number): void {
     safe("hq.end", () => {
-        const idx: number = base === 1 ? 0 : 1;
-        const vfx: number = HQ_EXPLOSION[idx];
-        if (isConfigured(vfx)) {
-            safe("hq.explosion", () => {
-                mod.EnableVFX(mod.GetVFX(vfx), true);
-            });
-        }
         playSfxAll("nukeFire", 1.0);
         // 'base' is the team that owned the destroyed HQ, so the winner is the
         // other team. GetTeam(base - 1) once passed team 0 when HQ 1 fell, and

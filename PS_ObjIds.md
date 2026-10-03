@@ -119,17 +119,21 @@ nuke unlock path.
 
 ---
 
-## 7000–7999 — HQ
+## HQ (ObjIds 1 and 2)
 
-| ObjId range | Object | Class | Max | Godot notes |
-|---|---|---|---|---|
-| `7300–7309` | HQ dummy target | `SpatialObject` | 2 | One per base. A Rorsch hit within `HQ_HIT_RADIUS_M` (350 m) of it damages that HQ once it is open. |
-| `7400–7409` | HQ explosion VFX | `SpatialObject` | 2 | One per base. Fires on victory. |
+The team HQs themselves (`HQ_OBJIDS`): ObjId 1 is team 1's, 2 is team 2's. A
+Rorsch hit within `HQ_HIT_RADIUS_M` (350 m) of a team's HQ damages it once it
+is open. The positions are read from the map export at build time
+(`scripts/gen-hqpos.js` writes `src/hqpos.ts`), so moving an HQ only needs a
+re-export and `npm run build`.
+
+## 7000–7999 — retired
 
 **Retired 2026-10-03** (the rocket sites replaced the turrets; delete them from
 the map): `7000–7099` turret emplacements, `7100–7199` turret warning zones,
-`7200–7299` turret destroyed VFX, `7500–7509` enemy-base proximity gates. The
-Rorsch now fires from anywhere, so the gates have no use.
+`7200–7299` turret destroyed VFX, `7300–7309` HQ dummy targets (the HQs
+themselves are the targets now), `7400–7409` HQ explosion VFX (the Rorsch nuke
+effects replace it), `7500–7509` enemy-base proximity gates.
 
 ---
 
@@ -254,8 +258,7 @@ No LOS marker object. A human entering a live enemy rocket site's kill zone
 | Naval Factory AreaTrigger | 0–1 (water maps) | 6000+ |
 | Naval WorldIcon | 0–1 | 6100+ |
 | Naval VehicleSpawner | dock slots | 6200+ |
-| HQ dummy SpatialObject | 1 per base | 7300+ |
-| HQ explosion VFX | 1 per base | 7400+ |
+| HQ | 1 per base | 1, 2 |
 | Rocket site (kill zone, animation zone, radar, silos) | 3 per team | 8100–8300, 8500–8700 |
 | Bot navigation waypoint (tiny prop or WorldIcon) | where bot pathing is poor | 9000–9199 |
 

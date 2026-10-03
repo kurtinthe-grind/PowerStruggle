@@ -1,6 +1,6 @@
 import { Events } from "bf6-portal-utils/events";
 import { log, safe, willLogDebug } from "./util/log";
-import { HQ_TARGETS, isConfigured } from "./objids";
+import { HQ_POS } from "./hqpos";
 import { HQ_HIT_RADIUS_M, RAY_MAX_DIST_M, RAY_START_OFFSET_M, RAY_PASS_M, RAY_PASS_TRIES, RORSCH_TRACE, RORSCH_MIN_CHARGE_MS, RORSCH_PITCH_FIX_RAD } from "./config";
 import { isRorschActive } from "./weapons";
 import { configureNukeFxEvents, detonate, startChargeAlarm, stopChargeAlarm } from "./nukefx";
@@ -106,7 +106,6 @@ let inited: boolean = false;
 
 export function initNuke(): void {
     inited = true;
-    cacheHqTargets();
     log("nuke", "ready: ray on discharge (IsFiring off after charge), one ray per player, HQ hit within "
         + String(HQ_HIT_RADIUS_M) + " m once open");
 }
@@ -247,29 +246,6 @@ function captureAim(p: mod.Player, pid: number): void {
 // Squared once so the read path compares against a number, not a radius.
 const HQ_HIT_RADIUS_SQ: number = HQ_HIT_RADIUS_M * HQ_HIT_RADIUS_M;
 
-// HQ dummy target positions, resolved once at init. The targets are static
-// map geometry, so resolving them per shot was two FFI calls for a constant.
-// A NaN marks a target that never resolved.
-const hqX: number[] = [NaN, NaN];
-const hqY: number[] = [NaN, NaN];
-const hqZ: number[] = [NaN, NaN];
-
-function cacheHqTargets(): void {
-    for (let i: number = 0; i < 2; i++) {
-        const target: number = HQ_TARGETS[i];
-        if (!isConfigured(target)) {
-            continue;
-        }
-        safe("nuke.hqpos", () => {
-            const v: Vectors.Vector3 = Vectors.toVector3(
-                mod.GetObjectPosition(mod.GetSpatialObject(target)));
-            hqX[i] = v.x;
-            hqY[i] = v.y;
-            hqZ[i] = v.z;
-        });
-    }
-}
-
 function dist(a: Vectors.Vector3, b: Vectors.Vector3): number {
     return Math.sqrt(Vectors.distanceSquared(a, b));
 }
@@ -314,22 +290,15 @@ function resolveHit(ray: PendingRay, hit: Vectors.Vector3): void {
         if (base === team) {
             continue;
         }
-        const target: number = HQ_TARGETS[base - 1];
-        if (!isConfigured(target)) {
-            continue;
-        }
         const losOk: boolean = hqOpenFor(base);
         let d: number = -1;
         let inRange: boolean = false;
         safe("nuke.hq", () => {
-            // Cached: no GetSpatialObject, no GetObjectPosition, no allocation.
-            const hx: number = hqX[base - 1];
-            const hy: number = hqY[base - 1];
-            const hz: number = hqZ[base - 1];
-            if (hx !== hx) {
-                // NaN sentinel: the target never resolved at init.
-                return;
-            }
+            // The HQ object itself (HQ_OBJIDS), read from the map at build
+            // time (scripts/gen-hqpos.js): no lookup, no allocation.
+            const hx: number = HQ_POS[(base - 1) * 3];
+            const hy: number = HQ_POS[(base - 1) * 3 + 1];
+            const hz: number = HQ_POS[(base - 1) * 3 + 2];
             const dx: number = hit.x - hx;
             const dy: number = hit.y - hy;
             const dz: number = hit.z - hz;

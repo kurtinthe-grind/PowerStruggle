@@ -99,9 +99,24 @@ function buildSite(n, objs) {
     return { n, team: teamOfSite(n), zone, animZone, radar: rp[0], radarParts: rp, silos: silosById, centre };
 }
 
+// A site copied in Godot keeps the original's ObjIds; every copy then lands
+// in the same block and the build would merge them into one site.
+function checkUnique(objs) {
+    const seen = {};
+    for (const o of objs) {
+        if (o.id < siteBase(FIRST_SITE) || o.id > siteBase(LAST_SITE) + 99) continue;
+        if (seen[o.id]) {
+            throw new Error("ObjId " + o.id + " is used more than once (" + seen[o.id] + ", " + o.name
+                + "): give each copied site its own block (8100, 8200, ...)");
+        }
+        seen[o.id] = o.name;
+    }
+}
+
 function buildSitemap(json) {
     const objs = [];
     collect(json, objs);
+    checkUnique(objs);
     const sites = [];
     for (let n = FIRST_SITE; n <= LAST_SITE; n++) {
         const s = buildSite(n, objs);

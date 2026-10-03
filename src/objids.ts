@@ -44,8 +44,6 @@ export const NAVAL_FACTORY: AreaBuildingDef[] = [
     { id: "naval2", kind: "naval", areaTriggerId: 6001, worldIconId: 6101, vehicleSpawnerId: 6202, vehicleSpawnerIds: [6202, 6203], factoryName: "Naval Factory 2" }
 ];
 
-export const HQ_TARGETS: number[] = [7300, 7301];
-export const HQ_EXPLOSION: number[] = [7400, 7401];
 export const HQ_OBJIDS: number[] = [1, 2];
 
 export const DEFERRED_SLOTS: { what: string; note: string }[] = [

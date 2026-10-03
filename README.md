@@ -61,7 +61,7 @@ on its radar from unguided, high-explosive or aim-guided rocket launchers, and
 stays down for the rest of the match.
 
 The **Rorsch** is a raygun: it charges for about 2 seconds and fires a hitscan
-shot. From anywhere, the shot:
+shot that lands slightly below the crosshair. From anywhere, the shot:
 
 - **destroys an enemy rocket site in one hit** when it passes through its
   radar. Once 2 of a team's sites are down, its HQ is open, and both teams
@@ -132,7 +132,8 @@ npm install
 npm run build
 ```
 
-`npm run build` regenerates the waypoint table from the map export, runs the
+`npm run build` regenerates the waypoint table, the HQ positions and the
+rocket sites from the map export, runs the
 source guard and unit tests, type-checks, bundles, and type-checks the bundle. Upload `dist/bundle.ts` and `dist/bundle.strings.json`
 to the Portal web editor together with the map export.
 
