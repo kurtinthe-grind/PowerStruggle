@@ -2,7 +2,6 @@
 
 <p align="center">
   <img src="ps_poster_1.jpg" alt="Power Struggle poster" width="420">
-  <img src="ps_map_thumbnail_1.jpg" alt="Power Struggle thumbnail" width="420">
 </p>
 
 A Battlefield 6 Portal game mode (TypeScript) inspired by Crysis Wars' Power
