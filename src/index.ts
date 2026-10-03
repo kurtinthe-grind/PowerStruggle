@@ -51,7 +51,9 @@ import { initTurrets, configureTurretEvents, onHqHit } from "./turrets";
 import { hqHpPercent } from "./winner";
 import { buyVehicle, BuyResult, initSlots } from "./slots";
 import { factoryBuildings, isConfigured } from "./objids";
-import { initNuke, configureNukeEvents, tickNukeProbe } from "./nuke";
+import { initNuke, configureNukeEvents, tickNukeProbe, tickNukeRays } from "./nuke";
+import { tickNukeFx } from "./nukefx";
+import { onRorschBought } from "./rorschammo";
 import { initWorldIcons, stateFor, highlightFor, highlightedFor, distanceMeters } from "./worldicons";
 import { debugWeaponReport, isRorschInHand } from "./weapons";
 import { setFeedSink, setPlayerFeedSink } from "./notify";
@@ -2689,6 +2691,10 @@ function onOngoingGlobal(): void {
     if (healthFactor() >= 0.7) {
         tickNukeProbe();
     }
+    // Queued nuke damage and effects, and the Rorsch ammo poll: never skipped.
+    safe("nuke.fx", tickNukeFx);
+    // A Rorsch ray blocked at its start is cast again here: never skipped.
+    safe("nuke.rays", tickNukeRays);
     expireFeedRows();
     if (artActive === undefined && artQueue.length === 0) {
         return;
@@ -2909,8 +2915,15 @@ function onUIButtonEvent(eventPlayer: mod.Player, eventUIWidget: mod.UIWidget, e
                 setPrestige(id, pPrestige[id] - items[i].cost);
                 if (give !== undefined) {
                     try {
-                        mod.AddEquipment(eventPlayer, give);
-                        mod.SetInventoryAmmo(eventPlayer, mod.InventorySlots.PrimaryWeapon, 900);
+                        if (mod.Equals(give, mod.Weapons.BattlePickup_Rorsch_Mk_2_SMRW)) {
+                            // Asked for the primary slot, so the slot ammo
+                            // calls might reach it; shots are counted anyway.
+                            mod.AddEquipment(eventPlayer, give, mod.InventorySlots.PrimaryWeapon);
+                            onRorschBought(eventPlayer);
+                        } else {
+                            mod.AddEquipment(eventPlayer, give);
+                            mod.SetInventoryAmmo(eventPlayer, mod.InventorySlots.PrimaryWeapon, 900);
+                        }
                     } catch (e) {
                         log("shop", "AddEquipment failed for " + items[i].key + ": " + String(e));
                     }

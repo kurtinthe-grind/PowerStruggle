@@ -1357,8 +1357,19 @@ export const HQ_HITS_REQUIRED: number = 3;
 export const RAY_MAX_DIST_M: number = 900;
 // Push the ray origin past the soldier's own body so it cannot self-hit.
 export const RAY_START_OFFSET_M: number = 2.5;
-// Ignore impacts closer than this; they are the player's own geometry.
-export const RAY_MIN_HIT_DIST_M: number = 3.0;
+// An impact within RAY_PASS_M of where the ray started is a thin obstacle at
+// the shooter (glass, a railing: test 2026-10-03, every shot from one spot by
+// the air pads hit 0.37 m past the start in any direction, while the Rorsch
+// round flew on). The ray is cast again from just past it, at most
+// RAY_PASS_TRIES times.
+export const RAY_PASS_M: number = 0.5;
+export const RAY_PASS_TRIES: number = 3;
+// The Rorsch is a raygun: its shot is a straight line. The facing read while
+// it charges points higher than the shot. 17:38 log: rays aimed at turrets
+// passed over them by 0.050 and 0.063 rad (115 m and 152 m) with the yaw
+// exact; 2026-10-03: the duds were all "level or slightly up" shots that hit
+// the ground close by. The ray is pitched down by this much. 0 turns it off.
+export const RORSCH_PITCH_FIX_RAD: number = 0.057;
 // The Rorsch shot is the moment IsFiring turns off after a full charge (see
 // rorschshot.ts). Measured 2026-10-01: the discharge lands 2200-2212 ms after
 // the press. A release shorter than this is a cancelled charge, no shot. Kept
@@ -1368,6 +1379,45 @@ export const RORSCH_MIN_CHARGE_MS: number = 2100;
 // every ray outcome while a player is in an HQ fire zone. One soldier-state read
 // per tick per player in a fire zone. Set false once settled.
 export const RORSCH_TRACE: boolean = true;
+
+// Rorsch tactical nuke (src/nukefx.ts), on every Rorsch impact anywhere, with
+// friendly fire. Inside NUKE_KILL_M a player dies (humans see a black screen
+// for NUKE_BLACK_MS first). Out to NUKE_BURN_M: blast damage from
+// NUKE_BLAST_DMG_NEAR at the kill edge down to NUKE_BLAST_DMG_FAR, then
+// burning for NUKE_BURN_S at NUKE_BURN_DPS; both can kill. Out to
+// NUKE_WITNESS_M: a short thermal flash. Screen and sound effects go to humans
+// only. The "screen effect" VFX are world objects kept in front of the
+// player's eyes every tick, for at most NUKE_FOLLOW_MAX players per blast.
+// Raised 2026-10-03 after the test: the zones looked small next to the blast.
+export const NUKE_KILL_M: number = 35;
+export const NUKE_BURN_M: number = 55;
+export const NUKE_WITNESS_M: number = 150;
+export const NUKE_BLAST_DMG_NEAR: number = 70;
+export const NUKE_BLAST_DMG_FAR: number = 35;
+export const NUKE_BURN_DPS: number = 5;
+export const NUKE_BURN_S: number = 6;
+// Black screen: the kill lands after NUKE_BLACK_MS, the screen stays black
+// until NUKE_BLACK_HOLD_MS (through the start of the death screen) and then
+// fades out.
+export const NUKE_BLACK_MS: number = 600;
+export const NUKE_BLACK_HOLD_MS: number = 2500;
+// White flash: held, then faded out in 200 ms steps over NUKE_WHITE_FADE_MS.
+export const NUKE_WHITE_HOLD_MS: number = 1200;
+export const NUKE_WHITE_FADE_MS: number = 2000;
+// The Carrier explosion is authored high above its origin (a carrier deck):
+// spawned this far below the impact so it bursts at ground level.
+export const NUKE_CARRIER_DROP_M: number = 20;
+export const NUKE_FOLLOW_MAX: number = 16;
+// The smoke plume loops forever, so it is removed after this; every other
+// world effect of the blast after NUKE_FX_MS.
+export const NUKE_PLUME_MS: number = 6500;
+export const NUKE_FX_MS: number = 12000;
+export const NUKE_SHOCK_SCALE: number = 3;
+// The charge alarm at the shooter is heard this far.
+export const NUKE_ALARM_RANGE_M: number = 60;
+// Rorsch rounds per purchase: one loaded, one spare. Tracked across drops and
+// pickups so picking a dropped Rorsch back up cannot refill it.
+export const RORSCH_SHOTS: number = 2;
 export const POWER_LEVEL_REQUIRED: number = 100;
 
 // ---- Bots: custom AI_Spawner objective players (no UI, no buy, no nuke) ----
@@ -13980,6 +14030,16 @@ export function isRorschInHand(player: mod.Player): boolean {
     return mod.HasEquipment(player, RORSCH);
 }
 
+// The Rorsch is carried and no ordinary weapon is in hand. The Rorsch is a
+// battle pickup, not a slot item: while it is held IsInventorySlotActive is
+// false for every slot (test 2026-10-03: pri/sec/misc all false), so ownership
+// can only be HasEquipment. A sidearm in hand is still rejected, should the
+// secondary slot report active while it is out.
+export function isRorschActive(player: mod.Player): boolean {
+    return mod.HasEquipment(player, RORSCH)
+        && !mod.IsInventorySlotActive(player, mod.InventorySlots.SecondaryWeapon);
+}
+
 export function debugWeaponReport(player: mod.Player): string {
     const sec = GetCurrentWeaponInSlot(player, mod.InventorySlots.SecondaryWeapon);
     const full = GetCurrentWeaponInSlot(player, mod.InventorySlots.PrimaryWeapon, sec);
@@ -13990,6 +14050,914 @@ export function debugWeaponReport(player: mod.Player): string {
         + " hasRorsch=" + String(rorschEq)
         + " inHand=" + String(cheap)
         + " agree=" + String((full === RORSCH) === cheap);
+}
+
+
+// --- SOURCE: src\rorschammo.ts ---
+
+
+
+
+
+
+
+
+// Rorsch ammo: RORSCH_SHOTS rounds per purchase. The Rorsch is a battle
+// pickup, not a slot item, so the slot ammo calls do not reach it: on
+// PrimaryWeapon they changed some other weapon and the Rorsch kept its own
+// 1/10 (test 2026-10-03). The limit is therefore counted here: every discharge
+// (nuke.ts) takes a shot off, and the weapon is taken away once none are left.
+// The shots left travel with the weapon: a drop remembers them and the next
+// pickup without a purchase gets them, so a dropped Rorsch cannot come back
+// full. The on-screen count still shows the engine's own ammo.
+//
+// RORSCH_TRACE logs every slot's ammo at purchase, to find out whether any
+// slot reads the Rorsch's 1/10 after all.
+
+const shotsLeft: { [pid: number]: number } = {};
+const carrying: { [pid: number]: boolean } = {};
+const boughtAt: { [pid: number]: number } = {};
+// Shots left in the most recently dropped Rorsch, for whoever picks one up.
+let droppedShots: number = 1;
+let pollAt: number = 0;
+// Time between the last discharge and taking the weapon away, so the shot
+// itself plays out.
+const REMOVE_AFTER_MS: number = 1500;
+
+// Zero FFI, for the shot probe.
+export function isRorschCarrier(pid: number): boolean {
+    return carrying[pid] === true;
+}
+
+// Callins and MiscGadget throw GetAmmoRequest, so they are left out.
+const SLOT_NAMES: string[] = ["PrimaryWeapon", "SecondaryWeapon", "GadgetOne", "GadgetTwo"];
+const SLOTS: mod.InventorySlots[] = [
+    mod.InventorySlots.PrimaryWeapon, mod.InventorySlots.SecondaryWeapon, mod.InventorySlots.GadgetOne,
+    mod.InventorySlots.GadgetTwo
+];
+
+function traceSlots(p: mod.Player, why: string): void {
+    let line: string = "";
+    for (let i: number = 0; i < SLOTS.length; i++) {
+        let v: string;
+        try {
+            v = mod.GetInventoryMagazineAmmo(p, SLOTS[i]) + "/" + mod.GetInventoryAmmo(p, SLOTS[i])
+                + (mod.IsInventorySlotActive(p, SLOTS[i]) ? "*" : "");
+        } catch (e) {
+            v = "x";
+        }
+        line += (line === "" ? "" : " ") + SLOT_NAMES[i] + "=" + v;
+    }
+    log("rorsch", "pid=" + mod.GetObjId(p) + " slots (" + why + "): " + line);
+}
+
+// The on-screen count, when the primary slot turns out to hold the Rorsch.
+// Its own ammo is 1 loaded and 9+ spare, which no ordinary primary has, so a
+// slot reading magazine 1 with a reserve of 9 or more is taken to be it; any
+// other reading is left alone, so no other weapon's ammo is touched.
+function trySetCount(p: mod.Player, pid: number, why: string): void {
+    const shots: number | undefined = shotsLeft[pid];
+    if (shots === undefined) {
+        return;
+    }
+    try {
+        const slot: mod.InventorySlots = mod.InventorySlots.PrimaryWeapon;
+        const mag: number = mod.GetInventoryMagazineAmmo(p, slot);
+        const res: number = mod.GetInventoryAmmo(p, slot);
+        if (mag !== 1 || res < 9) {
+            if (RORSCH_TRACE) {
+                log("rorsch", "pid=" + pid + " primary reads " + mag + "/" + res + " (" + why
+                    + "), not the Rorsch, count left alone");
+            }
+            return;
+        }
+        mod.SetInventoryAmmo(p, slot, Math.max(0, shots - 1));
+        log("rorsch", "pid=" + pid + " count set (" + why + "): " + mag + "/" + res + " -> "
+            + mod.GetInventoryMagazineAmmo(p, slot) + "/" + mod.GetInventoryAmmo(p, slot));
+    } catch (e) {
+        log("rorsch", "pid=" + pid + " count set failed (" + why + "): " + String(e));
+    }
+}
+
+// Called by the shop right after AddEquipment.
+export function onRorschBought(p: mod.Player): void {
+    const pid: number = mod.GetObjId(p);
+    shotsLeft[pid] = RORSCH_SHOTS;
+    carrying[pid] = true;
+    boughtAt[pid] = Date.now();
+    log("rorsch", "pid=" + pid + " bought the Rorsch, " + RORSCH_SHOTS + " shots");
+    Timers.setTimeout(() => {
+        safe("rorsch.count", () => {
+            if (mod.IsValid(p) && isDeployedPid(pid)) {
+                if (RORSCH_TRACE) {
+                    traceSlots(p, "bought");
+                }
+                trySetCount(p, pid, "bought");
+            }
+        });
+    }, 500);
+}
+
+// One discharge of the Rorsch (nuke.ts). The last one takes the weapon away.
+export function onRorschShot(p: mod.Player, pid: number): void {
+    const s: number | undefined = shotsLeft[pid];
+    if (s === undefined) {
+        return;
+    }
+    const left: number = Math.max(0, s - 1);
+    shotsLeft[pid] = left;
+    log("rorsch", "pid=" + pid + " fired, " + left + " shots left");
+    if (left > 0) {
+        return;
+    }
+    Timers.setTimeout(() => {
+        safe("rorsch.empty", () => {
+            if (!mod.IsValid(p) || !isDeployedPid(pid) || shotsLeft[pid] !== 0) {
+                return;
+            }
+            if (mod.HasEquipment(p, RORSCH)) {
+                mod.RemoveEquipment(p, RORSCH);
+                log("rorsch", "pid=" + pid + " out of shots, Rorsch removed");
+            }
+            dropped(pid);
+        });
+    }, REMOVE_AFTER_MS);
+}
+
+// The weapon drops when its owner dies.
+export function onRorschOwnerGone(pid: number): void {
+    if (carrying[pid] !== true) {
+        return;
+    }
+    dropped(pid);
+}
+
+function dropped(pid: number): void {
+    const s: number | undefined = shotsLeft[pid];
+    if (s !== undefined && s > 0) {
+        droppedShots = s;
+    }
+    log("rorsch", "pid=" + pid + " no longer carries the Rorsch (" + (s === undefined ? "?" : String(s))
+        + " shots left)");
+    delete carrying[pid];
+    delete shotsLeft[pid];
+    delete boughtAt[pid];
+}
+
+// Once a second: who carries the Rorsch (deployed humans only), pickups and
+// drops.
+export function pollRorsch(nowMs: number): void {
+    if (nowMs - pollAt < 1000) {
+        return;
+    }
+    pollAt = nowMs;
+    for (const p of allPlayers()) {
+        const pid: number = mod.GetObjId(p);
+        if (pid < 0 || isBotPid(pid) || !isDeployedPid(pid)) {
+            continue;
+        }
+        let has: boolean = false;
+        try {
+            has = mod.HasEquipment(p, RORSCH);
+        } catch (e) {
+            continue;
+        }
+        if (has && carrying[pid] !== true) {
+            carrying[pid] = true;
+            if (shotsLeft[pid] === undefined) {
+                shotsLeft[pid] = droppedShots > 0 ? droppedShots : 1;
+                log("rorsch", "pid=" + pid + " picked up a Rorsch with " + shotsLeft[pid] + " shots");
+                trySetCount(p, pid, "picked up");
+            }
+        } else if (!has && carrying[pid] === true) {
+            // The equipment may not show yet right after the purchase.
+            const bought: number | undefined = boughtAt[pid];
+            if (bought === undefined || nowMs - bought > 2000) {
+                dropped(pid);
+            }
+        }
+    }
+}
+
+
+// --- SOURCE: src\nukefx.ts ---
+
+
+
+
+
+
+
+
+// The Rorsch impact as a small tactical nuke (agreed with the mode owner,
+// 2026-10-03). Every impact, anywhere, friendly fire included:
+//
+//   world    two Carrier explosions, four Huge Horizon blasts in a ring, the
+//            Med Horizon multi-blast, a smoke plume (removed after
+//            NUKE_PLUME_MS, it loops forever) and a ring of dirt shockwaves;
+//            the gas-station collapse close and distant. Nothing is left.
+//   kill     inside NUKE_KILL_M: a black screen for NUKE_BLACK_MS (humans),
+//            then death credited to the shooter.
+//   burn     to NUKE_BURN_M: blast damage, burning for NUKE_BURN_S, and for
+//            humans the full sequence below.
+//   witness  to NUKE_WITNESS_M: a short thermal flash (humans).
+//
+// Close-player sequence (ms after impact): 0 white screen, held
+// NUKE_WHITE_HOLD_MS then faded over NUKE_WHITE_FADE_MS, plus the Thermal BHOT
+// effect; 400 remote-turret damage effect; 800 VL7 gas mask; 1200 the
+// death-warning drone; 1500 thermal flash; 2000 the adrenaline "making sense
+// of it" sound; 6000 the calm: VL7 and the drone off, Saturated and the
+// adrenaline effect; 10000 Saturated off. In a vehicle the drone out-of-range
+// distortion replaces the world-object screen effects.
+//
+// The "screen effect" VFX are world objects: spawned 3 m in front of the eyes
+// they look like screen effects, but stay where they were spawned (the reason
+// the flashbang effect "stopped working" when the owner moved). They are moved
+// in front of the player's eyes every tick, for at most NUKE_FOLLOW_MAX
+// players per blast; VL7 and Saturated are real per-player effects.
+//
+// Everything is driven by one step queue run from the per-tick hook, so a
+// blast costs no timers from the shared pool.
+
+// ------------------------------------------------------------------- helpers
+
+let zeroVec: mod.Vector | undefined = undefined;
+let oneVec: mod.Vector | undefined = undefined;
+
+function zero(): mod.Vector {
+    if (zeroVec === undefined) {
+        zeroVec = mod.CreateVector(0, 0, 0);
+    }
+    return zeroVec;
+}
+
+function one(): mod.Vector {
+    if (oneVec === undefined) {
+        oneVec = mod.CreateVector(1, 1, 1);
+    }
+    return oneVec;
+}
+
+interface Step {
+    at: number;
+    fn: () => void;
+}
+
+const steps: Step[] = [];
+
+function after(ms: number, fn: () => void): void {
+    steps.push({ at: Date.now() + ms, fn: fn });
+}
+
+const sfxCache: { [key: string]: mod.SFX } = {};
+
+function sfxObj(key: string, asset: mod.RuntimeSpawn_Common): mod.SFX | undefined {
+    let s: mod.SFX | undefined = sfxCache[key];
+    if (s !== undefined) {
+        return s;
+    }
+    try {
+        s = mod.SpawnObject(asset, zero(), zero()) as mod.SFX;
+        sfxCache[key] = s;
+        return s;
+    } catch (e) {
+        log("nuke", "sound spawn failed for " + key + ": " + String(e));
+        return undefined;
+    }
+}
+
+function play2D(key: string, asset: mod.RuntimeSpawn_Common, p: mod.Player, amp: number): void {
+    const s: mod.SFX | undefined = sfxObj(key, asset);
+    if (s === undefined) {
+        return;
+    }
+    try {
+        mod.PlaySound(s, amp, p);
+    } catch (e) {
+    }
+}
+
+function stop2D(key: string, p: mod.Player): void {
+    const s: mod.SFX | undefined = sfxCache[key];
+    if (s === undefined) {
+        return;
+    }
+    try {
+        mod.StopSound(s, p);
+    } catch (e) {
+    }
+}
+
+function play3D(key: string, asset: mod.RuntimeSpawn_Common, x: number, y: number, z: number,
+    amp: number, range: number): void {
+    const s: mod.SFX | undefined = sfxObj(key, asset);
+    if (s === undefined) {
+        return;
+    }
+    try {
+        mod.PlaySound(s, amp, mod.CreateVector(x, y, z), range);
+    } catch (e) {
+    }
+}
+
+function spawnFx(asset: mod.RuntimeSpawn_Common, x: number, y: number, z: number, scale: number): mod.VFX | undefined {
+    try {
+        const fx: mod.VFX = mod.SpawnObject(asset, mod.CreateVector(x, y, z), zero(), one()) as mod.VFX;
+        mod.EnableVFX(fx, true);
+        if (scale !== 1) {
+            mod.SetVFXScale(fx, scale);
+        }
+        return fx;
+    } catch (e) {
+        log("nuke", "effect spawn failed: " + String(e));
+        return undefined;
+    }
+}
+
+function killFx(fx: mod.VFX | undefined): void {
+    if (fx === undefined) {
+        return;
+    }
+    try {
+        mod.EnableVFX(fx, false);
+        mod.UnspawnObject(fx);
+    } catch (e) {
+    }
+}
+
+function isAlive(p: mod.Player): boolean {
+    try {
+        return mod.IsValid(p) && mod.GetSoldierState(p, mod.SoldierStateBool.IsAlive);
+    } catch (e) {
+        return false;
+    }
+}
+
+function hurt(p: mod.Player, amount: number, shooter: mod.Player): void {
+    try {
+        if (mod.IsValid(shooter)) {
+            mod.DealDamage(p, amount, shooter);
+        } else {
+            mod.DealDamage(p, amount);
+        }
+    } catch (e) {
+    }
+}
+
+// Deaths per player id: a step queued in one life never touches the next one
+// (persistent bots come back as the same player).
+const life: { [pid: number]: number } = {};
+
+function lifeOf(pid: number): number {
+    const l: number | undefined = life[pid];
+    return l === undefined ? 0 : l;
+}
+
+// ---------------------------------------------------- effects on the screen
+
+interface Follow {
+    pid: number;
+    player: mod.Player;
+    fx: mod.VFX;
+    until: number;
+}
+
+const follows: Follow[] = [];
+
+function eyeFront(p: mod.Player): mod.Vector {
+    const eye: mod.Vector = mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition);
+    const facing: mod.Vector = mod.Normalize(mod.GetSoldierState(p, mod.SoldierStateVector.GetFacingDirection));
+    return mod.Add(eye, mod.Multiply(facing, 3));
+}
+
+function attachFx(pid: number, p: mod.Player, asset: mod.RuntimeSpawn_Common, ms: number): void {
+    try {
+        const at: Vectors.Vector3 = Vectors.toVector3(eyeFront(p));
+        const fx: mod.VFX | undefined = spawnFx(asset, at.x, at.y, at.z, 1);
+        if (fx !== undefined) {
+            follows.push({ pid: pid, player: p, fx: fx, until: Date.now() + ms });
+        }
+    } catch (e) {
+    }
+}
+
+function dropFollows(pid: number): void {
+    for (let i: number = follows.length - 1; i >= 0; i--) {
+        if (follows[i].pid === pid) {
+            killFx(follows[i].fx);
+            follows.splice(i, 1);
+        }
+    }
+}
+
+function tickFollows(nowMs: number): void {
+    for (let i: number = follows.length - 1; i >= 0; i--) {
+        const f: Follow = follows[i];
+        if (nowMs >= f.until || !mod.IsValid(f.player)) {
+            killFx(f.fx);
+            follows.splice(i, 1);
+            continue;
+        }
+        try {
+            mod.MoveVFX(f.fx, eyeFront(f.player), zero());
+        } catch (e) {
+        }
+    }
+}
+
+// A human going through the close or kill sequence. One per player: a second
+// blast restarts it.
+interface Victim {
+    pid: number;
+    player: mod.Player;
+    ui: mod.UIWidget | undefined;
+    vl7: boolean;
+    sat: boolean;
+    heat: boolean;
+    drone: boolean;
+    fire: boolean;
+}
+
+const victims: { [pid: number]: Victim } = {};
+let panelSeq: number = 0;
+
+function begin(pid: number, p: mod.Player): Victim {
+    const old: Victim | undefined = victims[pid];
+    if (old !== undefined) {
+        endVictim(old);
+    }
+    const v: Victim = { pid: pid, player: p, ui: undefined, vl7: false, sat: false, heat: false, drone: false, fire: false };
+    victims[pid] = v;
+    return v;
+}
+
+function current(v: Victim): boolean {
+    return victims[v.pid] === v && mod.IsValid(v.player);
+}
+
+function removePanel(v: Victim): void {
+    if (v.ui === undefined) {
+        return;
+    }
+    try {
+        mod.DeleteUIWidget(v.ui);
+    } catch (e) {
+    }
+    v.ui = undefined;
+}
+
+function setVl7(v: Victim, on: boolean): void {
+    v.vl7 = on;
+    try {
+        mod.EnableScreenEffect(v.player, mod.ScreenEffects.VL7, on);
+        mod.SetSoldierEffect(v.player, mod.SoldierEffects.VL7Effect, on);
+    } catch (e) {
+    }
+}
+
+function setSaturated(v: Victim, on: boolean): void {
+    v.sat = on;
+    try {
+        mod.EnableScreenEffect(v.player, mod.ScreenEffects.Saturated, on);
+    } catch (e) {
+    }
+}
+
+function setHeat(v: Victim, on: boolean): void {
+    v.heat = on;
+    try {
+        mod.SetSoldierEffect(v.player, mod.SoldierEffects.HeatStatusEffect, on);
+    } catch (e) {
+    }
+}
+
+function stopDrone(v: Victim): void {
+    if (v.drone) {
+        v.drone = false;
+        stop2D("drone", v.player);
+    }
+}
+
+function stopFire(v: Victim): void {
+    if (v.fire) {
+        v.fire = false;
+        stop2D("fireLoop", v.player);
+    }
+}
+
+// Undoes everything still on for this player: on death, on leaving, when a
+// new blast restarts the sequence, and at the end.
+function endVictim(v: Victim): void {
+    if (victims[v.pid] === v) {
+        delete victims[v.pid];
+    }
+    removePanel(v);
+    if (mod.IsValid(v.player)) {
+        if (v.vl7) {
+            setVl7(v, false);
+        }
+        if (v.sat) {
+            setSaturated(v, false);
+        }
+        if (v.heat) {
+            setHeat(v, false);
+        }
+        stopDrone(v);
+        stopFire(v);
+    }
+    dropFollows(v.pid);
+}
+
+// Full-screen panel for this player, at alpha 1.
+function addPanel(pid: number, p: mod.Player, r: number, g: number, b: number): mod.UIWidget | undefined {
+    panelSeq++;
+    const name: string = "psh_nuke_" + pid + "_" + panelSeq;
+    try {
+        mod.AddUIContainer(name, zero(), mod.CreateVector(5000, 5000, 0), mod.UIAnchor.Center, mod.GetUIRoot(),
+            true, 0, mod.CreateVector(r, g, b), 1, mod.UIBgFill.Solid, mod.UIDepth.AboveGameUI, p);
+        return mod.FindUIWidgetWithName(name);
+    } catch (e) {
+        log("nuke", "flash panel failed for pid=" + pid + ": " + String(e));
+        return undefined;
+    }
+}
+
+function panel(v: Victim, r: number, g: number, b: number): void {
+    removePanel(v);
+    v.ui = addPanel(v.pid, v.player, r, g, b);
+}
+
+// Fades a panel out in 200 ms steps starting at holdMs, then deletes it. ok()
+// says whether the panel is still wanted (a new blast may have replaced it).
+function fadePanel(w: mod.UIWidget, holdMs: number, fadeMs: number, ok: () => boolean): void {
+    const n: number = Math.max(1, Math.round(fadeMs / 200));
+    for (let k: number = 1; k <= n; k++) {
+        const alpha: number = 1 - k / n;
+        after(holdMs + k * 200, () => {
+            if (!ok()) {
+                return;
+            }
+            try {
+                if (alpha <= 0) {
+                    mod.DeleteUIWidget(w);
+                } else {
+                    mod.SetUIWidgetBgAlpha(w, alpha);
+                }
+            } catch (e) {
+            }
+        });
+    }
+}
+
+// Black panels that outlive their owner's death, per player, so a second
+// blast or leaving the game can still remove them.
+const blackPanels: { [pid: number]: mod.UIWidget } = {};
+
+function dropBlack(pid: number): void {
+    const w: mod.UIWidget | undefined = blackPanels[pid];
+    if (w === undefined) {
+        return;
+    }
+    delete blackPanels[pid];
+    try {
+        mod.DeleteUIWidget(w);
+    } catch (e) {
+    }
+}
+
+// ------------------------------------------------------------ the blast
+
+function worldEffects(x: number, y: number, z: number): void {
+    const made: (mod.VFX | undefined)[] = [];
+    made.push(spawnFx(mod.RuntimeSpawn_Common.FX_Carrier_Explosion_Dist, x, y - NUKE_CARRIER_DROP_M, z, 1));
+    const plume: mod.VFX | undefined = spawnFx(mod.RuntimeSpawn_Common.FX_BASE_Smoke_Column_XXL, x, y, z, 1);
+    made.push(spawnFx(mod.RuntimeSpawn_Common.VFX_Launchers_GroundShockwave_Dirt, x, y, z, NUKE_SHOCK_SCALE + 1));
+    after(50, () => {
+        for (let i: number = 0; i < 6; i++) {
+            const a: number = i * Math.PI / 3;
+            made.push(spawnFx(mod.RuntimeSpawn_Common.VFX_Launchers_GroundShockwave_Dirt,
+                x + Math.cos(a) * 6, y, z + Math.sin(a) * 6, NUKE_SHOCK_SCALE));
+        }
+    });
+    after(150, () => {
+        made.push(spawnFx(mod.RuntimeSpawn_Common.FX_BD_Med_Horizon_Exp_Multi, x, y, z, 1));
+    });
+    after(250, () => {
+        made.push(spawnFx(mod.RuntimeSpawn_Common.FX_Carrier_Explosion_Dist, x, y - NUKE_CARRIER_DROP_M, z, 1));
+    });
+    for (let i: number = 0; i < 4; i++) {
+        const a: number = i * Math.PI / 2 + Math.PI / 4;
+        after(i * 100, () => {
+            made.push(spawnFx(mod.RuntimeSpawn_Common.FX_BD_Huge_Horizon_Exp,
+                x + Math.cos(a) * 8, y, z + Math.sin(a) * 8, 1));
+        });
+    }
+    after(NUKE_PLUME_MS, () => { killFx(plume); });
+    after(NUKE_FX_MS, () => {
+        for (const fx of made) {
+            killFx(fx);
+        }
+    });
+    play3D("blastClose", mod.RuntimeSpawn_Common.SFX_Destruction_Buildings_GasStation_Collapse_OneShot3D,
+        x, y, z, 1, 200);
+    play3D("blastFar", mod.RuntimeSpawn_Common.SFX_Destruction_Buildings_GasStation_Collapse_Distant_OneShot3D,
+        x, y, z, 1, 2000);
+}
+
+function killZone(p: mod.Player, pid: number, human: boolean, shooter: mod.Player): void {
+    if (!human) {
+        hurt(p, 1000, shooter);
+        return;
+    }
+    const v: Victim | undefined = victims[pid];
+    if (v !== undefined) {
+        endVictim(v);
+    }
+    dropBlack(pid);
+    const w: mod.UIWidget | undefined = addPanel(pid, p, 0, 0, 0);
+    const l: number = lifeOf(pid);
+    after(NUKE_BLACK_MS, () => {
+        if (lifeOf(pid) === l && isAlive(p)) {
+            hurt(p, 1000, shooter);
+        }
+    });
+    if (w === undefined) {
+        return;
+    }
+    // Stays up through the death, then fades.
+    blackPanels[pid] = w;
+    fadePanel(w, NUKE_BLACK_HOLD_MS, 1000, () => blackPanels[pid] === w);
+    after(NUKE_BLACK_HOLD_MS + 1200, () => {
+        if (blackPanels[pid] === w) {
+            delete blackPanels[pid];
+        }
+    });
+}
+
+function burn(p: mod.Player, pid: number, v: Victim | undefined, shooter: mod.Player): void {
+    const l: number = lifeOf(pid);
+    if (v !== undefined) {
+        setHeat(v, true);
+        play2D("fireStart", mod.RuntimeSpawn_Common.SFX_Soldier_Damage_Fire_Start_OneShot2D, p, 1);
+        play2D("fireLoop", mod.RuntimeSpawn_Common.SFX_Soldier_Damage_Fire_Normal_SimpleLoop2D, p, 0.8);
+        v.fire = true;
+    }
+    for (let s: number = 1; s <= NUKE_BURN_S; s++) {
+        after(s * 1000, () => {
+            if (lifeOf(pid) === l && isAlive(p)) {
+                hurt(p, NUKE_BURN_DPS, shooter);
+            }
+        });
+    }
+    if (v !== undefined) {
+        after(NUKE_BURN_S * 1000 + 100, () => {
+            if (current(v)) {
+                setHeat(v, false);
+                stopFire(v);
+            }
+        });
+    }
+}
+
+function closeSequence(v: Victim, inVehicle: boolean, follow: boolean): void {
+    const p: mod.Player = v.player;
+    const pid: number = v.pid;
+    const screenFx: boolean = follow && !inVehicle;
+    panel(v, 1, 1, 1);
+    if (follow) {
+        attachFx(pid, p, inVehicle ? mod.RuntimeSpawn_Common.FX_Gadget_Drone_OutOfRange_Distortion
+            : mod.RuntimeSpawn_Common.FX_Gadget_ScreenEffect_Thermal_BHOT, inVehicle ? 4000 : 3000);
+    }
+    const white: mod.UIWidget | undefined = v.ui;
+    if (white !== undefined) {
+        fadePanel(white, NUKE_WHITE_HOLD_MS, NUKE_WHITE_FADE_MS, () => {
+            if (current(v) && v.ui === white) {
+                return true;
+            }
+            return false;
+        });
+        after(NUKE_WHITE_HOLD_MS + NUKE_WHITE_FADE_MS + 100, () => {
+            if (v.ui === white) {
+                v.ui = undefined;
+            }
+        });
+    }
+    if (screenFx) {
+        after(400, () => {
+            if (current(v)) {
+                attachFx(pid, p, mod.RuntimeSpawn_Common.FX_Gadget_RemoteTurret_ScreenEffect_Damage, 3000);
+            }
+        });
+        after(1500, () => {
+            if (current(v)) {
+                attachFx(pid, p, mod.RuntimeSpawn_Common.FX_Gadget_Drone_ThermalVE, 2500);
+            }
+        });
+    }
+    after(800, () => {
+        if (current(v)) {
+            setVl7(v, true);
+        }
+    });
+    after(1200, () => {
+        if (current(v)) {
+            play2D("drone", mod.RuntimeSpawn_Common.SFX_GameModes_BR_Circle_DeathWarning_SimpleLoop2D, p, 0.8);
+            v.drone = true;
+        }
+    });
+    after(2000, () => {
+        if (current(v)) {
+            play2D("adrenaline", mod.RuntimeSpawn_Common.SFX_Gadgets_AdrenalineShot_Commando_1pExperience_OneShot2D, p, 1);
+        }
+    });
+    after(6000, () => {
+        if (!current(v)) {
+            return;
+        }
+        setVl7(v, false);
+        stopDrone(v);
+        setSaturated(v, true);
+        if (screenFx) {
+            attachFx(pid, p, mod.RuntimeSpawn_Common.FX_Gadget_AdrenalineShot, 3500);
+        }
+    });
+    after(10000, () => {
+        if (current(v)) {
+            endVictim(v);
+        }
+    });
+}
+
+function inVehicleNow(p: mod.Player): boolean {
+    try {
+        return mod.GetSoldierState(p, mod.SoldierStateBool.IsInVehicle);
+    } catch (e) {
+        return false;
+    }
+}
+
+interface Hit {
+    p: mod.Player;
+    pid: number;
+    d: number;
+}
+
+const idsScratch: number[] = [];
+const playersScratch: mod.Player[] = [];
+const posScratch_2: Vectors.Vector3 = { x: 0, y: 0, z: 0 };
+
+// The Rorsch impact at (x, y, z). nuke.ts calls this for every hit.
+export function detonate(x: number, y: number, z: number, shooter: mod.Player): void {
+    worldEffects(x, y, z);
+    const n: number = PlayerLocations.findPlayersInSphere(x, y, z, NUKE_WITNESS_M, undefined, idsScratch, playersScratch);
+    const hits: Hit[] = [];
+    for (let i: number = 0; i < n; i++) {
+        const pid: number = idsScratch[i];
+        const got: Vectors.Vector3 | null | undefined = PlayerLocations.getPosition(pid, posScratch_2);
+        if (got === null || got === undefined) {
+            continue;
+        }
+        const dx: number = posScratch_2.x - x;
+        const dy: number = posScratch_2.y - y;
+        const dz: number = posScratch_2.z - z;
+        hits.push({ p: playersScratch[i], pid: pid, d: Math.sqrt(dx * dx + dy * dy + dz * dz) });
+    }
+    hits.sort((a: Hit, b: Hit) => a.d - b.d);
+    let followLeft: number = NUKE_FOLLOW_MAX;
+    let killed: number = 0;
+    let burned: number = 0;
+    let witnessed: number = 0;
+    for (const h of hits) {
+        if (!mod.IsValid(h.p)) {
+            continue;
+        }
+        const human: boolean = !isBotPid(h.pid);
+        if (h.d <= NUKE_KILL_M) {
+            killed++;
+            killZone(h.p, h.pid, human, shooter);
+            continue;
+        }
+        if (h.d <= NUKE_BURN_M) {
+            burned++;
+            const f: number = (h.d - NUKE_KILL_M) / (NUKE_BURN_M - NUKE_KILL_M);
+            hurt(h.p, Math.round(NUKE_BLAST_DMG_NEAR - f * (NUKE_BLAST_DMG_NEAR - NUKE_BLAST_DMG_FAR)), shooter);
+            let v: Victim | undefined = undefined;
+            if (human) {
+                v = begin(h.pid, h.p);
+                const follow: boolean = followLeft > 0;
+                if (follow) {
+                    followLeft--;
+                }
+                closeSequence(v, inVehicleNow(h.p), follow);
+            }
+            burn(h.p, h.pid, v, shooter);
+            continue;
+        }
+        witnessed++;
+        if (human && followLeft > 0) {
+            followLeft--;
+            attachFx(h.pid, h.p, inVehicleNow(h.p) ? mod.RuntimeSpawn_Common.FX_Gadget_Drone_OutOfRange_Distortion
+                : mod.RuntimeSpawn_Common.FX_Gadget_Drone_ThermalVE, 2500);
+        }
+    }
+    log("nuke", "DETONATE at " + Math.round(x) + "," + Math.round(y) + "," + Math.round(z)
+        + " killzone " + killed + ", burned " + burned + ", witnesses " + witnessed);
+}
+
+// ------------------------------------------------------------- charge alarm
+
+const alarmOn: { [pid: number]: boolean } = {};
+
+// The computer alarm loops at the shooter while the Rorsch charges, so
+// everyone nearby hears a nuke coming.
+export function startChargeAlarm(p: mod.Player, pid: number): void {
+    if (alarmOn[pid] === true) {
+        return;
+    }
+    const s: mod.SFX | undefined = sfxObj("alarm" + pid,
+        mod.RuntimeSpawn_Common.SFX_GameModes_BR_Mission_Wreckage_ComputerAlarm_SimpleLoop3D);
+    if (s === undefined) {
+        return;
+    }
+    try {
+        mod.PlaySound(s, 1, mod.GetSoldierState(p, mod.SoldierStateVector.GetPosition), NUKE_ALARM_RANGE_M);
+        alarmOn[pid] = true;
+    } catch (e) {
+    }
+}
+
+export function stopChargeAlarm(pid: number): void {
+    if (alarmOn[pid] !== true) {
+        return;
+    }
+    delete alarmOn[pid];
+    const s: mod.SFX | undefined = sfxCache["alarm" + pid];
+    if (s === undefined) {
+        return;
+    }
+    try {
+        mod.StopSound(s);
+    } catch (e) {
+    }
+}
+
+// --------------------------------------------------------------- lifecycle
+
+// Every tick, regardless of engine health: the queued damage and the effects
+// that follow the eyes must keep running.
+export function tickNukeFx(): void {
+    const nowMs: number = Date.now();
+    pollRorsch(nowMs);
+    if (steps.length > 0) {
+        for (let i: number = 0; i < steps.length;) {
+            if (steps[i].at <= nowMs) {
+                const s: Step = steps[i];
+                steps.splice(i, 1);
+                safe("nuke.step", s.fn);
+            } else {
+                i++;
+            }
+        }
+    }
+    if (follows.length > 0) {
+        tickFollows(nowMs);
+    }
+}
+
+function forget_2(pid: number): void {
+    life[pid] = lifeOf(pid) + 1;
+    const v: Victim | undefined = victims[pid];
+    if (v !== undefined) {
+        endVictim(v);
+    }
+    dropFollows(pid);
+    stopChargeAlarm(pid);
+    onRorschOwnerGone(pid);
+}
+
+// Leaving the game also takes the black panel, which a death keeps.
+function forgetAll(pid: number): void {
+    forget_2(pid);
+    dropBlack(pid);
+}
+
+export function configureNukeFxEvents(): void {
+    Events.OnPlayerDied.subscribe((victim: mod.Player) => {
+        safe("nuke.died", () => { forget_2(mod.GetObjId(victim)); });
+    });
+    Events.OnPlayerLeaveGame.subscribe((pid: number) => {
+        safe("nuke.leave", () => {
+            forgetAll(pid);
+            const s: mod.SFX | undefined = sfxCache["alarm" + pid];
+            if (s !== undefined) {
+                delete sfxCache["alarm" + pid];
+                try {
+                    mod.UnspawnObject(s);
+                } catch (e) {
+                }
+            }
+        });
+    });
 }
 
 
@@ -14106,6 +15074,8 @@ export function holdStep(st: HoldState | undefined, firing: boolean, nowMs: numb
 
 
 
+
+
 interface PendingRay {
     pid: number;
     team: number;
@@ -14115,6 +15085,18 @@ interface PendingRay {
     castMs: number;
     // Normalised ray direction, set at cast, for the turret path test.
     dir: Vectors.Vector3 | undefined;
+    // Fired from an HQ attack zone: only then can it break turrets or hit the
+    // HQ. The nuke goes off on every impact.
+    inGate: boolean;
+    // Where the current cast started (the first one RAY_START_OFFSET_M ahead
+    // of the eyes) and how many times it was cast again past an obstacle.
+    from: Vectors.Vector3 | undefined;
+    tries: number;
+    // Distance along the aim from the eyes where the current cast starts.
+    // due: a cast again past an obstacle waits for tickNukeRays (one RayCast
+    // per player per tick).
+    u: number;
+    due: boolean;
 }
 
 const inFlight: { [pid: number]: PendingRay } = {};
@@ -14172,6 +15154,7 @@ function traceSlot(p: mod.Player): string {
 }
 
 function forgetHold(pid: number): void {
+    stopChargeAlarm(pid);
     delete hold[pid];
     delete wasReloading[pid];
     delete lastPressMs[pid];
@@ -14182,6 +15165,12 @@ const gateOccupants: { [gateId: number]: number[] } = {};
 const gateHandles: { [gateId: number]: mod.AreaTrigger } = {};
 const playerGate: { [pid: number]: number } = {};
 const deployed_2: { [pid: number]: boolean } = {};
+
+// Zero FFI: HasEquipment and the other soldier reads throw PlayerNotDeployed
+// on a player who is not deployed (rorschammo's poll).
+export function isDeployedPid(pid: number): boolean {
+    return deployed_2[pid] === true;
+}
 
 let inited_2: boolean = false;
 
@@ -14286,7 +15275,9 @@ function shootRay(p: mod.Player): void {
         return;
     }
     const pending: PendingRay | undefined = inFlight[pid];
-    if (pending !== undefined) {
+    // A ray still waiting after 4 s lost its result and gives way to the new
+    // shot.
+    if (pending !== undefined && Date.now() - pending.castMs < 4000) {
         if (RORSCH_TRACE) {
             log("nuke", "RAY skipped pid=" + pid + " - previous ray still in flight ("
                 + String(Date.now() - pending.castMs) + "ms)");
@@ -14303,7 +15294,11 @@ function shootRay(p: mod.Player): void {
     const eye: mod.Vector = aim !== undefined
         ? mod.CreateVector(aim.ex, aim.ey, aim.ez)
         : mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition);
-    const pendingRay: PendingRay = { pid: pid, team: team, start: Vectors.toVector3(eye), castMs: Date.now(), dir: undefined };
+    const pendingRay: PendingRay = {
+        pid: pid, team: team, start: Vectors.toVector3(eye), castMs: Date.now(), dir: undefined,
+        inGate: nearEnemyBase(pid), from: undefined, tries: 0,
+        u: RAY_START_OFFSET_M, due: false
+    };
     inFlight[pid] = pendingRay;
     safe("nuke.cast", () => {
         const facing: mod.Vector = aim !== undefined
@@ -14312,12 +15307,10 @@ function shootRay(p: mod.Player): void {
         // Start ahead of the soldier. A ray originating at the eye position hits
         // the player's own body/weapon ~0.24 m out (see the 03:29 log), so the
         // hit point never came near a turret and nothing was ever destroyed.
-        const start: mod.Vector = mod.Add(eye, mod.Multiply(facing, RAY_START_OFFSET_M));
-        const end: mod.Vector = mod.Add(start, mod.Multiply(facing, RAY_MAX_DIST_M));
-        mod.RayCast(p, start, end);
         const e3: Vectors.Vector3 = Vectors.toVector3(eye);
-        const f3: Vectors.Vector3 = Vectors.toVector3(facing);
+        const f3: Vectors.Vector3 = pitchedDown(Vectors.toVector3(facing), RORSCH_PITCH_FIX_RAD);
         pendingRay.dir = f3;
+        castStraight(p, pendingRay);
         if (RORSCH_TRACE || willLogDebug()) {
             // After the cast, so the extra read adds no latency: the facing on
             // the discharge tick itself, to measure the kick the snapshot avoids.
@@ -14327,9 +15320,57 @@ function shootRay(p: mod.Player): void {
                 + String(e3.x) + "," + String(e3.y) + "," + String(e3.z)
                 + " dir " + String(f3.x) + "," + String(f3.y) + "," + String(f3.z)
                 + (aim !== undefined ? " (charge aim)" : " (live aim, none captured)")
+                + " (raw aim y " + String(mod.YComponentOf(facing)) + ", pitched down " + RORSCH_PITCH_FIX_RAD + " rad)"
                 + " dischargeTickDirY=" + String(live.y));
         }
     });
+}
+
+// The facing turned down by rad, keeping its yaw.
+function pitchedDown(f: Vectors.Vector3, rad: number): Vectors.Vector3 {
+    if (rad === 0) {
+        return f;
+    }
+    const h: number = Math.sqrt(f.x * f.x + f.z * f.z);
+    if (h < 1e-6) {
+        return f;
+    }
+    const pitch: number = Math.atan2(f.y, h) - rad;
+    const c: number = Math.cos(pitch);
+    return { x: f.x / h * c, y: Math.sin(pitch), z: f.z / h * c };
+}
+
+// The straight ray, from ray.u along the aim (the first cast starts
+// RAY_START_OFFSET_M out, past the shooter's own body) to the full range.
+function castStraight(p: mod.Player, ray: PendingRay): void {
+    const d: Vectors.Vector3 | undefined = ray.dir;
+    if (d === undefined) {
+        return;
+    }
+    const s: Vectors.Vector3 = ray.start;
+    const u1: number = RAY_START_OFFSET_M + RAY_MAX_DIST_M;
+    ray.due = false;
+    ray.from = { x: s.x + d.x * ray.u, y: s.y + d.y * ray.u, z: s.z + d.z * ray.u };
+    mod.RayCast(p, mod.CreateVector(ray.from.x, ray.from.y, ray.from.z),
+        mod.CreateVector(s.x + d.x * u1, s.y + d.y * u1, s.z + d.z * u1));
+}
+
+// Every tick: a ray blocked right at its start is cast again past the
+// obstacle. Casting from inside the result event could break the
+// one-ray-per-player-per-tick limit.
+export function tickNukeRays(): void {
+    for (const key in inFlight) {
+        const ray: PendingRay = inFlight[key];
+        if (!ray.due) {
+            continue;
+        }
+        const p: mod.Player | undefined = playerById(ray.pid);
+        if (p === undefined || !mod.IsValid(p)) {
+            delete inFlight[key];
+            continue;
+        }
+        safe("nuke.recast", () => { castStraight(p, ray); });
+    }
 }
 
 // Aim captured on every tick the Rorsch is charging, used for the shot. By the
@@ -14443,15 +15484,31 @@ function resolveHit(p: mod.Player, point: mod.Vector): void {
     }
     const hit: Vectors.Vector3 = Vectors.toVector3(point);
     const travelled: number = dist_2(ray.start, hit);
-    if (travelled < RAY_MIN_HIT_DIST_M) {
+    if (ray.from !== undefined && ray.dir !== undefined && dist_2(ray.from, hit) < RAY_PASS_M) {
+        if (ray.tries >= RAY_PASS_TRIES) {
+            log("nuke", "HIT ignored pid=" + pid + " - still blocked at " + String(travelled.toFixed(2))
+                + "m after " + ray.tries + " retries");
+            return;
+        }
+        // Cast again from just past the obstacle, next tick.
+        ray.u = ray.u + dist_2(ray.from, hit) + RAY_PASS_M;
+        ray.tries++;
+        ray.due = true;
+        inFlight[pid] = ray;
         if (RORSCH_TRACE || willLogDebug()) {
-            log("nuke", "HIT ignored (self) pid=" + pid + " dist=" + String(travelled.toFixed(2)));
+            log("nuke", "HIT pid=" + pid + " blocked at " + String(travelled.toFixed(2))
+                + "m, cast again past it (" + ray.tries + ")");
         }
         return;
     }
     if (RORSCH_TRACE || willLogDebug()) {
         log("nuke", "HIT pid=" + pid + " team=" + team + " dist=" + String(travelled.toFixed(1))
             + " at " + String(hit.x) + "," + String(hit.y) + "," + String(hit.z));
+    }
+
+    safe("nuke.detonate", () => { detonate(hit.x, hit.y, hit.z, p); });
+    if (!ray.inGate) {
+        return;
     }
 
     checkTurrets(ray, travelled, hit);
@@ -14524,12 +15581,14 @@ function probe(): void {
             if (isBotPid(pid)) {
                 continue;
             }
-            // Gate check first: playerGate is a plain map read, so this rejects
-            // every player who is not standing in an HQ gate without a single
-            // mod.* FFI call. This is the whole point of the reorder.
-            if (!nearEnemyBase(pid)) {
-                // A hold that started outside the zone restarts on entry.
-                forgetHold(pid);
+            // Zero-FFI filter first: a player is only read when standing in
+            // an HQ gate or carrying the Rorsch (rorschammo's 1 Hz poll). The
+            // nuke goes off on every Rorsch impact, so carriers are probed
+            // anywhere; turrets and the HQ still need the gate (PendingRay).
+            if (!nearEnemyBase(pid) && !isRorschCarrier(pid)) {
+                if (hold[pid] !== undefined) {
+                    forgetHold(pid);
+                }
                 continue;
             }
             let firing: boolean = false;
@@ -14542,7 +15601,7 @@ function probe(): void {
             const st: HoldState | undefined = hold[pid];
             if (firing && st === undefined) {
                 // New press: check the weapon once per press, not per tick.
-                if (!isRorschInHand(p)) {
+                if (!isRorschActive(p)) {
                     logNukeOnce(pid, "noRorsch");
                     if (RORSCH_TRACE) {
                         log("nuke", "PRESS pid=" + pid + " ignored - Rorsch not carried, " + traceSlot(p));
@@ -14552,6 +15611,7 @@ function probe(): void {
                 }
                 logNukeOnce(pid, "charging");
                 lastPressMs[pid] = nowMs;
+                startChargeAlarm(p, pid);
                 log("nuke", "PRESS pid=" + pid + " charging, discharge counts after "
                     + String(RORSCH_MIN_CHARGE_MS) + "ms held"
                     + (RORSCH_TRACE ? ", " + traceSlot(p) : ""));
@@ -14569,10 +15629,13 @@ function probe(): void {
                 // Cast first, in the same tick the discharge is seen; the logs
                 // and the reload trace come after so they add no latency.
                 shootRay(p);
+                stopChargeAlarm(pid);
+                onRorschShot(p, pid);
                 logNukeOnce(pid, "fired");
                 log("nuke", "SHOT pid=" + pid + " discharge after "
                     + String(nowMs - (st === undefined ? nowMs : st.pressMs)) + "ms - ray cast");
             } else if (r.next === undefined && st !== undefined && !st.ignored) {
+                stopChargeAlarm(pid);
                 log("nuke", "RELEASED pid=" + pid + " after "
                     + String(nowMs - st.pressMs) + "ms - charge cancelled, no shot");
             }
@@ -14596,6 +15659,7 @@ function logNukeOnce(pid: number, reason: string): void {
 }
 
 export function configureNukeEvents(): void {
+    configureNukeFxEvents();
     Events.OnRayCastHit.subscribe((p: mod.Player, point: mod.Vector, _n: mod.Vector) => {
         safe("nuke.hit", () => { resolveHit(p, point); });
     });
@@ -14611,7 +15675,7 @@ export function configureNukeEvents(): void {
         }
         // A ray aimed at a turret against the sky misses everything, because
         // RayCast passes through the turret; the path test still finds it.
-        if (ray.team === 1 || ray.team === 2) {
+        if (ray.inGate && (ray.team === 1 || ray.team === 2)) {
             safe("nuke.miss", () => {
                 checkTurrets(ray, RAY_START_OFFSET_M + RAY_MAX_DIST_M, undefined);
             });
@@ -14963,6 +16027,8 @@ export function locationById(id: string): StrategicLocation | undefined {
 // Cost: one Uint32Array(100) and a 1 Hz timer that early-returns when no one is
 // pending. Not combined with multi-click-detector, which would multiply the
 // synthetic event across its own subscribers.
+
+
 
 
 
@@ -17622,6 +18688,10 @@ function onOngoingGlobal(): void {
     if (healthFactor() >= 0.7) {
         tickNukeProbe();
     }
+    // Queued nuke damage and effects, and the Rorsch ammo poll: never skipped.
+    safe("nuke.fx", tickNukeFx);
+    // A Rorsch ray blocked at its start is cast again here: never skipped.
+    safe("nuke.rays", tickNukeRays);
     expireFeedRows();
     if (artActive === undefined && artQueue.length === 0) {
         return;
@@ -17842,8 +18912,15 @@ function onUIButtonEvent(eventPlayer: mod.Player, eventUIWidget: mod.UIWidget, e
                 setPrestige(id, pPrestige[id] - items[i].cost);
                 if (give !== undefined) {
                     try {
-                        mod.AddEquipment(eventPlayer, give);
-                        mod.SetInventoryAmmo(eventPlayer, mod.InventorySlots.PrimaryWeapon, 900);
+                        if (mod.Equals(give, mod.Weapons.BattlePickup_Rorsch_Mk_2_SMRW)) {
+                            // Asked for the primary slot, so the slot ammo
+                            // calls might reach it; shots are counted anyway.
+                            mod.AddEquipment(eventPlayer, give, mod.InventorySlots.PrimaryWeapon);
+                            onRorschBought(eventPlayer);
+                        } else {
+                            mod.AddEquipment(eventPlayer, give);
+                            mod.SetInventoryAmmo(eventPlayer, mod.InventorySlots.PrimaryWeapon, 900);
+                        }
                     } catch (e) {
                         log("shop", "AddEquipment failed for " + items[i].key + ": " + String(e));
                     }

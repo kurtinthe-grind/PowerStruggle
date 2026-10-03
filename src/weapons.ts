@@ -142,6 +142,16 @@ export function isRorschInHand(player: mod.Player): boolean {
     return mod.HasEquipment(player, RORSCH);
 }
 
+// The Rorsch is carried and no ordinary weapon is in hand. The Rorsch is a
+// battle pickup, not a slot item: while it is held IsInventorySlotActive is
+// false for every slot (test 2026-10-03: pri/sec/misc all false), so ownership
+// can only be HasEquipment. A sidearm in hand is still rejected, should the
+// secondary slot report active while it is out.
+export function isRorschActive(player: mod.Player): boolean {
+    return mod.HasEquipment(player, RORSCH)
+        && !mod.IsInventorySlotActive(player, mod.InventorySlots.SecondaryWeapon);
+}
+
 export function debugWeaponReport(player: mod.Player): string {
     const sec = GetCurrentWeaponInSlot(player, mod.InventorySlots.SecondaryWeapon);
     const full = GetCurrentWeaponInSlot(player, mod.InventorySlots.PrimaryWeapon, sec);

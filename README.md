@@ -64,6 +64,13 @@ the attack zone, the shot:
 - **damages the enemy HQ** when it lands near it. 3 hits (100 → 67 → 33 → 0%)
   destroy it, and that team **loses the match**.
 
+Wherever it lands, every Rorsch impact is a small tactical nuke, friendly fire
+included: anyone within 35 m dies, anyone within 55 m takes heavy damage and
+burns (with a flash, ringing and a disoriented few seconds), and players within
+150 m see it. Nearby players hear an alarm while the Rorsch charges. A purchase
+holds two shots; the Rorsch is taken away after the second, and dropping it and
+picking it back up does not refill it.
+
 ## Bots
 
 Each team is filled with up to 32 script-controlled bots (`src/bots*.ts`),

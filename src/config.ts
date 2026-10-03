@@ -86,8 +86,19 @@ export const HQ_HITS_REQUIRED: number = 3;
 export const RAY_MAX_DIST_M: number = 900;
 // Push the ray origin past the soldier's own body so it cannot self-hit.
 export const RAY_START_OFFSET_M: number = 2.5;
-// Ignore impacts closer than this; they are the player's own geometry.
-export const RAY_MIN_HIT_DIST_M: number = 3.0;
+// An impact within RAY_PASS_M of where the ray started is a thin obstacle at
+// the shooter (glass, a railing: test 2026-10-03, every shot from one spot by
+// the air pads hit 0.37 m past the start in any direction, while the Rorsch
+// round flew on). The ray is cast again from just past it, at most
+// RAY_PASS_TRIES times.
+export const RAY_PASS_M: number = 0.5;
+export const RAY_PASS_TRIES: number = 3;
+// The Rorsch is a raygun: its shot is a straight line. The facing read while
+// it charges points higher than the shot. 17:38 log: rays aimed at turrets
+// passed over them by 0.050 and 0.063 rad (115 m and 152 m) with the yaw
+// exact; 2026-10-03: the duds were all "level or slightly up" shots that hit
+// the ground close by. The ray is pitched down by this much. 0 turns it off.
+export const RORSCH_PITCH_FIX_RAD: number = 0.057;
 // The Rorsch shot is the moment IsFiring turns off after a full charge (see
 // rorschshot.ts). Measured 2026-10-01: the discharge lands 2200-2212 ms after
 // the press. A release shorter than this is a cancelled charge, no shot. Kept
@@ -97,6 +108,45 @@ export const RORSCH_MIN_CHARGE_MS: number = 2100;
 // every ray outcome while a player is in an HQ fire zone. One soldier-state read
 // per tick per player in a fire zone. Set false once settled.
 export const RORSCH_TRACE: boolean = true;
+
+// Rorsch tactical nuke (src/nukefx.ts), on every Rorsch impact anywhere, with
+// friendly fire. Inside NUKE_KILL_M a player dies (humans see a black screen
+// for NUKE_BLACK_MS first). Out to NUKE_BURN_M: blast damage from
+// NUKE_BLAST_DMG_NEAR at the kill edge down to NUKE_BLAST_DMG_FAR, then
+// burning for NUKE_BURN_S at NUKE_BURN_DPS; both can kill. Out to
+// NUKE_WITNESS_M: a short thermal flash. Screen and sound effects go to humans
+// only. The "screen effect" VFX are world objects kept in front of the
+// player's eyes every tick, for at most NUKE_FOLLOW_MAX players per blast.
+// Raised 2026-10-03 after the test: the zones looked small next to the blast.
+export const NUKE_KILL_M: number = 35;
+export const NUKE_BURN_M: number = 55;
+export const NUKE_WITNESS_M: number = 150;
+export const NUKE_BLAST_DMG_NEAR: number = 70;
+export const NUKE_BLAST_DMG_FAR: number = 35;
+export const NUKE_BURN_DPS: number = 5;
+export const NUKE_BURN_S: number = 6;
+// Black screen: the kill lands after NUKE_BLACK_MS, the screen stays black
+// until NUKE_BLACK_HOLD_MS (through the start of the death screen) and then
+// fades out.
+export const NUKE_BLACK_MS: number = 600;
+export const NUKE_BLACK_HOLD_MS: number = 2500;
+// White flash: held, then faded out in 200 ms steps over NUKE_WHITE_FADE_MS.
+export const NUKE_WHITE_HOLD_MS: number = 1200;
+export const NUKE_WHITE_FADE_MS: number = 2000;
+// The Carrier explosion is authored high above its origin (a carrier deck):
+// spawned this far below the impact so it bursts at ground level.
+export const NUKE_CARRIER_DROP_M: number = 20;
+export const NUKE_FOLLOW_MAX: number = 16;
+// The smoke plume loops forever, so it is removed after this; every other
+// world effect of the blast after NUKE_FX_MS.
+export const NUKE_PLUME_MS: number = 6500;
+export const NUKE_FX_MS: number = 12000;
+export const NUKE_SHOCK_SCALE: number = 3;
+// The charge alarm at the shooter is heard this far.
+export const NUKE_ALARM_RANGE_M: number = 60;
+// Rorsch rounds per purchase: one loaded, one spare. Tracked across drops and
+// pickups so picking a dropped Rorsch back up cannot refill it.
+export const RORSCH_SHOTS: number = 2;
 export const POWER_LEVEL_REQUIRED: number = 100;
 
 // ---- Bots: custom AI_Spawner objective players (no UI, no buy, no nuke) ----
