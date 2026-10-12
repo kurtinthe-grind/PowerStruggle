@@ -8,7 +8,6 @@ import { SITES, SiteDef } from "./rocketsites/sitemap";
 import {
     RadarTarget, destroyRadarBy, initSites, liveRadars, onEnter, onExit, onGone, onRadarDestroyed, tickSites
 } from "./rocketsites/site";
-import { markDeployed, markUndeployed } from "./rocketsites/players";
 import { markDead, rocketDamageOn, setRocketDamage, tickRockets } from "./rocketsites/rocket";
 import { tickLaunchers } from "./rocketsites/launcher";
 import { newTick, sweepVfx } from "./rocketsites/fx";
@@ -110,20 +109,12 @@ function human(pid: number): boolean {
 }
 
 function gone(pid: number): void {
-    markUndeployed(pid);
     onGone(pid);
     markDead(pid);
 }
 
 export function configureSiteEvents(): void {
     onRadarDestroyed(onSiteDown);
-    Events.OnPlayerDeployed.subscribe((p: mod.Player) => {
-        safe("sites.deployed", () => {
-            if (ready && human(mod.GetObjId(p))) {
-                markDeployed(p);
-            }
-        });
-    });
     Events.OnPlayerDied.subscribe((p: mod.Player) => {
         safe("sites.died", () => {
             if (ready) {
@@ -176,10 +167,33 @@ export function tickSiteWire(): void {
     lastMs = now;
     tickNo++;
     newTick();
-    safe("sites.launchers", () => { tickLaunchers(now, tickNo); });
-    safe("sites.sites", () => { tickSites(now, dt); });
-    safe("sites.rockets", () => { tickRockets(now, dt); });
-    safe("sites.vfx", () => { sweepVfx(now); });
+    tickNow = now;
+    tickDt = dt;
+    safe("sites.launchers", stepLaunchers);
+    safe("sites.sites", stepSites);
+    safe("sites.rockets", stepRockets);
+    safe("sites.vfx", stepVfx);
+}
+
+// The tick's steps as plain functions over module state, so a tick creates no
+// closures.
+let tickNow: number = 0;
+let tickDt: number = 0;
+
+function stepLaunchers(): void {
+    tickLaunchers(tickNow, tickNo);
+}
+
+function stepSites(): void {
+    tickSites(tickNow, tickDt);
+}
+
+function stepRockets(): void {
+    tickRockets(tickNow, tickDt);
+}
+
+function stepVfx(): void {
+    sweepVfx(tickNow);
 }
 
 export interface P3 {

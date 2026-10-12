@@ -1,12 +1,14 @@
 import { Events } from "bf6-portal-utils/events";
 import { Vectors } from "bf6-portal-utils/vectors";
-import { PlayerLocations } from "bf6-portal-utils/player-locations";
+import { snapshotCount, snapshotPid, snapshotPlayer, snapshotX, snapshotY, snapshotZ, takeSnapshot } from "./util/positions";
+import { inVehicle } from "./util/seats";
 import { log, safe } from "./util/log";
 import { isBotPid } from "./bots";
 import {
     NUKE_ALARM_RANGE_M, NUKE_BLACK_HOLD_MS, NUKE_BLACK_MS, NUKE_BLAST_DMG_FAR, NUKE_BLAST_DMG_NEAR,
     NUKE_BURN_DPS, NUKE_BURN_M, NUKE_BURN_S, NUKE_CARRIER_DROP_M, NUKE_FOLLOW_MAX, NUKE_FX_MS, NUKE_KILL_M,
-    NUKE_PLUME_MS, NUKE_SHOCK_SCALE, NUKE_WHITE_FADE_MS, NUKE_WHITE_HOLD_MS, NUKE_WITNESS_M
+    NUKE_PLUME_MS, NUKE_SHOCK_SCALE, NUKE_WHITE_FADE_MS, NUKE_WHITE_HOLD_MS, NUKE_WITNESS_M,
+    TAC_RMG_FULL_BLASTS, TAC_RMG_SCREEN_GAP_MS
 } from "./config";
 import { onRorschOwnerGone, pollRorsch } from "./rorschammo";
 
@@ -28,14 +30,17 @@ import { onRorschOwnerGone, pollRorsch } from "./rorschammo";
 // effect; 400 remote-turret damage effect; 800 VL7 gas mask; 1200 the
 // death-warning drone; 1500 thermal flash; 2000 the adrenaline "making sense
 // of it" sound; 6000 the calm: VL7 and the drone off, Saturated and the
-// adrenaline effect; 10000 Saturated off. In a vehicle the drone out-of-range
-// distortion replaces the world-object screen effects.
+// adrenaline effect; 10000 Saturated off. In a vehicle only the real screen
+// effects play (VL7, Saturated): the vehicle moves the player whatever the
+// input, so world-object effects cannot stay in front of the eyes.
 //
 // The "screen effect" VFX are world objects: spawned 3 m in front of the eyes
 // they look like screen effects, but stay where they were spawned (the reason
-// the flashbang effect "stopped working" when the owner moved). They are moved
-// in front of the player's eyes every tick, for at most NUKE_FOLLOW_MAX
-// players per blast; VL7 and Saturated are real per-player effects.
+// the flashbang effect "stopped working" when the owner moved). Instead of
+// moving them every tick, the player is held still (EnableAllInputRestrictions,
+// camera included) while one plays (owner, 2026-10-04), for at most
+// NUKE_FOLLOW_MAX players per blast; VL7 and Saturated are real per-player
+// effects.
 //
 // Everything is driven by one step queue run from the per-tick hook, so a
 // blast costs no timers from the shared pool.
@@ -183,6 +188,7 @@ interface Follow {
     until: number;
 }
 
+// Placed screen effects still playing, for their end and for a death.
 const follows: Follow[] = [];
 
 function eyeFront(p: mod.Player): mod.Vector {
@@ -191,12 +197,54 @@ function eyeFront(p: mod.Player): mod.Vector {
     return mod.Add(eye, mod.Multiply(facing, 3));
 }
 
+// Input locks: pid -> until, and the player, while held still for an effect.
+const lockedUntil: { [pid: number]: number } = {};
+const lockedPlayer: { [pid: number]: mod.Player } = {};
+let lockCount: number = 0;
+
+function lockFor(pid: number, p: mod.Player, ms: number): void {
+    const until: number = Date.now() + ms;
+    const was: number | undefined = lockedUntil[pid];
+    if (was === undefined) {
+        try {
+            mod.EnableAllInputRestrictions(p, true);
+        } catch (e) {
+            return;
+        }
+        lockCount++;
+        lockedPlayer[pid] = p;
+    }
+    lockedUntil[pid] = was !== undefined && was > until ? was : until;
+}
+
+function unlock(pid: number): void {
+    if (lockedUntil[pid] === undefined) {
+        return;
+    }
+    const p: mod.Player = lockedPlayer[pid];
+    delete lockedUntil[pid];
+    delete lockedPlayer[pid];
+    lockCount--;
+    try {
+        if (mod.IsValid(p)) {
+            mod.EnableAllInputRestrictions(p, false);
+        }
+    } catch (e) {
+    }
+}
+
+// The effect is placed once, 3 m in front of the eyes, and the player is held
+// still for as long as it plays. Never in a vehicle (see above).
 function attachFx(pid: number, p: mod.Player, asset: mod.RuntimeSpawn_Common, ms: number): void {
+    if (inVehicle(pid)) {
+        return;
+    }
     try {
         const at: Vectors.Vector3 = Vectors.toVector3(eyeFront(p));
         const fx: mod.VFX | undefined = spawnFx(asset, at.x, at.y, at.z, 1);
         if (fx !== undefined) {
             follows.push({ pid: pid, player: p, fx: fx, until: Date.now() + ms });
+            lockFor(pid, p, ms);
         }
     } catch (e) {
     }
@@ -209,19 +257,24 @@ function dropFollows(pid: number): void {
             follows.splice(i, 1);
         }
     }
+    unlock(pid);
 }
 
-function tickFollows(nowMs: number): void {
+// Ends effects whose time is up and releases expired locks. No engine call
+// unless something ends.
+function tickHeld(nowMs: number): void {
     for (let i: number = follows.length - 1; i >= 0; i--) {
         const f: Follow = follows[i];
-        if (nowMs >= f.until || !mod.IsValid(f.player)) {
+        if (nowMs >= f.until) {
             killFx(f.fx);
             follows.splice(i, 1);
-            continue;
         }
-        try {
-            mod.MoveVFX(f.fx, eyeFront(f.player), zero());
-        } catch (e) {
+    }
+    if (lockCount > 0) {
+        for (const k in lockedUntil) {
+            if (nowMs >= lockedUntil[Number(k)]) {
+                unlock(Number(k));
+            }
         }
     }
 }
@@ -388,7 +441,34 @@ function dropBlack(pid: number): void {
 
 // ------------------------------------------------------------ the blast
 
+// Full world effects still up, so MP-RMG TAC bursts fall back to liteEffects.
+let fullBlasts: number = 0;
+
+// One explosion and the close sound, for an MP-RMG TAC round over the cap.
+function liteEffects(x: number, y: number, z: number): void {
+    const fx: mod.VFX | undefined = spawnFx(mod.RuntimeSpawn_Common.FX_Carrier_Explosion_Dist, x, y - NUKE_CARRIER_DROP_M, z, 1);
+    after(4000, () => { killFx(fx); });
+    play3D("blastClose", mod.RuntimeSpawn_Common.SFX_Destruction_Buildings_GasStation_Collapse_OneShot3D,
+        x, y, z, 1, 200);
+}
+
+// Screen effects per player for MP-RMG TAC rounds: at most one set per
+// TAC_RMG_SCREEN_GAP_MS. A Rorsch blast always gets them.
+const screenAt: { [pid: number]: number } = {};
+
+function screenFree(pid: number, rapid: boolean): boolean {
+    const now: number = Date.now();
+    const last: number | undefined = screenAt[pid];
+    if (rapid && last !== undefined && now - last < TAC_RMG_SCREEN_GAP_MS) {
+        return false;
+    }
+    screenAt[pid] = now;
+    return true;
+}
+
 function worldEffects(x: number, y: number, z: number): void {
+    fullBlasts++;
+    after(NUKE_FX_MS, () => { fullBlasts--; });
     const made: (mod.VFX | undefined)[] = [];
     made.push(spawnFx(mod.RuntimeSpawn_Common.FX_Carrier_Explosion_Dist, x, y - NUKE_CARRIER_DROP_M, z, 1));
     const plume: mod.VFX | undefined = spawnFx(mod.RuntimeSpawn_Common.FX_BASE_Smoke_Column_XXL, x, y, z, 1);
@@ -485,9 +565,8 @@ function closeSequence(v: Victim, inVehicle: boolean, follow: boolean): void {
     const pid: number = v.pid;
     const screenFx: boolean = follow && !inVehicle;
     panel(v, 1, 1, 1);
-    if (follow) {
-        attachFx(pid, p, inVehicle ? mod.RuntimeSpawn_Common.FX_Gadget_Drone_OutOfRange_Distortion
-            : mod.RuntimeSpawn_Common.FX_Gadget_ScreenEffect_Thermal_BHOT, inVehicle ? 4000 : 3000);
+    if (screenFx) {
+        attachFx(pid, p, mod.RuntimeSpawn_Common.FX_Gadget_ScreenEffect_Thermal_BHOT, 3000);
     }
     const white: mod.UIWidget | undefined = v.ui;
     if (white !== undefined) {
@@ -549,39 +628,35 @@ function closeSequence(v: Victim, inVehicle: boolean, follow: boolean): void {
     });
 }
 
-function inVehicleNow(p: mod.Player): boolean {
-    try {
-        return mod.GetSoldierState(p, mod.SoldierStateBool.IsInVehicle);
-    } catch (e) {
-        return false;
-    }
-}
-
 interface Hit {
     p: mod.Player;
     pid: number;
     d: number;
 }
 
-const idsScratch: number[] = [];
-const playersScratch: mod.Player[] = [];
-const posScratch: Vectors.Vector3 = { x: 0, y: 0, z: 0 };
 
-// The Rorsch impact at (x, y, z). nuke.ts calls this for every hit.
-export function detonate(x: number, y: number, z: number, shooter: mod.Player): void {
-    worldEffects(x, y, z);
-    const n: number = PlayerLocations.findPlayersInSphere(x, y, z, NUKE_WITNESS_M, undefined, idsScratch, playersScratch);
+// The Rorsch impact at (x, y, z). nuke.ts calls this for every hit; rapid is
+// an MP-RMG TAC round (see TAC_RMG_FULL_BLASTS).
+export function detonate(x: number, y: number, z: number, shooter: mod.Player, rapid: boolean): void {
+    if (rapid && fullBlasts >= TAC_RMG_FULL_BLASTS) {
+        liteEffects(x, y, z);
+    } else {
+        worldEffects(x, y, z);
+    }
+    // A fresh snapshot: everyone's position at the moment of the blast.
+    takeSnapshot(0);
+    const n: number = snapshotCount();
+    const r2: number = NUKE_WITNESS_M * NUKE_WITNESS_M;
     const hits: Hit[] = [];
     for (let i: number = 0; i < n; i++) {
-        const pid: number = idsScratch[i];
-        const got: Vectors.Vector3 | null | undefined = PlayerLocations.getPosition(pid, posScratch);
-        if (got === null || got === undefined) {
+        const dx: number = snapshotX(i) - x;
+        const dy: number = snapshotY(i) - y;
+        const dz: number = snapshotZ(i) - z;
+        const sq: number = dx * dx + dy * dy + dz * dz;
+        if (sq > r2) {
             continue;
         }
-        const dx: number = posScratch.x - x;
-        const dy: number = posScratch.y - y;
-        const dz: number = posScratch.z - z;
-        hits.push({ p: playersScratch[i], pid: pid, d: Math.sqrt(dx * dx + dy * dy + dz * dz) });
+        hits.push({ p: snapshotPlayer(i), pid: snapshotPid(i), d: Math.sqrt(sq) });
     }
     hits.sort((a: Hit, b: Hit) => a.d - b.d);
     let followLeft: number = NUKE_FOLLOW_MAX;
@@ -603,22 +678,21 @@ export function detonate(x: number, y: number, z: number, shooter: mod.Player): 
             const f: number = (h.d - NUKE_KILL_M) / (NUKE_BURN_M - NUKE_KILL_M);
             hurt(h.p, Math.round(NUKE_BLAST_DMG_NEAR - f * (NUKE_BLAST_DMG_NEAR - NUKE_BLAST_DMG_FAR)), shooter);
             let v: Victim | undefined = undefined;
-            if (human) {
+            if (human && screenFree(h.pid, rapid)) {
                 v = begin(h.pid, h.p);
                 const follow: boolean = followLeft > 0;
                 if (follow) {
                     followLeft--;
                 }
-                closeSequence(v, inVehicleNow(h.p), follow);
+                closeSequence(v, inVehicle(h.pid), follow);
             }
             burn(h.p, h.pid, v, shooter);
             continue;
         }
         witnessed++;
-        if (human && followLeft > 0) {
+        if (human && !inVehicle(h.pid) && followLeft > 0 && screenFree(h.pid, rapid)) {
             followLeft--;
-            attachFx(h.pid, h.p, inVehicleNow(h.p) ? mod.RuntimeSpawn_Common.FX_Gadget_Drone_OutOfRange_Distortion
-                : mod.RuntimeSpawn_Common.FX_Gadget_Drone_ThermalVE, 2500);
+            attachFx(h.pid, h.p, mod.RuntimeSpawn_Common.FX_Gadget_Drone_ThermalVE, 2500);
         }
     }
     log("nuke", "DETONATE at " + Math.round(x) + "," + Math.round(y) + "," + Math.round(z)
@@ -664,8 +738,13 @@ export function stopChargeAlarm(pid: number): void {
 
 // --------------------------------------------------------------- lifecycle
 
-// Every tick, regardless of engine health: the queued damage and the effects
-// that follow the eyes must keep running.
+// For the perf line (perfline.ts): queued steps, placed effects, held players.
+export function nukeFxCounts(): string {
+    return steps.length + " steps, " + follows.length + " effects, " + lockCount + " held";
+}
+
+// Every tick, regardless of engine health: the queued damage, the end of the
+// placed effects and the release of the input locks must keep running.
 export function tickNukeFx(): void {
     const nowMs: number = Date.now();
     pollRorsch(nowMs);
@@ -680,8 +759,8 @@ export function tickNukeFx(): void {
             }
         }
     }
-    if (follows.length > 0) {
-        tickFollows(nowMs);
+    if (follows.length > 0 || lockCount > 0) {
+        tickHeld(nowMs);
     }
 }
 
@@ -700,6 +779,7 @@ function forget(pid: number): void {
 function forgetAll(pid: number): void {
     forget(pid);
     dropBlack(pid);
+    delete screenAt[pid];
 }
 
 export function configureNukeFxEvents(): void {

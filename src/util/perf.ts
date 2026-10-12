@@ -21,7 +21,7 @@ import { log, logAdmin } from "./log";
 // uses OnTickStart; that is cosmetic, they are the same channel.
 //
 // dt: onOngoingGlobal now drives the charge tick from spotDeltaMs() (clamped
-// to 1/240..1/10 s), so CHARGE_BASE_SECONDS is real seconds. Constants still
+// to 1/240..1/10 s), so CHARGE_MINUTES_BY_SITES is real time. Constants still
 // counted in frames (COOLDOWN_FRAMES, frameNo % 30, feed TTLs) follow the
 // engine's ~30 Hz tick, not 60.
 

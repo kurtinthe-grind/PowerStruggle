@@ -1,6 +1,6 @@
 import { Timers } from "bf6-portal-utils/timers";
 import { log, safe } from "./util/log";
-import { RORSCH_SHOTS, RORSCH_TRACE } from "./config";
+import { RORSCH_GROUND_MS, RORSCH_SHOTS, RORSCH_TRACE } from "./config";
 import { RORSCH } from "./weapons";
 import { isBotPid } from "./bots";
 import { allPlayers } from "./util/roster";
@@ -15,14 +15,33 @@ import { isDeployedPid } from "./nuke";
 // pickup without a purchase gets them, so a dropped Rorsch cannot come back
 // full. The on-screen count still shows the engine's own ammo.
 //
+// Who carries one is known, not polled for (owner, 2026-10-04): the shop and
+// the Debug tab register the buyer. The only Rorsch nobody registered is one
+// lying on the ground, and that only happens when a carrier with shots left
+// dies or leaves, so the pickup check runs only while one is on the ground.
+//
 // RORSCH_TRACE logs every slot's ammo at purchase, to find out whether any
 // slot reads the Rorsch's 1/10 after all.
 
 const shotsLeft: { [pid: number]: number } = {};
-const carrying: { [pid: number]: boolean } = {};
+const carriers: { [pid: number]: mod.Player } = {};
+// The carriers' ids, for the shot probe's per-tick loop (nuke.ts).
+const carrierIds: number[] = [];
 const boughtAt: { [pid: number]: number } = {};
-// Shots left in the most recently dropped Rorsch, for whoever picks one up.
-let droppedShots: number = 1;
+// Each carrier's position at the last poll, for where a dropped Rorsch lies.
+const lastPos: { [pid: number]: { x: number; y: number; z: number } } = {};
+
+// A Rorsch on the ground: its shots, when it dropped and where (known is false
+// when the carrier's position was never read).
+interface Ground {
+    shots: number;
+    at: number;
+    x: number;
+    y: number;
+    z: number;
+    known: boolean;
+}
+const ground: Ground[] = [];
 let pollAt: number = 0;
 // Time between the last discharge and taking the weapon away, so the shot
 // itself plays out.
@@ -30,7 +49,45 @@ const REMOVE_AFTER_MS: number = 1500;
 
 // Zero FFI, for the shot probe.
 export function isRorschCarrier(pid: number): boolean {
-    return carrying[pid] === true;
+    return carriers[pid] !== undefined;
+}
+
+export function rorschCarrierCount(): number {
+    return carrierIds.length;
+}
+
+export function rorschCarrierId(i: number): number {
+    return carrierIds[i];
+}
+
+export function rorschCarrier(pid: number): mod.Player | undefined {
+    return carriers[pid];
+}
+
+export function rorschOnGround(): number {
+    return ground.length;
+}
+
+function addCarrier(pid: number, p: mod.Player, shots: number): void {
+    if (carriers[pid] === undefined) {
+        carrierIds.push(pid);
+    }
+    carriers[pid] = p;
+    shotsLeft[pid] = shots;
+}
+
+function removeCarrier(pid: number): void {
+    if (carriers[pid] === undefined) {
+        return;
+    }
+    delete carriers[pid];
+    delete shotsLeft[pid];
+    delete boughtAt[pid];
+    delete lastPos[pid];
+    const at: number = carrierIds.indexOf(pid);
+    if (at >= 0) {
+        carrierIds.splice(at, 1);
+    }
 }
 
 // Callins and MiscGadget throw GetAmmoRequest, so they are left out.
@@ -86,8 +143,7 @@ function trySetCount(p: mod.Player, pid: number, why: string): void {
 // Called by the shop right after AddEquipment.
 export function onRorschBought(p: mod.Player): void {
     const pid: number = mod.GetObjId(p);
-    shotsLeft[pid] = RORSCH_SHOTS;
-    carrying[pid] = true;
+    addCarrier(pid, p, RORSCH_SHOTS);
     boughtAt[pid] = Date.now();
     log("rorsch", "pid=" + pid + " bought the Rorsch, " + RORSCH_SHOTS + " shots");
     Timers.setTimeout(() => {
@@ -104,7 +160,7 @@ export function onRorschBought(p: mod.Player): void {
 
 // Debug menu "replenish": the carried Rorsch back to its full shots.
 export function refillRorsch(pid: number): boolean {
-    if (carrying[pid] !== true) {
+    if (carriers[pid] === undefined) {
         return false;
     }
     shotsLeft[pid] = RORSCH_SHOTS;
@@ -132,41 +188,118 @@ export function onRorschShot(p: mod.Player, pid: number): void {
                 mod.RemoveEquipment(p, RORSCH);
                 log("rorsch", "pid=" + pid + " out of shots, Rorsch removed");
             }
-            dropped(pid);
+            dropped(pid, false);
         });
     }, REMOVE_AFTER_MS);
 }
 
-// The weapon drops when its owner dies.
+// The weapon drops when its owner dies or leaves.
 export function onRorschOwnerGone(pid: number): void {
-    if (carrying[pid] !== true) {
+    if (carriers[pid] === undefined) {
         return;
     }
-    dropped(pid);
+    dropped(pid, true);
 }
 
-function dropped(pid: number): void {
+// onGround: the weapon is left lying on the map (not used up).
+function dropped(pid: number, onGround: boolean): void {
     const s: number | undefined = shotsLeft[pid];
-    if (s !== undefined && s > 0) {
-        droppedShots = s;
+    const left: boolean = onGround && s !== undefined && s > 0;
+    if (left) {
+        const at: { x: number; y: number; z: number } | undefined = lastPos[pid];
+        ground.push({
+            shots: s as number, at: Date.now(), x: at !== undefined ? at.x : 0, y: at !== undefined ? at.y : 0,
+            z: at !== undefined ? at.z : 0, known: at !== undefined
+        });
     }
     log("rorsch", "pid=" + pid + " no longer carries the Rorsch (" + (s === undefined ? "?" : String(s))
-        + " shots left)");
-    delete carrying[pid];
-    delete shotsLeft[pid];
-    delete boughtAt[pid];
+        + " shots left" + (left ? ", on the ground" : "") + ")");
+    removeCarrier(pid);
 }
 
-// Once a second: who carries the Rorsch (deployed humans only), pickups and
-// drops.
+function readPos(p: mod.Player): { x: number; y: number; z: number } | undefined {
+    try {
+        const v: mod.Vector = mod.GetObjectPosition(p);
+        return { x: mod.XComponentOf(v), y: mod.YComponentOf(v), z: mod.ZComponentOf(v) };
+    } catch (e) {
+        return undefined;
+    }
+}
+
+// The ground Rorsch nearest to where the picker stands (the oldest when no
+// position is known), taken off the ground.
+function takeGround(p: mod.Player): Ground {
+    let best: number = 0;
+    const at: { x: number; y: number; z: number } | undefined = readPos(p);
+    if (at !== undefined) {
+        let bestSq: number = Infinity;
+        for (let i: number = 0; i < ground.length; i++) {
+            const g: Ground = ground[i];
+            if (!g.known) {
+                continue;
+            }
+            const dx: number = g.x - at.x;
+            const dy: number = g.y - at.y;
+            const dz: number = g.z - at.z;
+            const sq: number = dx * dx + dy * dy + dz * dz;
+            if (sq < bestSq) {
+                bestSq = sq;
+                best = i;
+            }
+        }
+    }
+    const g: Ground = ground[best];
+    ground.splice(best, 1);
+    return g;
+}
+
+// Once a second. Carriers: where they are (for a drop), and whether they
+// still hold it (a carrier who picks up another battle pickup lets it fall).
+// Pickups: only while a Rorsch is on the ground, deployed humans who are not
+// carriers are checked for one.
 export function pollRorsch(nowMs: number): void {
     if (nowMs - pollAt < 1000) {
         return;
     }
     pollAt = nowMs;
+    for (let i: number = ground.length - 1; i >= 0; i--) {
+        if (nowMs - ground[i].at > RORSCH_GROUND_MS) {
+            log("rorsch", "a Rorsch on the ground (" + ground[i].shots + " shots) was not picked up in "
+                + String(RORSCH_GROUND_MS) + " ms; no longer watched");
+            ground.splice(i, 1);
+        }
+    }
+    for (let i: number = carrierIds.length - 1; i >= 0; i--) {
+        const pid: number = carrierIds[i];
+        const p: mod.Player = carriers[pid];
+        if (!isDeployedPid(pid)) {
+            continue;
+        }
+        let has: boolean = true;
+        try {
+            has = mod.HasEquipment(p, RORSCH);
+        } catch (e) {
+            continue;
+        }
+        const bought: number | undefined = boughtAt[pid];
+        if (!has && (bought === undefined || nowMs - bought > 2000)) {
+            dropped(pid, true);
+            continue;
+        }
+        const at: { x: number; y: number; z: number } | undefined = readPos(p);
+        if (at !== undefined && !(at.x === 0 && at.y === 0 && at.z === 0)) {
+            lastPos[pid] = at;
+        }
+    }
+    if (ground.length === 0) {
+        return;
+    }
     for (const p of allPlayers()) {
+        if (ground.length === 0) {
+            return;
+        }
         const pid: number = mod.GetObjId(p);
-        if (pid < 0 || isBotPid(pid) || !isDeployedPid(pid)) {
+        if (pid < 0 || isBotPid(pid) || !isDeployedPid(pid) || carriers[pid] !== undefined) {
             continue;
         }
         let has: boolean = false;
@@ -175,19 +308,11 @@ export function pollRorsch(nowMs: number): void {
         } catch (e) {
             continue;
         }
-        if (has && carrying[pid] !== true) {
-            carrying[pid] = true;
-            if (shotsLeft[pid] === undefined) {
-                shotsLeft[pid] = droppedShots > 0 ? droppedShots : 1;
-                log("rorsch", "pid=" + pid + " picked up a Rorsch with " + shotsLeft[pid] + " shots");
-                trySetCount(p, pid, "picked up");
-            }
-        } else if (!has && carrying[pid] === true) {
-            // The equipment may not show yet right after the purchase.
-            const bought: number | undefined = boughtAt[pid];
-            if (bought === undefined || nowMs - bought > 2000) {
-                dropped(pid);
-            }
+        if (has) {
+            const g: Ground = takeGround(p);
+            addCarrier(pid, p, g.shots);
+            log("rorsch", "pid=" + pid + " picked up a Rorsch with " + g.shots + " shots");
+            trySetCount(p, pid, "picked up");
         }
     }
 }

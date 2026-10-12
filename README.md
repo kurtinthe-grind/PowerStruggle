@@ -37,21 +37,42 @@ Prestige is the spendable currency: kills (50), assists (25) and captures
 
 The **buy menu** opens from the Portal gadget and has these tabs:
 
-- **Weapons**: prototype tier (MOAC, ...) and standard tier, including the
-  Rorsch.
-- **Equipment** and **Add-ons**: tools, ammo, scopes.
-- **Factory**: buy a vehicle at a factory your team owns. It spawns on a free
-  pad. A placed vehicle spawner that is still tied to an earlier vehicle is
+- **Weapons**: coming soon (custom weapons).
+- **Equipment**: call-ins (artillery strike, air strike, smoke screen, UAV
+  overwatch, ammo / anti-vehicle / weapon drops, mobile redeploy), the portable
+  mortar and the laser designator.
+- **Add-ons**: ammo refills (ammo box, supply bag, ammo crate).
+- **Factory**: buy at a factory your team owns. The **Prototype Factory** sells
+  the MP-RMG and the **RORSCH MK-4 TAC** (the Rorsch, once your team is at 100%
+  power). The war, aviation and naval factories sell vehicles, which spawn on a
+  free pad. A placed vehicle spawner that is still tied to an earlier vehicle is
   replaced by a spawner created at runtime, so a purchase only fails when every
   pad is physically blocked; if nothing appears, the prestige is refunded.
 - **Tactical**: a list of every strategic location showing Friendly / Enemy /
   Neutral. Picking one highlights its world icon for you only.
 
+The Portal gadget sits in gadget slot 3, which it shares with your class's own
+gadget (an engineer's RPG-7, for example). **Press 3 again** while holding one
+of them, before using it, to swap to the other. A box the size of the game's
+gadget boxes, just left of them, shows the card of the one that is not in
+slot 3. A swapped-out gadget keeps its ammo. The box is hidden while you drive
+a vehicle, as the game hides its own gadget boxes.
+
 ### 3. Charge power
 
 A team that owns the **Prototype Factory** charges its **Power Level** from 0 to
-100%. Each energy site it holds speeds this up (1.5× per site; 0 sites = no
-charge). Both teams are told when either side passes 50%, 75% and 100%.
+100%, faster for every energy site it holds:
+
+| Energy sites held | Time from 0 to 100% |
+|---|---|
+| 0 | no charge |
+| 1 | 20 min |
+| 2 | 14 min |
+| 3 | 10 min |
+
+Charge is kept when the factory changes hands. Both teams are told when either
+side passes 50%, 75% and 100%. At 100% the Prototype Factory sells the team the
+RORSCH MK-4 TAC. The aim is a 30-45 minute match.
 
 ### 4. Break the rocket sites
 
@@ -64,7 +85,8 @@ near it.
 
 A site falls to 8 hits on its radar from unguided, high-explosive or
 aim-guided rocket launchers, or to a single Rorsch shot, and stays down for the
-rest of the match. Both teams are told when a site falls ("Enemy rocket site
+rest of the match. Launcher hits only count when fired from inside the radar's
+zone (the area where it turns); the Rorsch works from anywhere. Both teams are told when a site falls ("Enemy rocket site
 destroyed (1/3)" / "Our rocket site was destroyed (1/3)").
 
 Once **2 of a team's 3 sites** are down, its HQ is open: the attackers are told
@@ -72,8 +94,8 @@ to hit it with the Rorsch, the defenders that their HQ is exposed.
 
 ### 5. Destroy the HQ with the Rorsch
 
-The **Rorsch** is a raygun: it charges for about 2 seconds and fires an instant,
-straight shot that lands slightly below the crosshair (about 3° low, so ~6 m
+The **Rorsch** (sold as the RORSCH MK-4 TAC) is a raygun: it charges for about
+2 seconds and fires an instant, straight shot that lands slightly below the crosshair (about 3° low, so ~6 m
 at 100 m). From anywhere on the map, the shot:
 
 - **destroys an enemy rocket site in one hit** when it passes through its
@@ -91,17 +113,23 @@ included:
 | up to 55 m | heavy damage, burning, a white flash, ringing and a disoriented few seconds |
 | up to 150 m | sees the blast |
 
+A player on foot is held still (no moving or looking around) for the moment
+each flash plays, so it stays in front of their eyes. In a vehicle only the
+screen tint plays.
+
 Nearby players hear an alarm while the Rorsch charges. A purchase holds two
 shots; the Rorsch is taken away after the second, and dropping it and picking
 it back up does not refill it.
 
 ## Bots
 
-Each team is filled with up to 32 script-controlled bots (`src/bots*.ts`),
-leaving room for the humans on that team. Bots stay in the game when they die
-and redeploy as the same soldier, so their name and scoreboard row last the
-whole match. Some deploy straight onto a bunker their team owns. Every few
-seconds each bot scores every objective and picks one:
+Each team is filled to 24 with script-controlled bots (`src/bots*.ts`), the
+size of a full 48-player server. A human joining a team takes one bot's place,
+and a bot comes back when the human leaves. Bots stay in the game when they die
+and redeploy as the same soldier, so their name lasts the whole match. They
+have no scoreboard values (the engine ignores the script's values for AI, so
+only humans' rows are written). Some deploy straight onto a bunker their team
+owns. Every few seconds each bot scores every objective and picks one:
 
 - **attack** anything its team doesn't own;
 - **defend** an owned objective with enemies nearby;
@@ -122,8 +150,11 @@ player has carried them somewhere and stopped.
 
 ## Debug menu
 
-The buy menu has a **Debug** tab for testing. Besides the HUD and power test
-controls, its Utility section has:
+The buy menu has a **Debug** tab for testing, on three pages (PREV / NEXT):
+system and performance, utility and the enemy team, and the prototype weapons
+for free (MP-RMG, MP-RMG Freeze (not yet available), RORSCH MK-4 TAC) plus the
+**MP-RMG TAC**, a debug-only MP-RMG whose every round is a nuke (explosion
+only, no radar or HQ effect). Its Utility section has:
 
 - **Site damage**: whether rocket-site rockets hurt anyone, for everyone on
   the server. Off at the start of every match.
@@ -132,9 +163,14 @@ controls, its Utility section has:
 - **Team**, **Prestige**, **Rorsch Check**, **Admin logs**, **Reset** and the
   performance readouts (tick rate, frame time, bots).
 
-Switches to turn off for real matches: `WEAPONS_TAB_FREE` (every Weapons item
-costs 0), `BOT_TRACE` and `RORSCH_TRACE` in `src/config.ts`, and `LOG_LEVEL` in
-`src/rocketsites/config.ts`.
+The log also gets a `[perf]` line every 30 s with the engine's frame times and
+object counts (`src/perfline.ts`).
+
+Before a real release: turn off `RORSCH_TRACE` (still on), `BOT_TRACE` and
+`FAKE_SLOT_TRACE` in `src/config.ts`, set `LOG_LEVEL` in
+`src/rocketsites/config.ts` to 0 (quiet), and remove the MP-RMG TAC (`src/tacrmg.ts`, its
+Debug item, the `tac` ray flag in `nuke.ts`, `rapid` in `nukefx.ts` and the
+`TAC_RMG_*` settings).
 
 ## The map
 
@@ -172,9 +208,13 @@ at build time, so after moving any of them: re-export, then `npm run build`.
 | `src/bots.ts`, `botbrain.ts`, `botscore.ts`, `botobjectives.ts`, `botnames.ts` | Bot AI |
 | `src/botnav.ts`, `botnavgraph.ts`, `navpoints.ts` | Waypoint graph and routing (`navpoints.ts` is generated) |
 | `src/slots.ts` | Vehicle purchases, pads and runtime spawners |
+| `src/fakeslot.ts`, `fakeslotcore.ts` | The Portal gadget's shared slot 3 and its swap box |
+| `src/tacrmg.ts` | The debug MP-RMG TAC |
 | `src/worldicons.ts` | Strategic locations and the Tactical tab's highlights |
 | `src/objids.ts` | The map's object IDs (see `PS_ObjIds.md`) |
-| `src/config.ts` | Every tunable number |
+| `src/perfline.ts` | The `[perf]` log line |
+| `src/util/` | Logging, the per-sweep position snapshot (`positions.ts`), seat tracking (`seats.ts`) and other helpers |
+| `src/config.ts` | Every tunable number and log switch |
 | `src/strings.json` | All on-screen text |
 | `PS_Isolated.tscn` / `.spatial.json` | The Godot test map and its Portal export |
 | `ps_poster_1.jpg`, `ps_map_thumbnail_1.jpg` | Poster and thumbnail art |
@@ -192,8 +232,11 @@ npm run build
 ```
 
 `npm run build` regenerates the waypoint table, the HQ positions and the rocket
-sites from the map export, runs the source guard and unit tests, type-checks,
-bundles, and type-checks the bundle. Upload `dist/bundle.ts` and
+sites from the map export, runs the source guard and unit tests, type-checks and
+bundles. It then un-exports the engine event handlers the mode never uses
+(`scripts/strip-events.js`; the engine calls every exported handler, many of
+them per object per tick) and compiles the bundle strictly the way the Portal
+site does (`scripts/verify-bundle.js`). Upload `dist/bundle.ts` and
 `dist/bundle.strings.json` to the Portal web editor together with the map
 export.
 

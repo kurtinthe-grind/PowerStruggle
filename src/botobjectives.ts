@@ -2,14 +2,14 @@ import { Events } from "bf6-portal-utils/events";
 import { InterleavedVectors } from "bf6-portal-utils/interleaved-vectors";
 import { Vectors } from "bf6-portal-utils/vectors";
 import { log, safe, willLogDebug } from "./util/log";
-import { isEnemyTeam, teamIdOf } from "./util/roster";
+import { teamIdOf } from "./util/roster";
 import { allBunkers, bunkerByCp, onBunkerCaptured } from "./buildings";
 import { allStates, onCaptured } from "./capture";
 import { isConfigured } from "./objids";
-import { PlayerLocations } from "bf6-portal-utils/player-locations";
+import { enemiesInSphere, takeSnapshot } from "./util/positions";
 import {
     BOT_CAPTURE_RADIUS_M, BOT_KIND_WEIGHT, BOT_PROTO_ATTACKERS, BOT_PROTO_DEFENDERS,
-    BOT_THREAT_REACH_M
+    BOT_THREAT_REACH_M, BOT_TRACE
 } from "./config";
 import { ScoreObjective } from "./botscore";
 
@@ -117,7 +117,9 @@ function resolveAreaVec(
             const trigger: mod.AreaTrigger = mod.GetAreaTrigger(triggerId);
             if (mod.IsValid(trigger)) {
                 const vec: mod.Vector = mod.GetObjectPosition(trigger);
-                log("botobj", key + " anchored on AreaTrigger " + triggerId);
+                if (BOT_TRACE) {
+                    log("botobj", key + " anchored on AreaTrigger " + triggerId);
+                }
                 return vec;
             }
         } catch (e) {
@@ -489,25 +491,20 @@ export function occupancy(idx: number): number {
 
 // Enemy pressure on an objective for a team: how many enemy players are inside
 // the threat radius of the anchor. This is the "they are about to cap that one"
-// signal the brain reacts to, and it comes from PlayerLocations' cached
-// positions, so it costs no FFI at all - the sphere query walks a prebuilt
-// voxel grid in QuickJS memory rather than calling mod.GetSoldierState.
+// signal the brain reacts to. It reads the shared position snapshot
+// (util/positions.ts), which the bot sweep refreshes once per sweep, so the
+// whole objective list costs one snapshot rather than a read per objective.
 //
 // Distinct from isContested, which only reports players standing exactly on the
 // trigger. An objective with no one on it but two enemies walking toward it is
 // exactly the case that needs a defender sent across, and isContested cannot
 // see it.
 export function enemyPressure(idx: number, team: number, radius: number): number {
-    if (idx < 0 || idx >= objCount || !PlayerLocations.isInitialized()) {
+    if (idx < 0 || idx >= objCount) {
         return 0;
     }
-    const ax: number = objPos[idx * 3];
-    const ay: number = objPos[idx * 3 + 1];
-    const az: number = objPos[idx * 3 + 2];
-    return PlayerLocations.findPlayersInSphere(
-        ax, ay, az, radius,
-        (p: mod.Player) => isEnemyTeam(teamIdOf(p), team)
-    );
+    takeSnapshot(900);
+    return enemiesInSphere(objPos[idx * 3], objPos[idx * 3 + 1], objPos[idx * 3 + 2], radius, team);
 }
 
 // A bot's own target point on an objective: the anchor nudged by a stable

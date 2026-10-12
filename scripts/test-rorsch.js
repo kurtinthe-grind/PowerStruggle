@@ -12,7 +12,7 @@ const src = fs.readFileSync(path.join(__dirname, "..", "src", "rorschshot.ts"), 
 const js = ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
 const m = { exports: {} };
 new Function("module", "exports", js)(m, m.exports);
-const { holdStep } = m.exports;
+const { holdStep, roundStep } = m.exports;
 
 let failed = 0;
 function eq(label, got, want) {
@@ -59,6 +59,30 @@ console.log("an ignored hold (not the Rorsch) never fires:");
 eq("ignored", holdStep({ pressMs: 0, ignored: true }, false, 3000, MIN_CHARGE), { next: undefined, fire: false });
 console.log("idle stays idle:");
 eq("idle", holdStep(undefined, false, 0, MIN_CHARGE), { next: undefined, fire: false });
+
+// MP-RMG TAC (debug): a nuke on each trigger press, and one every
+// intervalMs while it stays held.
+const ROUND_MS = 400;
+function runRounds(samples) {
+    let st = undefined;
+    const shots = [];
+    for (const [firing, now] of samples) {
+        const r = roundStep(st, firing, now, ROUND_MS);
+        st = r.next;
+        if (r.fire) shots.push(now);
+    }
+    return shots;
+}
+console.log("MP-RMG TAC: a press fires at once:");
+eq("tap at 0", runRounds([[true, 0], [false, 33]]), [0]);
+console.log("MP-RMG TAC: held, one round every 400 ms:");
+eq("held 0..1000", runRounds(held(0, 1000)), [0, 429, 858]);
+console.log("MP-RMG TAC: each new press fires, however soon:");
+eq("two taps", runRounds([[true, 0], [false, 33], [true, 66], [false, 99]]), [0, 66]);
+console.log("MP-RMG TAC: a lag gap fires once, not a backlog:");
+eq("samples at 0 and 2000", runRounds([[true, 0], [true, 2000], [true, 2033]]), [0, 2000]);
+console.log("MP-RMG TAC: idle stays idle:");
+eq("idle", roundStep(undefined, false, 0, ROUND_MS), { next: undefined, fire: false });
 
 if (failed > 0) { console.log(failed + " FAILED"); process.exit(1); }
 console.log("ALL CHECKS PASSED");

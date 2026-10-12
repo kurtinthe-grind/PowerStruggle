@@ -10,8 +10,8 @@ import { LOG_EVENTS, LOG_TRACE, log, logAt, logOn, safe, tryGet } from "./log";
 import { toV3 } from "./fx";
 import { pickRadar } from "./raygeom";
 import { ownRocketStop, pressed, rayExpired } from "./shotcore";
-import { deployedNow } from "./players";
-import { RadarTarget, liveRadars, radarHitBy } from "./site";
+import { inVehicle } from "../util/seats";
+import { RadarTarget, forEachLauncherCandidate, liveRadars, radarHitBy, teamOf } from "./site";
 
 // Launcher shots at the radar, the PowerStruggle Rorsch-turret method: on
 // the shot, cast mod.RayCast along the shooter's aim; the radar is hit when
@@ -68,39 +68,50 @@ function enemyRadarsInRange(team: number, eye: V3, standing: RadarTarget[]): Rad
     return standing.filter(r => r.team !== team && dist(eye, r.pos) <= LAUNCHER_RANGE_M);
 }
 
-// Only players near an enemy radar (by the shared per-tick position) have
-// their eye and trigger read.
-export function tickLaunchers(now: number, tickNo: number): void {
-    expireRays(now);
-    const standing: RadarTarget[] = liveRadars();
-    if (standing.length === 0) {
+// Only enemy players inside a standing radar's animation zone (site.ts keeps
+// them from the zone's enter and exit events) have their trigger read, one
+// read a tick: a launcher fires on the press, which can last a single tick.
+// Their eye, team and launcher are read only on a press. Nobody in a zone
+// means no reads at all, and positions are never polled.
+const seenAt: { [pid: number]: number } = {};
+let launcherTick: number = 0;
+let launcherNow: number = 0;
+
+function checkCandidate(pid: number, p: mod.Player): void {
+    if (inVehicle(pid)) {
+        firingWas[pid] = false;
         return;
     }
-    for (const d of deployedNow(tickNo)) {
-        const p: mod.Player = d.p;
-        const pid: number = d.pid;
-        const team: number = d.team;
-        if (enemyRadarsInRange(team, d.pos, standing).length === 0) {
-            firingWas[pid] = false;
-            continue;
-        }
-        const eye: V3 | undefined = tryGet("launch.eye", () => toV3(mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition)));
-        const radars: RadarTarget[] = eye === undefined ? [] : enemyRadarsInRange(team, eye, standing);
-        if (eye === undefined || radars.length === 0) {
-            firingWas[pid] = false;
-            continue;
-        }
-        const firing: boolean = tryGet("launch.firing", () => mod.GetSoldierState(p, mod.SoldierStateBool.IsFiring)) === true;
-        const press: boolean = pressed(firingWas[pid], firing);
-        firingWas[pid] = firing;
-        if (!press) {
-            continue;
-        }
-        const launcher: string | undefined = launcherInHand(p, pid);
-        if (launcher !== undefined) {
-            cast(p, pid, eye, launcher, radars, now);
-        }
+    let firing: boolean = false;
+    try {
+        firing = mod.GetSoldierState(p, mod.SoldierStateBool.IsFiring);
+    } catch (e) {
+        return;
     }
+    const press: boolean = pressed(firingWas[pid], firing);
+    firingWas[pid] = firing;
+    if (!press) {
+        return;
+    }
+    const eye: V3 | undefined = tryGet("launch.eye", () => toV3(mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition)));
+    if (eye === undefined) {
+        return;
+    }
+    const radars: RadarTarget[] = enemyRadarsInRange(teamOf(p), eye, liveRadars());
+    if (radars.length === 0) {
+        return;
+    }
+    const launcher: string | undefined = launcherInHand(p, pid);
+    if (launcher !== undefined) {
+        cast(p, pid, eye, launcher, radars, launcherNow);
+    }
+}
+
+export function tickLaunchers(now: number, tickNo: number): void {
+    expireRays(now);
+    launcherTick = tickNo;
+    launcherNow = now;
+    forEachLauncherCandidate(checkCandidate, seenAt, launcherTick);
 }
 
 // A ray with no answer is judged along its path rather than left to block

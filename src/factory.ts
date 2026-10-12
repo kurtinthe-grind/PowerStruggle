@@ -1,11 +1,11 @@
 import { log, invokeSubscriber } from "./util/log";
 import {
-    CHARGE_BASE_SECONDS, CHARGE_REQUIRES_FACTORY, CHARGE_UNLOCK_50, CHARGE_UNLOCK_100,
+    CHARGE_REQUIRES_FACTORY, CHARGE_UNLOCK_50, CHARGE_UNLOCK_100,
     POWER_MILESTONES
 } from "./config";
 import { powerVal } from "./state";
 import { buildingsOfKind, BuildingState, onCaptured } from "./capture";
-import { energyMultiplier } from "./energy";
+import { chargePercentPerSec } from "./energy";
 import { AreaBuildingDef } from "./objids";
 
 export type ChargeListener = (team: number, before: number, after: number) => void;
@@ -47,11 +47,7 @@ function computeRate(team: number): number {
     if (CHARGE_REQUIRES_FACTORY && cachedOwner !== team) {
         return 0;
     }
-    const mult: number = energyMultiplier(team);
-    if (mult <= 0) {
-        return 0;
-    }
-    return mult / CHARGE_BASE_SECONDS * 100;
+    return chargePercentPerSec(team);
 }
 
 export function factoryOwner(): number {
@@ -90,8 +86,10 @@ export function tickCharge(dtSeconds: number): void {
     tick(dtSeconds);
 }
 
+const CHARGE_TEAMS: number[] = [1, 2];
+
 function tick(dt: number): void {
-    for (const team of [1, 2]) {
+    for (const team of CHARGE_TEAMS) {
         const rate: number = chargeRatePerSec(team);
         if (rate <= 0) {
             continue;

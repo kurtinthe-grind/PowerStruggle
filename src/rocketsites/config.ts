@@ -47,7 +47,8 @@ export const RADAR_SWEEP_DEG_PER_S: number = 20;
 // only syncs a transform past 1 cm / ~10 deg by default; 1 deg is invisible
 // on a radar and cuts the moves sent while tracking a slow target.
 export const RADAR_MIN_STEP_DEG: number = 1;
-export const RADAR_IDLE_UPDATE_MS: number = 100;     // a sweeping radar (no target) is redrawn this often, not every tick
+export const RADAR_IDLE_MIN_STEP_DEG: number = 3;    // the idle sweep redraws only after this much turn (20 deg/s at 200 ms = 4 deg)
+export const RADAR_IDLE_UPDATE_MS: number = 200;     // a sweeping radar (no target) is redrawn this often, not every tick
 // A tracking radar is redrawn this often rather than every tick
 // (bf6-portal-utils animations throttle with minUpdateDeltaMs the same way).
 export const RADAR_TRACK_UPDATE_MS: number = 50;

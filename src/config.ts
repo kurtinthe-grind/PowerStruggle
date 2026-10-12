@@ -5,6 +5,19 @@ export const PRESTIGE_STEP: number = 250;
 // message at the call site, so leaving them on costs a string build per event
 // even when nobody reads it. Flip to true to diagnose, then flip back.
 export const LOG_DEBUG: boolean = false;
+// What the PortalLog gets (owner, 2026-10-04: the log was full of noise).
+// 0: errors and warnings only. 1 (default): match events too (captures,
+// power, HQ hits, nukes, purchases, bots joining and leaving, rocket sites).
+// 2: also the per-action chatter in LOG_TRACE_TAGS (menu hovers, feed chips,
+// prestige, scoring decisions, notifications). The debug traces
+// (RORSCH_TRACE, BOT_TRACE, FAKE_SLOT_TRACE) are separate switches.
+export const LOG_LEVEL: number = 1;
+// A [perf] line (perfline.ts) this often: engine frame times and counts.
+export const PERF_LINE_MS: number = 30000;
+export const LOG_TRACE_TAGS: string[] = [
+    "uiButton", "menu", "page", "feed", "prestige", "hud", "debug", "paint", "art", "bar", "score", "stats",
+    "notify", "undeploy", "gadget", "economy", "worldicons"
+];
 // Admin logs (DEBUG tab toggle, off by default). On a "Host" (dedicated)
 // server the log only reaches the owner's PC through mod.SendPortalLogToAdmin,
 // which writes PortalLog.txt on the admin's client and has a per-session quota;
@@ -23,9 +36,6 @@ export const ADMIN_LOG_CAPS: { [tag: string]: number } = {
 export const ADMIN_LOG_CAP_DEFAULT: number = 20;
 export const ADMIN_LOG_SEND_MS: number = 120000;
 export const ADMIN_LOG_MIN_GAP_MS: number = 30000;
-// Debug: every item on the buy menu WEAPONS tab costs 0 prestige, so the Rorsch
-// and the other test weapons are always available. Set false for real matches.
-export const WEAPONS_TAB_FREE: boolean = true;
 export const POWER_MILESTONES: number[] = [50, 75, 100];
 export const ART_BUDGET: number = 32;
 export const SITE_LETTER: string[] = ["A", "B", "C"];
@@ -64,8 +74,13 @@ export const BUNKER_CAPTURE_SECONDS: number = 20;
 export const BUNKER_NEUTRALIZE_SECONDS: number = 10;
 export const BUNKER_CAPTURE_MULTIPLIER: number = 3;
 
-export const CHARGE_BASE_SECONDS: number = 300;
-export const CHARGE_PER_SITE: number = 1.5;
+// Minutes of holding the Prototype Factory to charge 0 -> 100%, indexed by
+// energy sites held (0, 1, 2, 3); 0 means no charge. Owner, 2026-10-04: a
+// match should take 30-45 min. The 2026-10-04 log took the factory about 6 min
+// in, so 100% lands near minute 25-30 with flips, leaving the rocket sites and
+// the HQ (5 Rorsch shots) for the rest. The old testing rate (300 s base,
+// x1.5 per site) filled 100% in 3.3 min with one site.
+export const CHARGE_MINUTES_BY_SITES: number[] = [0, 20, 14, 10];
 export const CHARGE_REQUIRES_FACTORY: boolean = true;
 export const CHARGE_UNLOCK_50: number = 50;
 export const CHARGE_UNLOCK_100: number = 100;
@@ -102,6 +117,27 @@ export const RORSCH_MIN_CHARGE_MS: number = 2100;
 // every ray outcome while a player is in an HQ fire zone. One soldier-state read
 // per tick per player in a fire zone. Set false once settled.
 export const RORSCH_TRACE: boolean = true;
+// The fake 4th gadget slot (fakeslot.ts). Its box on the 1920x1080 UI canvas,
+// matched in the UI preview to the game's slot-3 gadget box in the owner's
+// 2026-10-04 screenshot (scaled by height, right edge kept): that box is
+// 61-62 x 63, its left edge 475 px from the right edge, its bottom 66 px up,
+// and the game leaves 6 px between boxes. The card inside takes
+// FAKE_SLOT_CARD of the box, so resizing the box resizes the card.
+export const FAKE_SLOT_RIGHT: number = 481;
+export const FAKE_SLOT_BOTTOM: number = 66;
+export const FAKE_SLOT_W: number = 62;
+export const FAKE_SLOT_H: number = 63;
+export const FAKE_SLOT_CARD: number = 0.75;
+// After a swap, slot 3 is asked for every 150 ms for up to FAKE_SLOT_FORCE_MS
+// until it is in hand; slot changes within FAKE_SLOT_BUSY_MS of a swap are the
+// swap's own and never trigger another. FAKE_SLOT_TRACE logs every slot change
+// of a human (debug; off for release).
+export const FAKE_SLOT_FORCE_MS: number = 1000;
+export const FAKE_SLOT_BUSY_MS: number = 1200;
+export const FAKE_SLOT_TRACE: boolean = false;
+// The fake slot reads a player's inventory slots every this many ticks (3 at
+// the ~30 Hz tick: 10 reads a second, spread across players).
+export const FAKE_SLOT_POLL_TICKS: number = 3;
 
 // Rorsch tactical nuke (src/nukefx.ts), on every Rorsch impact anywhere, with
 // friendly fire. Inside NUKE_KILL_M a player dies (humans see a black screen
@@ -135,12 +171,24 @@ export const NUKE_FOLLOW_MAX: number = 16;
 // world effect of the blast after NUKE_FX_MS.
 export const NUKE_PLUME_MS: number = 6500;
 export const NUKE_FX_MS: number = 12000;
+// MP-RMG TAC (debug only; owner, 2026-10-04: removed for the final build).
+// A round on each trigger press and every TAC_RMG_ROUND_MS while held. Its
+// nukes spawn the full world effect while fewer than TAC_RMG_FULL_BLASTS full
+// blasts are still up (each lives NUKE_FX_MS, about 14 effects), a single
+// explosion after that; a player gets its screen effects at most once per
+// TAC_RMG_SCREEN_GAP_MS. Damage is never skipped.
+export const TAC_RMG_ROUND_MS: number = 400;
+export const TAC_RMG_FULL_BLASTS: number = 4;
+export const TAC_RMG_SCREEN_GAP_MS: number = 1000;
 export const NUKE_SHOCK_SCALE: number = 3;
 // The charge alarm at the shooter is heard this far.
 export const NUKE_ALARM_RANGE_M: number = 60;
 // Rorsch rounds per purchase: one loaded, one spare. Tracked across drops and
 // pickups so picking a dropped Rorsch back up cannot refill it.
 export const RORSCH_SHOTS: number = 2;
+// A dropped Rorsch is watched for a pickup this long, then forgotten (a
+// pickup after that gets no nuke shots).
+export const RORSCH_GROUND_MS: number = 120000;
 export const POWER_LEVEL_REQUIRED: number = 100;
 
 // ---- Bots: custom AI_Spawner objective players (no UI, no buy, no nuke) ----
@@ -149,12 +197,12 @@ export const POWER_LEVEL_REQUIRED: number = 100;
 // script-owned. All bot pathing is plain distance math over a static position
 // cache in src/botobjectives.ts; the only per-sweep FFI is one GetPosition
 // per processed bot plus a behavior call when its intent changes.
-// 32 a side, was 24: the owner reports 24 a side runs smoothly. Humans and bot
-// corpses take team slots too (the scoreboard counts them), so the live bot
-// count also stays within BOT_TEAM_SLOTS minus the humans on that team, and a
-// spawn waits while a corpse still holds a slot.
-export const BOT_COUNT_PER_TEAM: number = 32;
-export const BOT_TEAM_SLOTS: number = 32;
+// Bots per team (owner, 2026-10-04: 24 a side, to simulate a full 48-player
+// server). A human on a team takes one bot's place: the bot leaves the game
+// for good, and a bot joins again when a human leaves. Humans and bots never
+// exceed BOT_TEAM_SLOTS on a team.
+export const BOT_COUNT_PER_TEAM: number = 24;
+export const BOT_TEAM_SLOTS: number = 24;
 // Dedicated 1 Hz sweep timer, separate from OngoingGlobal so bot thinking
 // never competes with the per-frame HUD and charge work.
 export const BOT_SWEEP_MS: number = 1000;
@@ -165,23 +213,21 @@ export const BOT_SLICE: number = 16;
 // Spawn burst cap per sweep. Matches the 0.5 s stagger the official
 // PortalPerformanceExample uses between SpawnAIFromAISpawner calls.
 export const BOT_SPAWN_PER_SWEEP: number = 2;
-// Persistent bots, as the CustomConquest V15 template runs them: a bot stays in
-// the game when it dies and redeploys by itself as the same player, so its
-// scoreboard row, name and stats live all match. The owner's scoreboard showed
-// every bot at 0 while the log had 550 successful row writes a minute and bots
-// with score (one at 1950, 17 kills); the template, which never turns on
-// unspawn-on-dead, shows bot scores. false restores the old path: the bot
-// leaves the game on death and a new one is spawned under its name.
-export const BOT_PERSISTENT: boolean = true;
-// Persistent bots: redeploy timer (the engine allows 0-60 s), and a dead bot
-// not redeployed after BOT_REDEPLOY_WATCHDOG_MS is deployed by force.
+// Bots never leave the game when they die (the CustomConquest V15 way): they
+// redeploy as the same player, so names and stats live all match. Redeploy
+// timer (the engine allows 0-60 s), and a dead bot not redeployed after
+// BOT_REDEPLOY_WATCHDOG_MS is deployed by force.
 export const BOT_REDEPLOY_S: number = 10;
 export const BOT_REDEPLOY_WATCHDOG_MS: number = 25000;
-// Persistent bots: population check (top up, trim for humans) this often.
+// Population check (top up, make room for humans) this often.
 export const BOT_MAINTAIN_MS: number = 5000;
-// Non-persistent path only. Longer than the corpse lifetime below, so a
-// respawn never reuses the name of a body still lying on the map.
-export const BOT_RESPAWN_DELAY_MS: number = 11000;
+// A bot killed to make room for a human must have left the game within this
+// time; otherwise removals stop for the round (bots.ts removeBot).
+export const BOT_REMOVE_CHECK_MS: number = 15000;
+// A bot under fire is re-targeted at most this often by the same attacker.
+export const BOT_RETARGET_MS: number = 500;
+// An ownership flip re-thinks every bot, spread over this many sweeps.
+export const BOT_RETHINK_SWEEPS: number = 3;
 // Bunker spawning (CustomConquest V15 AI_ObjectiveSpawn): on deploy this share
 // of bots is teleported from the AI_Spawner onto the flag of a random owned
 // bunker. The template uses about 0.9; the mode owner wants only some, 0.25.
@@ -199,11 +245,6 @@ export const BOT_CORPSE_SECONDS: number = 10;
 export const BOT_DAMAGE_MULT: number = 0.5;
 // Per-bot damage taken, applied at spawn (ObliterationExample pattern).
 export const BOT_INCOMING_DAMAGE: number = 0.5;
-// Every live bot's scoreboard row is written again this often. The owner saw
-// every bot at zero (score, kills, deaths, assists) although rows are written
-// on each award, death and spawn; a row written right at spawn may come too
-// early for the engine, and a regular rewrite does not depend on that.
-export const BOT_ROW_REFRESH_MS: number = 5000;
 // Range cap for picking an objective. Was 500 m (CustomCQ README); on
 // PS_Isolated that hid half the map, and the 2026-10-02 playtest spent the
 // whole match on the two or three nearest objectives. Now the whole map.
@@ -287,7 +328,7 @@ export const BOT_KIND_WEIGHT: number[] = [1.1, 1.3, 1.5, 1.0, 0.9, 0.7];
 export const BOT_BATTLE_MS: number = 10000;
 // One line per team every BOT_TRACE_MS showing where the bots are going, plus a
 // line per give-up, boarding and eject. Diagnostic; set false once tuned.
-export const BOT_TRACE: boolean = true;
+export const BOT_TRACE: boolean = false;
 export const BOT_TRACE_MS: number = 15000;
 
 // Roaming. A bot that reached a safely-held objective used to sit on it for the
@@ -319,7 +360,7 @@ export const BOT_NAV_MISS_STOP: number = 25;
 export const BOT_NAV_SHOW: boolean = false;
 
 // Enemy pressure radius around an owned objective, for the DEFEND score. Read
-// from PlayerLocations' cached positions, no FFI. Was 220 m for the old
+// from the sweep's position snapshot (util/positions.ts). Was 220 m for the old
 // picker; that marks half the map as threatened once fighting starts.
 export const BOT_THREAT_REACH_M: number = 90;
 

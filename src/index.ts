@@ -12,7 +12,7 @@ import { Timers } from "bf6-portal-utils/timers";
 // synthetic event across its own subscribers.
 import "bf6-portal-utils/player-undeploy-fixer";
 import {
-    adminLogMode, adminLogSends, log, logAdmin, safe, setAdminLogMode, tickAdminBudget, willLogDebug
+    adminLogMode, adminLogSends, log, logAdmin, logTagOn, safe, setAdminLogMode, tickAdminBudget, willLogDebug
 } from "./util/log";
 import {
     initPerf, healthFactor, smoothedTickRate, smoothedTimeoutLagMs,
@@ -28,7 +28,7 @@ import {
     MENU_TAB_PRESS, MENU_TAB_HOVER, P_RING,
     colorFor
 } from "./ui/palette";
-import { PRESTIGE_STEP, POWER_MILESTONES, ART_BUDGET, SITE_LETTER, WEAPONS_TAB_FREE } from "./config";
+import { PRESTIGE_STEP, POWER_MILESTONES, ART_BUDGET, SITE_LETTER } from "./config";
 import {
     powerVal, baseVal, dbgMe, siteState, pPrestige,
     getProtoOwner, setProtoOwner
@@ -45,15 +45,18 @@ import {
     countsAsCombat, countsAsDeath, forgetPlayer, prestigeFor, AwardKind
 } from "./stats";
 import { playersFromIds, playersOnCapturePoint, teamIdOf } from "./util/roster";
-import { initEnergy, energyMultiplier } from "./energy";
-import { initFactory, factoryOwner, tickCharge, onCharge } from "./factory";
+import { initEnergy, energySitesHeld } from "./energy";
+import { initFactory, factoryOwner, tickCharge, onCharge, nukeUnlocked } from "./factory";
 import { onHqHit } from "./hq";
 import { configureSiteEvents, initSiteWire, siteDamageOn, tickSiteWire, toggleSiteDamage } from "./sitewire";
 import { hqHpPercent } from "./winner";
 import { buyVehicle, BuyResult, initSlots } from "./slots";
 import { factoryBuildings, isConfigured } from "./objids";
 import { initNuke, configureNukeEvents, tickNukeProbe } from "./nuke";
+import { configureTacRmgEvents, markTacRmg, clearTacRmg, tickTacRmg } from "./tacrmg";
+import { configureFakeSlotEvents, grantPortalGadget, tickFakeSlot, setFakeSlotMenuOpen } from "./fakeslot";
 import { tickNukeFx } from "./nukefx";
+import { tickPerfLine } from "./perfline";
 import { onRorschBought, refillRorsch } from "./rorschammo";
 import { initWorldIcons, stateFor, highlightFor, highlightedFor, distanceMeters } from "./worldicons";
 import { debugWeaponReport, isRorschInHand } from "./weapons";
@@ -160,13 +163,22 @@ const TAB_H: number = 34;
 const CELL_H: number = 44;
 const ROW_STEP: number = 48;
 
-function colX(t: number, col: number): number {
-    return col * Math.floor(MENU_W / TABS_DATA[t].cols);
+// A section may set its own column count (a one-column row has room for a
+// description on its sub-line); otherwise the tab's applies.
+function secCols(t: number, sec: PshSection): number {
+    return sec.cols !== undefined ? sec.cols : TABS_DATA[t].cols;
 }
 
+function colX(cols: number, col: number): number {
+    return col * Math.floor(MENU_W / cols);
+}
+
+// pages holds the pages after the first (sections), so a tab with one
+// extra page has two. Counting only pages hid the Debug tab's second page:
+// with a count of 1 the pager was never built.
 function pageCount(t: number): number {
     const pages: PshSection[][] | undefined = TABS_DATA[t].pages;
-    return pages === undefined ? 1 : pages.length;
+    return pages === undefined ? 1 : 1 + pages.length;
 }
 
   function pageSections(t: number, page: number): PshSection[] {
@@ -175,7 +187,7 @@ function pageCount(t: number): number {
       }
       const pages: PshSection[][] | undefined = TABS_DATA[t].pages;
       if (pages !== undefined && page > 0) {
-          return pages[page % pages.length];
+          return pages[(page - 1) % pages.length];
       }
       return TABS_DATA[t].sections;
   }
@@ -186,8 +198,8 @@ function pageCount(t: number): number {
       }
       return pageSections(t, pPage[id] === undefined ? 0 : pPage[id]);
   }
-function cellW(t: number): number {
-    return Math.floor(MENU_W / TABS_DATA[t].cols) - 6;
+function cellW(cols: number): number {
+    return Math.floor(MENU_W / cols) - 6;
 }
 const SEC_TOP: number = 98;
 const SEC_HEAD_H: number = 22;
@@ -200,25 +212,26 @@ const DONE_Y: number = MENU_H - DONE_H - DONE_GAP;
 const SEC_HEAD_Y: number[] = [];
 const SEC_ROW_Y: number[] = [];
 
-function layoutSections(secs: PshSection[], cols: number): void {
-    const useCols: number = cols > 0 ? cols : TABS_COLS_DEFAULT;
+// Laid out per page, so a page's rows never borrow another page's spacing.
+// An empty section (the Weapons tab's "coming soon") is a heading only.
+function layoutSections(t: number, secs: PshSection[]): void {
     SEC_HEAD_Y.length = 0;
     SEC_ROW_Y.length = 0;
     let y: number = SEC_TOP;
     for (let s: number = 0; s < secs.length; s++) {
         SEC_HEAD_Y.push(y);
         SEC_ROW_Y.push(y + SEC_HEAD_H + SEC_ROW_GAP);
-        const n: number = secs[s].items.length;
-        const rows: number = Math.ceil(n / useCols);
-        y = y + SEC_HEAD_H + SEC_ROW_GAP + (rows - 1) * ROW_STEP + CELL_H + SEC_GAP;
+        const cols: number = secCols(t, secs[s]);
+        const rows: number = Math.ceil(secs[s].items.length / (cols > 0 ? cols : TABS_COLS_DEFAULT));
+        y = y + SEC_HEAD_H + SEC_GAP + (rows > 0 ? SEC_ROW_GAP + (rows - 1) * ROW_STEP + CELL_H : 0);
     }
-    PAGER_Y = y + PAGER_GAP;
 }
 
-
-let PAGER_Y: number = 456;
 const PAGER_W: number = 96;
 const PAGER_GAP: number = 8;
+// The pager sits just above DONE on every page. A page must end above it:
+// 468 px of sections, e.g. three one-row sections and one three-row section.
+const PAGER_Y: number = DONE_Y - CELL_H - PAGER_GAP;
 
 const MOCK_SITES: { [t: number]: number[] } = { 1: [0, 0, 0], 2: [0, 0, 0] };
 const MOCK_NUKE: { [t: number]: number } = { 1: 0, 2: 0 };
@@ -647,58 +660,74 @@ function refreshTacticalRowsForAll(): void {
     }
 }
 
-type PshItem = { key: string; sub?: string; cost: number; act?: string; give?: mod.Weapons; vehicle?: mod.VehicleList; spawnerIndex?: number };
-type PshSection = { head: string; items: PshItem[] };
+// give: a weapon; gadget (+ slot): a gadget, call-in or deployable; resupply:
+// an ammo refill. An item with none of these (and no vehicle or act) is not
+// for sale yet and is refused.
+type PshItem = {
+    key: string; sub?: string; cost: number; act?: string; give?: mod.Weapons;
+    gadget?: mod.Gadgets; slot?: mod.InventorySlots; resupply?: mod.ResupplyTypes;
+    vehicle?: mod.VehicleList; spawnerIndex?: number;
+    // MP-RMG TAC (debug, tacrmg.ts): the given MP-RMG fires nukes.
+    tacRmg?: boolean
+};
+type PshSection = { head: string; items: PshItem[]; cols?: number };
 
 type PshTab = { label: string; cols: number; sections: PshSection[]; pages?: PshSection[][] };
 
 type PshButton = { wrap: mod.UIWidget; button: mod.UIWidget };
 
+// The prototype weapons, sold by the Prototype Factory and, free, on the
+// Debug tab's last page. One column, so the sub-line has room for a
+// description. Owner, 2026-10-04: the Rorsch is sold as the RORSCH MK-4 TAC
+// (it was the "Gauss Rifle" item); MP-RMG Freeze has no engine weapon yet.
+function protoItems(free: boolean): PshItem[] {
+    return [
+        { key: "itMoac", cost: free ? 0 : 300, give: mod.Weapons.BattlePickup_MP_RMG },
+        { key: "itMoar", sub: "itSoon", cost: free ? 0 : 450 },
+        { key: "itTacLauncher", sub: "itTacLauncherSub", cost: free ? 0 : 600, give: mod.Weapons.BattlePickup_Rorsch_Mk_2_SMRW },
+    ];
+}
+
 const TABS_DATA: PshTab[] = [
     {
+        // Owner, 2026-10-04: custom weapons come here later.
         label: "tabWeapons",
         cols: 2,
         sections: [
-            {
-                head: "catProto",
-                items: [
-                    { key: "itMoac", cost: 300, give: mod.Weapons.BattlePickup_MP_RMG },
-                    { key: "itMoar", cost: 450 },
-                    { key: "itTacLauncher", cost: 1200 },
-                    { key: "itSingularity", cost: 1400 },
-                ],
-            },
-            {
-                head: "catStandard",
-                items: [
-                    { key: "itTacTank", cost: 1600 },
-                    { key: "itGauss", cost: 600, give: mod.Weapons.BattlePickup_Rorsch_Mk_2_SMRW },
-                    { key: "itAntiAir", cost: 300 },
-                    { key: "itSraw", cost: 250 },
-                ],
-            },
+            { head: "catComingSoon", items: [] },
         ],
     },
     {
+        // Call-ins go to their own slot so they take no class gadget's place;
+        // the mortar and designator go to slot 4, never slot 3, which is the
+        // Portal Gadget's swap slot (fakeslot.ts).
+        // Whether a script-given call-in works in this mode is untested.
         label: "tabEquipment",
         cols: 2,
         sections: [
             {
-                head: "catTools",
+                head: "catStrikes",
                 items: [
-                    { key: "itRepairTorch", cost: 150 },
-                    { key: "itRadarKit", cost: 200 },
-                    { key: "itBinoculars", cost: 100 },
-                    { key: "itLockpick", cost: 250 },
+                    { key: "itArtillery", cost: 400, gadget: mod.Gadgets.CallIn_Artillery_Strike, slot: mod.InventorySlots.Callins },
+                    { key: "itAirStrike", cost: 600, gadget: mod.Gadgets.CallIn_Air_Strike, slot: mod.InventorySlots.Callins },
+                    { key: "itSmokeScreen", cost: 100, gadget: mod.Gadgets.CallIn_Smoke_Screen, slot: mod.InventorySlots.Callins },
+                    { key: "itUav", cost: 250, gadget: mod.Gadgets.CallIn_UAV_Overwatch, slot: mod.InventorySlots.Callins },
+                ],
+            },
+            {
+                head: "catDrops",
+                items: [
+                    { key: "itAmmoDrop", cost: 100, gadget: mod.Gadgets.CallIn_Ammo_Drop, slot: mod.InventorySlots.Callins },
+                    { key: "itAvDrop", cost: 250, gadget: mod.Gadgets.CallIn_Anti_Vehicle_Drop, slot: mod.InventorySlots.Callins },
+                    { key: "itWeaponDrop", cost: 150, gadget: mod.Gadgets.CallIn_Weapon_Drop, slot: mod.InventorySlots.Callins },
+                    { key: "itMobileRedeploy", cost: 300, gadget: mod.Gadgets.CallIn_Mobile_Redeploy, slot: mod.InventorySlots.Callins },
                 ],
             },
             {
                 head: "catDeploy",
                 items: [
-                    { key: "itParachute", cost: 350 },
-                    { key: "itVisor", cost: 200 },
-                    { key: "itPouch", cost: 100 },
-                    { key: "itEodBot", cost: 200 },
+                    { key: "itMortar", cost: 350, gadget: mod.Gadgets.Deployable_Portable_Mortar, slot: mod.InventorySlots.GadgetTwo },
+                    { key: "itDesignator", cost: 150, gadget: mod.Gadgets.Misc_Laser_Designator, slot: mod.InventorySlots.GadgetTwo },
                 ],
             },
         ],
@@ -710,19 +739,9 @@ const TABS_DATA: PshTab[] = [
             {
                 head: "catAmmo",
                 items: [
-                    { key: "itAmmoRifle", cost: 5 },
-                    { key: "itAmmoSmg", cost: 5 },
-                    { key: "itAmmoLmg", cost: 5 },
-                    { key: "itGrenades", cost: 25 },
-                ],
-            },
-            {
-                head: "catAttach",
-                items: [
-                    { key: "itReflex", cost: 25 },
-                    { key: "itAssaultScope", cost: 50 },
-                    { key: "itSniperScope", cost: 100 },
-                    { key: "itSilencer", cost: 10 },
+                    { key: "itAmmoBox", cost: 25, resupply: mod.ResupplyTypes.AmmoBox },
+                    { key: "itSupplyBag", cost: 50, resupply: mod.ResupplyTypes.SupplyBag },
+                    { key: "itAmmoCrate", cost: 75, resupply: mod.ResupplyTypes.AmmoCrate },
                 ],
             },
         ],
@@ -730,7 +749,6 @@ const TABS_DATA: PshTab[] = [
     {
         label: "tabDebug",
         cols: 3,
-
         sections: [
             {
                 head: "catDbgNodes",
@@ -748,32 +766,32 @@ const TABS_DATA: PshTab[] = [
                     { key: "dbgProto", cost: 0, act: "proto" },
                 ],
             },
-              {
-                  head: "catDbgPerf",
-                  items: [
-                      { key: "dbgPerfHz", cost: 0, act: "perf:hz" },
-                      { key: "dbgPerfMs", cost: 0, act: "perf:ms" },
-                      { key: "dbgPerfHealth", cost: 0, act: "perf:health" },
-                      { key: "dbgPerfLag", cost: 0, act: "perf:lag" },
-                      { key: "dbgBots", cost: 0, act: "bots" },
-                  ],
-              },
-              {
-                  head: "catDbgUtil",
-                  items: [
-                      { key: "dbgTeam", cost: 0, act: "team" },
-                      { key: "dbgRorsch", cost: 0, act: "rorsch" },
-                      { key: "dbgPrestige", cost: 0, act: "prestige" },
-                      { key: "dbgTabState", cost: 0, act: "tabstate" },
-                      { key: "dbgAdminLog", cost: 0, act: "adminlog" },
-                      { key: "dbgSiteDmg", cost: 0, act: "sitedmg" },
-                      { key: "dbgReplenish", cost: 0, act: "replenish" },
-                      { key: "dbgReset", cost: 0, act: "reset" },
-                  ],
-              },
-          ],
+            {
+                head: "catDbgPerf",
+                items: [
+                    { key: "dbgPerfHz", cost: 0, act: "perf:hz" },
+                    { key: "dbgPerfMs", cost: 0, act: "perf:ms" },
+                    { key: "dbgPerfHealth", cost: 0, act: "perf:health" },
+                    { key: "dbgPerfLag", cost: 0, act: "perf:lag" },
+                    { key: "dbgBots", cost: 0, act: "bots" },
+                ],
+            },
+        ],
         pages: [
             [
+                {
+                    head: "catDbgUtil",
+                    items: [
+                        { key: "dbgTeam", cost: 0, act: "team" },
+                        { key: "dbgRorsch", cost: 0, act: "rorsch" },
+                        { key: "dbgPrestige", cost: 0, act: "prestige" },
+                        { key: "dbgTabState", cost: 0, act: "tabstate" },
+                        { key: "dbgAdminLog", cost: 0, act: "adminlog" },
+                        { key: "dbgSiteDmg", cost: 0, act: "sitedmg" },
+                        { key: "dbgReplenish", cost: 0, act: "replenish" },
+                        { key: "dbgReset", cost: 0, act: "reset" },
+                    ],
+                },
                 {
                     head: "catDbgFoe",
                     items: [
@@ -790,8 +808,16 @@ const TABS_DATA: PshTab[] = [
                     ],
                 },
             ],
+            [
+                {
+                    head: "catProto", cols: 1, items: protoItems(true).concat([
+                        // Debug only, for fun; owner, 2026-10-04: out of the final build.
+                        { key: "itRmgTac", sub: "itRmgTacSub", cost: 0, give: mod.Weapons.BattlePickup_MP_RMG, tacRmg: true },
+                    ]),
+                },
+            ],
         ],
-      },
+    },
       {
           label: "tabTactical",
           cols: 2,
@@ -839,29 +865,11 @@ const TABS_DATA: PshTab[] = [
       },
 ];
 
-// The WEAPONS tab is a debug tab. Its only gate is the prestige cost (the
-// factory check applies to FACTORY_TAB alone), so zeroing the costs here makes
-// it fully available without capturing anything. Done once at load, before any
-// menu is built, so the cell styling, the afford check and the charge all agree.
-const WEAPONS_TAB: number = 0;
-if (WEAPONS_TAB_FREE) {
-    for (const sec of TABS_DATA[WEAPONS_TAB].sections) {
-        for (const item of sec.items) {
-            item.cost = 0;
-        }
-    }
-}
-
 const FACTORY_TAB: number = 5;
 const activeFactoryKind: { [id: number]: string } = {};
 
 const FACTORY_ITEMS: { [kind: string]: PshItem[] } = {
-    proto: [
-        { key: "itMoac", cost: 300, give: mod.Weapons.BattlePickup_MP_RMG },
-        { key: "itGauss", cost: 600, give: mod.Weapons.BattlePickup_Rorsch_Mk_2_SMRW },
-        { key: "itTacLauncher", cost: 1200 },
-        { key: "itSingularity", cost: 1400 }
-    ],
+    proto: protoItems(false),
     war: [
         { key: "itTankLight", cost: 500, vehicle: mod.VehicleList.M2Bradley, spawnerIndex: 0 },
         { key: "itTankFlak", cost: 700, vehicle: mod.VehicleList.Gepard, spawnerIndex: 1 },
@@ -914,6 +922,7 @@ function siteFeedKey(viewer: number, from: number, to: number, slot: number): st
 }
 
 const FEED_CHARS_BY_KEY: { [k: string]: number } = {
+    rorschLocked: 34,
     shopRefund: 42,
     siteYoursA: 35,
     siteYoursB: 35,
@@ -1824,7 +1833,7 @@ function buildTabRows(id: number, t: number, p: mod.Player, menu: mod.UIWidget):
     beginMenuBuild(id, t);
     const panel: mod.UIWidget = mkContainer(id, false, "tp" + t, 0, 0, MENU_W, MENU_H, mod.UIAnchor.TopLeft, menu, C_BLACK, 0, mod.UIBgFill.None, p);
     const secs: PshSection[] = tabSectionsFor(id, t);
-    layoutSections(widestSections(t), data.cols);
+    layoutSections(t, secs);
     for (let s: number = 0; s < secs.length; s++) {
         const sec: PshSection = secs[s];
         const headY: number = SEC_HEAD_Y[s];
@@ -1835,9 +1844,10 @@ function buildTabRows(id: number, t: number, p: mod.Player, menu: mod.UIWidget):
             const item: PshItem = sec.items[i];
             const afford: boolean = item.cost <= pPrestige[id];
 
-            const cellX: number = colX(t, i % TABS_DATA[t].cols);
-            const cellY: number = rowY + Math.floor(i / TABS_DATA[t].cols) * ROW_STEP;
-            const cw: number = cellW(t);
+            const cols: number = secCols(t, sec);
+            const cellX: number = colX(cols, i % cols);
+            const cellY: number = rowY + Math.floor(i / cols) * ROW_STEP;
+            const cw: number = cellW(cols);
             const ckey: string = cellKey(id, t, s, i);
             const tc: mod.Vector = afford ? MENU_TITLE : MENU_LOCKTXT;
 
@@ -2119,6 +2129,7 @@ function setPrestige(id: number, v: number): void {
 
 function setMenuOpen(id: number, p: mod.Player, open: boolean): void {
     menuOpen[id] = open;
+    setFakeSlotMenuOpen(id, open);
     if (!open) {
         // Destroy-on-close. The buy menu used to be built once and only hidden,
         // so at 64 players visiting all tabs roughly 19,400 widgets stayed alive
@@ -2293,15 +2304,6 @@ function destroyPlayerHud(id: number): void {
         pCellHover[id] = -1;
         pDoneHover[id] = false;
     });
-}
-
-function grantPortalGadget(p: mod.Player): void {
-    try {
-        mod.AddEquipment(p, mod.Gadgets.Misc_PortalGadget);
-        log("gadget", "portal gadget granted to " + mod.GetObjId(p));
-    } catch (e) {
-        log("gadget", "grant failed: " + String(e));
-    }
 }
 
 function renderFeedChip(prefix: string, slot: number, key: string, a0: string | number, a1: string | number): void {
@@ -2631,7 +2633,10 @@ function onGameModeStarted(): void {
 }
 
 function onPlayerJoinGame(eventPlayer: mod.Player): void {
-    log("join", "pid=" + mod.GetObjId(eventPlayer) + " team=" + teamId(eventPlayer));
+    // Humans only: bots join on every spawn and flooded the log.
+    if (!isBotPlayer(eventPlayer)) {
+        log("join", "pid=" + mod.GetObjId(eventPlayer) + " team=" + teamId(eventPlayer));
+    }
 }
 
   function onPlayerDeployed(eventPlayer: mod.Player): void {
@@ -2670,9 +2675,11 @@ function onPlayerLeaveGame(eventNumber: number): void {
 // and only repaint when it actually changes.
 const shownPower: { [t: number]: number } = { 1: -1, 2: -1 };
 
+const HUD_TEAMS: number[] = [1, 2];
+
 function syncPowerHud(): void {
     let dirty: boolean = false;
-    for (const t of [1, 2]) {
+    for (const t of HUD_TEAMS) {
         const r: number = Math.round(powerVal[t]);
         if (shownPower[t] !== r) {
             shownPower[t] = r;
@@ -2703,11 +2710,15 @@ function tickChargeThisFrame(): void {
     tickCharge(frameDt);
 }
 
+function tickPerfLineNow(): void {
+    tickPerfLine(Date.now());
+}
+
 function onOngoingGlobal(): void {
     // Measured, not assumed. The engine ticks nearer 30 Hz, so a hardcoded
     // 1/60 made every rate-based system advance at half wall-clock speed: the
-    // log recorded a computed 1%/s charge that delivered 0.5%/s. CHARGE_BASE_SECONDS
-    // is now genuinely seconds.
+    // log recorded a computed 1%/s charge that delivered 0.5%/s. The charge
+    // rate (CHARGE_MINUTES_BY_SITES) is now genuinely wall-clock time.
     const raw: number = spotDeltaMs() / 1000;
     frameDt = raw < DT_MIN ? DT_MIN : raw > DT_MAX ? DT_MAX : raw;
     frameNo = frameNo + 1;
@@ -2723,11 +2734,14 @@ function onOngoingGlobal(): void {
     // that both fall inside skipped ticks merge into one hold.
     if (healthFactor() >= 0.7) {
         tickNukeProbe();
+        tickTacRmg();
     }
     // Queued nuke damage and effects, and the Rorsch ammo poll: never skipped.
     safe("nuke.fx", tickNukeFx);
+    safe("fakeslot.tick", tickFakeSlot);
     // Rocket sites: launchers, radars, rockets. Never skipped.
     safe("sites.tick", tickSiteWire);
+    safe("perf.line", tickPerfLineNow);
     expireFeedRows();
     if (artActive === undefined && artQueue.length === 0) {
         return;
@@ -2774,10 +2788,10 @@ function onGameModeEnding(): void {
           activeFactoryKind[id] = here.def.kind;
           if (prevKind !== here.def.kind) {
               invalidateTab(id, FACTORY_TAB);
-              log("factory", "pid=" + id + " factory kind " + String(prevKind) + " -> " + here.def.kind
+              log("gadget", "pid=" + id + " factory kind " + String(prevKind) + " -> " + here.def.kind
                   + " (tab invalidated)");
           }
-          log("factory", "pid=" + id + " gadget fired inside " + here.def.id
+          log("gadget", "pid=" + id + " gadget fired inside " + here.def.id
               + " (owner=" + here.owner + " contested=" + here.contested + ")");
           pushPlayerFeed(eventPlayer, "buyAvailable", here.def.factoryName, 0);
           setTab(id, FACTORY_TAB, eventPlayer);
@@ -2790,11 +2804,11 @@ function onGameModeEnding(): void {
           // No feed here: firing the gadget away from a factory is the normal
           // way to open the other tabs, so it must stay quiet.
           if (here !== undefined) {
-              log("factory", "pid=" + id + " gadget fired inside " + here.def.id
+              log("gadget", "pid=" + id + " gadget fired inside " + here.def.id
                   + " (" + here.def.kind + " owner=" + here.owner
                   + " contested=" + here.contested + " - no shop)");
           } else {
-              log("factory", "pid=" + id + " gadget fired outside any building");
+              log("gadget", "pid=" + id + " gadget fired outside any building");
           }
       }
       if (menuOpen[id]) {
@@ -2828,13 +2842,16 @@ function onUIButtonEvent(eventPlayer: mod.Player, eventUIWidget: mod.UIWidget, e
         kind = "HoverOut";
         }
 
+        // The widget name is read only for the log line (LOG_LEVEL 2).
         let wname: string = "?";
-        try {
-            wname = mod.GetUIWidgetName(eventUIWidget);
-        } catch (e) {
-            wname = "<name failed>";
+        if (logTagOn("uiButton")) {
+            try {
+                wname = mod.GetUIWidgetName(eventUIWidget);
+            } catch (e) {
+                wname = "<name failed>";
+            }
+            log("uiButton", "ev=" + kind + " w=" + wname + " built=" + String(pBuilt[id]) + " open=" + String(menuOpen[id]));
         }
-        log("uiButton", "ev=" + kind + " w=" + wname + " built=" + String(pBuilt[id]) + " open=" + String(menuOpen[id]));
         if (!pBuilt[id] || !menuOpen[id]) {
             return;
         }
@@ -2910,9 +2927,12 @@ function onUIButtonEvent(eventPlayer: mod.Player, eventUIWidget: mod.UIWidget, e
                     return;
                 }
                 const give: mod.Weapons | undefined = items[i].give;
+                const gadget: mod.Gadgets | undefined = items[i].gadget;
+                const refill: mod.ResupplyTypes | undefined = items[i].resupply;
                 const veh: mod.VehicleList | undefined = items[i].vehicle;
-                if (give === undefined && veh === undefined) {
-                    playSfxPlayer("buy", eventPlayer, 1);
+                if (give === undefined && gadget === undefined && refill === undefined && veh === undefined) {
+                    playSfxPlayer("deny", eventPlayer, 1);
+                    log("shop", items[i].key + " is not for sale yet");
                     return;
                 }
 
@@ -2929,6 +2949,17 @@ function onUIButtonEvent(eventPlayer: mod.Player, eventUIWidget: mod.UIWidget, e
                     playSfxPlayer("deny", eventPlayer, 1);
                     log("shop", "denied " + items[i].key + " - not inside a matching factory you control");
                     pushPlayerFeed(eventPlayer, "dbgNoFactory", 0, 0);
+                    return;
+                }
+
+                // The Rorsch is the end-game weapon: the Prototype Factory sells it
+                // only once the buyer's team is at 100% power. The Debug tab's copy
+                // stays free and ungated for testing.
+                if (t === FACTORY_TAB && give !== undefined && mod.Equals(give, mod.Weapons.BattlePickup_Rorsch_Mk_2_SMRW)
+                    && !nukeUnlocked(teamId(eventPlayer))) {
+                    playSfxPlayer("deny", eventPlayer, 1);
+                    log("shop", "denied " + items[i].key + " - team below 100% power");
+                    pushPlayerFeed(eventPlayer, "rorschLocked", 0, 0);
                     return;
                 }
 
@@ -2956,9 +2987,35 @@ function onUIButtonEvent(eventPlayer: mod.Player, eventUIWidget: mod.UIWidget, e
                         } else {
                             mod.AddEquipment(eventPlayer, give);
                             mod.SetInventoryAmmo(eventPlayer, mod.InventorySlots.PrimaryWeapon, 900);
+                            if (mod.Equals(give, mod.Weapons.BattlePickup_MP_RMG)) {
+                                if (items[i].tacRmg === true) {
+                                    markTacRmg(eventPlayer);
+                                } else {
+                                    clearTacRmg(id);
+                                }
+                            }
                         }
                     } catch (e) {
                         log("shop", "AddEquipment failed for " + items[i].key + ": " + String(e));
+                    }
+                }
+                if (gadget !== undefined) {
+                    const slot: mod.InventorySlots | undefined = items[i].slot;
+                    try {
+                        if (slot !== undefined) {
+                            mod.AddEquipment(eventPlayer, gadget, slot);
+                        } else {
+                            mod.AddEquipment(eventPlayer, gadget);
+                        }
+                    } catch (e) {
+                        log("shop", "AddEquipment failed for " + items[i].key + ": " + String(e));
+                    }
+                }
+                if (refill !== undefined) {
+                    try {
+                        mod.Resupply(eventPlayer, refill);
+                    } catch (e) {
+                        log("shop", "Resupply failed for " + items[i].key + ": " + String(e));
                     }
                 }
                 playSfxPlayer("buy", eventPlayer, 1);
@@ -3033,6 +3090,8 @@ onPrestige((id: number, total: number) => {
 });
 configureSiteEvents();
 configureNukeEvents();
+configureTacRmgEvents();
+configureFakeSlotEvents();
 
 // Bunkers, energy points and factories each pay their own amount, and only to
 // the players who were standing on the objective when it flipped. A neutral or
@@ -3067,8 +3126,9 @@ function awardCaptureToZone(team: number, kind: AwardKind, players: mod.Player[]
         logAdmin("stats", "WARNING capture " + kind + " found " + String(humans)
             + " human(s) on the objective but paid no prestige");
     }
+    // award() has already written each capturer's row; the other rows did not
+    // change, so they are not rewritten.
     pushHeader();
-    pushAllRows();
 }
 
 // One subscription covers kills, assists and every capture, because the
@@ -3109,7 +3169,7 @@ onCaptured((def, owner, occupants) => {
     awardCaptureToZone(owner, def.kind === "energy" ? "energy" : "factory", playersFromIds(occupants));
     refreshTacticalRowsForAll();
     log("state", "area building " + def.id + " -> team " + owner
-        + " (energyMult=" + energyMultiplier(owner) + ", factory=" + factoryOwner() + ")");
+        + " (sites=" + energySitesHeld(owner) + ", factory=" + factoryOwner() + ")");
 });
 
   onBunkerCaptured((def, owner, prevOwner, cp) => {
@@ -3183,21 +3243,6 @@ Events.OnPlayerUIButtonEvent.subscribe((p: mod.Player, w: mod.UIWidget, e: mod.U
         onUIButtonEvent(p, w, e);
     });
 });
-
-function widestSections(t: number): PshSection[] {
-    const n: number = pageCount(t);
-    let best: PshSection[] = pageSections(t, 0);
-    let bestRows: number = -1;
-    for (let p: number = 0; p < n; p++) {
-        const cand: PshSection[] = pageSections(t, p);
-        const r: number = cand.length;
-        if (r > bestRows) {
-            bestRows = r;
-            best = cand;
-        }
-    }
-    return best;
-}
 
 function cellKey(id: number, t: number, s: number, i: number): string {
     const pg: number = pPage[id] === undefined ? 0 : pPage[id];

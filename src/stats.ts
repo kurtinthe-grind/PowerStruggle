@@ -2,7 +2,7 @@ import { log, safe, invokeSubscriber } from "./util/log";
 import { allPlayers, isEnemyTeam, playersInTeam, teamIdOf } from "./util/roster";
 import {
     PRESTIGE_BUNKER, PRESTIGE_ENERGY, PRESTIGE_FACTORY, PRESTIGE_KILL, PRESTIGE_ASSIST,
-    SCORE_BUNKER, SCORE_ENERGY, SCORE_FACTORY, SCORE_KILL, SCORE_ASSIST
+    SCORE_BUNKER, SCORE_ENERGY, SCORE_FACTORY, SCORE_KILL, SCORE_ASSIST, BOT_TRACE
 } from "./config";
 import { addPrestige, prestigeOf } from "./economy";
 import { isBotPid } from "./bots";
@@ -110,24 +110,7 @@ export type PlayerStats = {
 };
 
 let stats: { [id: number]: PlayerStats } = {};
-// Bots, keyed by "team:nameKey" instead of player id. A dead bot leaves the
-// game and its respawn is a new player (often with a different id), so per-id
-// stats died with every bot: the 2026-10-02 scoreboard never showed a bot
-// kill, death or score. The respawn reuses its name (botnames.takeBotName),
-// so keying by name carries the row across lives.
-let botStats: { [key: string]: PlayerStats } = {};
-let botKeyOf: { [id: number]: string } = {};
-
 export function statsOf(id: number): PlayerStats {
-    const key: string | undefined = botKeyOf[id];
-    if (key !== undefined) {
-        let b: PlayerStats | undefined = botStats[key];
-        if (b === undefined) {
-            b = { score: 0, kills: 0, deaths: 0, assists: 0 };
-            botStats[key] = b;
-        }
-        return b;
-    }
     let s: PlayerStats | undefined = stats[id];
     if (s === undefined) {
         s = { score: 0, kills: 0, deaths: 0, assists: 0 };
@@ -136,34 +119,14 @@ export function statsOf(id: number): PlayerStats {
     return s;
 }
 
-// Called by bots.ts when a bot spawns. Anything already booked under the id
-// (an event that landed before the bind) is folded into the named record.
-export function bindBotStats(id: number, key: string): void {
-    botKeyOf[id] = key;
-    const loose: PlayerStats | undefined = stats[id];
-    if (loose !== undefined) {
-        const b: PlayerStats = statsOf(id);
-        b.score += loose.score;
-        b.kills += loose.kills;
-        b.deaths += loose.deaths;
-        b.assists += loose.assists;
-        delete stats[id];
-    }
-}
-
 export function forgetPlayer(id: number): void {
-    // A bot's named record stays for its respawn; only the id binding goes,
-    // because the id can be reused by someone else.
     delete stats[id];
-    delete botKeyOf[id];
 }
 
 export function resetStats(): void {
     // Rebind rather than delete-by-key: Object.keys yields strings while this
     // map is number-keyed, so walking it would need a parse.
     stats = {};
-    botStats = {};
-    botKeyOf = {};
 }
 
 // Pays prestige and score for one action. Kills, deaths and assists must be
@@ -183,7 +146,7 @@ export function award(p: mod.Player, kind: AwardKind): boolean {
     } else if (kind === "assist") {
         s.assists++;
     }
-    // Bots earn score (they stay on the scoreboard) but never prestige: with
+    // Bots earn score (log only; they have no scoreboard row) but never prestige: with
     // no UI they could never spend it, so paying it would only inflate a dead
     // record. The personal award feed is skipped with it - pushPlayerFeed
     // no-ops for HUD-less players anyway.
@@ -199,9 +162,12 @@ export function award(p: mod.Player, kind: AwardKind): boolean {
     // Deliberately does NOT print the team total: teamScore() walks the entire
     // roster, costing roughly 400 FFI per award purely to format a string.
     // teamScore() stays exported for diagnostics that are not on a hot path.
-    log("stats", "pid=" + id + " team " + String(team) + " " + kind
-        + (bot ? " +0 prestige (bot)" : " +" + String(PRESTIGE_FOR[kind]) + " prestige")
-        + " +" + String(SCORE_FOR[kind]) + " score (player total " + String(s.score) + ")");
+    // Humans only unless BOT_TRACE: a line per bot award flooded the log.
+    if (!bot || BOT_TRACE) {
+        log("stats", "pid=" + id + " team " + String(team) + " " + kind
+            + (bot ? " +0 prestige (bot)" : " +" + String(PRESTIGE_FOR[kind]) + " prestige")
+            + " +" + String(SCORE_FOR[kind]) + " score (player total " + String(s.score) + ")");
+    }
     return true;
 }
 
@@ -276,32 +242,21 @@ export function pushHeader(): void {
     });
 }
 
+// Humans only. Owner, 2026-10-04: bot rows dropped. The engine showed every
+// bot at 0 although each write succeeded (about 750 a minute, real values in
+// the log), with bots persistent or not.
 export function pushRow(p: mod.Player): void {
     if (!headerReady || !mod.IsValid(p)) {
         return;
     }
     const id: number = mod.GetObjId(p);
+    if (isBotPid(id)) {
+        return;
+    }
     const s: PlayerStats = statsOf(id);
     safe("scoreboard.row", () => {
         mod.SetScoreboardPlayerValues(p, s.score, prestigeOf(id), s.kills, s.deaths, s.assists);
     });
-}
-
-// Writes one row and returns "" or the engine's error text, for the periodic
-// bot refresh in bots.ts, which counts failures itself rather than logging
-// each one.
-export function writeRow(p: mod.Player): string {
-    if (!headerReady) {
-        return "scoreboard not configured";
-    }
-    try {
-        const id: number = mod.GetObjId(p);
-        const s: PlayerStats = statsOf(id);
-        mod.SetScoreboardPlayerValues(p, s.score, prestigeOf(id), s.kills, s.deaths, s.assists);
-        return "";
-    } catch (e) {
-        return String(e);
-    }
 }
 
 export function pushAllRows(): void {

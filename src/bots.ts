@@ -1,29 +1,28 @@
 import { Events } from "bf6-portal-utils/events";
 import { Timers } from "bf6-portal-utils/timers";
 import { Vectors } from "bf6-portal-utils/vectors";
-import { PlayerLocations } from "bf6-portal-utils/player-locations";
 import { PlayerUndeployFixer } from "bf6-portal-utils/player-undeploy-fixer";
 import { log, logAdmin, safe, willLogDebug } from "./util/log";
 import { healthFactor } from "./util/perf";
 import { allPlayers, forgetTeamCache, isEnemyTeam, teamIdOf } from "./util/roster";
+import { snapshotIndexOf, snapshotX, snapshotY, snapshotZ, takeSnapshot } from "./util/positions";
 import { teamHandle } from "./teams";
 import { AI_SPAWNERS } from "./objids";
 import {
     claimBotName, expiredBotNames, initBotNames, lastExpiredBotName, releaseBotName, takeBotName
 } from "./botnames";
-import { bindBotStats, pushRow, statsOf, writeRow, PlayerStats } from "./stats";
 import {
     BOT_BUNKER_SPAWN_CHANCE, BOT_CORPSE_SECONDS, BOT_COUNT_PER_TEAM, BOT_NAV_REACH_M,
     BOT_NAV_STUCK_PENALTY, BOT_NAV_WATER_PENALTY, BOT_DAMAGE_MULT, BOT_DRIVE_CHECK_MS,
-    BOT_DRIVE_PROGRESS_M, BOT_INCOMING_DAMAGE, BOT_JUMP_S, BOT_RESPAWN_DELAY_MS, BOT_SLICE,
+    BOT_DRIVE_PROGRESS_M, BOT_INCOMING_DAMAGE, BOT_JUMP_S, BOT_SLICE,
     BOT_SPAWN_PER_SWEEP, BOT_STUCK_MIN_M, BOT_STUCK_STRIKES, BOT_STUCK_WINDOW_MS,
     BOT_SWEEP_MS, BOT_TRACE, BOT_TRACE_MS, BOT_VEHICLE_APPROACH_MS, BOT_VEHICLE_DISMOUNT_M,
     BOT_VEHICLE_FREE_SEATS, BOT_VEHICLE_MAX_MS, BOT_VEHICLE_MIN_TRIP_M, BOT_VEHICLE_RADIUS_M,
     BOT_VEHICLE_BAN_MS, BOT_VEHICLE_SCAN_MS, BOT_VEHICLE_SEAT_M, BOT_VEHICLE_STUCK_M,
     BOT_VEHICLE_STUCK_MS, BOT_RESEAT_TRIES, BOT_STEER_REPEAT_MS,
     BOT_TELEPORT_DELAY_MS, BOT_RIDE_RADIUS_M, BOT_RIDE_SLOW_M, BOT_RIDE_DELIVER_M, BOT_RIDE_STILL_MS,
-    BOT_RIDE_BAN_MS, BOT_ROW_REFRESH_MS, BOT_TEAM_SLOTS, BOT_PERSISTENT, BOT_REDEPLOY_S,
-    BOT_REDEPLOY_WATCHDOG_MS, BOT_MAINTAIN_MS
+    BOT_RIDE_BAN_MS, BOT_TEAM_SLOTS, BOT_REDEPLOY_S,
+    BOT_REDEPLOY_WATCHDOG_MS, BOT_MAINTAIN_MS, BOT_RETARGET_MS, BOT_RETHINK_SWEEPS, BOT_REMOVE_CHECK_MS
 } from "./config";
 import {
     bunkerCapturePoint, distSqTo, dropOccupant, initBotObjectives, isOccupant, markOwnersDirty,
@@ -142,9 +141,12 @@ interface BotRec {
     // After being dropped off: no ride in that vehicle until rideBanUntil.
     rideBanVid: number;
     rideBanUntil: number;
-    // Persistent bots: when it died (0 while alive), for the redeploy
-    // watchdog.
+    // When it died (0 while alive), for the redeploy watchdog.
     deadAt: number;
+    // Last retaliation (onDamaged): the attacker targeted and when, so a bot
+    // under fire is not re-targeted on every hit it takes.
+    retargetPid: number;
+    retargetAt: number;
 }
 
 interface SpawnReq {
@@ -153,8 +155,6 @@ interface SpawnReq {
     // and keeps its scoreboard row. Empty for a brand-new bot.
     nameKey: string;
 }
-
-const respawnPending: { [pid: number]: boolean } = {};
 
 const bots: { [pid: number]: BotRec } = {};
 const botOrder: number[] = [];
@@ -166,7 +166,7 @@ let sweepTimer: Timers.TimerID | null = null;
 let cursor: number = 0;
 let spawnRound: number = 0;
 let fixerWired: boolean = false;
-let fullRethink: boolean = false;
+let rethinkLeft: number = 0;
 // Named distinctly rather than a third generic "inited": the bundler flattens
 // every module into one scope and suffixes colliding top-level names
 // (inited / inited_2 / inited_3), so a uniquely named flag keeps this module
@@ -274,7 +274,7 @@ function drainSpawns(): void {
         looked++;
         const req: SpawnReq = spawnQueue[0];
         const team: number = req.team;
-        const live: number = BOT_PERSISTENT ? presentCount(team) : liveCount(team);
+        const live: number = presentCount(team);
         if (live >= BOT_COUNT_PER_TEAM) {
             spawnQueue.shift();
             continue;
@@ -333,7 +333,7 @@ function registerBot(p: mod.Player, pid: number, team: number, claim: boolean): 
     let rec: BotRec | undefined = bots[pid];
     // A persistent bot redeploying is the same soldier under the same name:
     // claiming here would take the name queued for the next new bot.
-    const redeploy: boolean = BOT_PERSISTENT && rec !== undefined && rec.nameKey !== "" && rec.team === team;
+    const redeploy: boolean = rec !== undefined && rec.nameKey !== "" && rec.team === team;
     if (rec === undefined) {
         rec = {
             pid: pid, team: team, player: p, mind: newMind(), dead: false, nameKey: "",
@@ -346,11 +346,13 @@ function registerBot(p: mod.Player, pid: number, team: number, claim: boolean): 
             ejectPending: false, seatAir: false, seatVeh: undefined,
             approachRide: false, rideVeh: undefined, rideVid: -1, boardX: 0, boardZ: 0,
             rideX: 0, rideY: 0, rideZ: 0, rideCheckAt: 0, rideReseats: 0, rideBanVid: -1, rideBanUntil: 0,
-            deadAt: 0
+            deadAt: 0, retargetPid: -1, retargetAt: 0
         };
         bots[pid] = rec;
         botOrder.push(pid);
-        log("bots", "registered pid=" + pid + " team=" + team);
+        if (BOT_TRACE) {
+            log("bots", "registered pid=" + pid + " team=" + team);
+        }
     } else if (rec.dead || rec.team !== team) {
         rec.player = p;
         rec.team = team;
@@ -375,8 +377,10 @@ function registerBot(p: mod.Player, pid: number, team: number, claim: boolean): 
         const expired: number = expiredBotNames();
         const claimed: string = claimBotName(team, Date.now());
         if (expiredBotNames() !== expired) {
-            log("bots", "name " + lastExpiredBotName() + " expired unclaimed on team " + team
-                + " (a spawn produced no soldier)");
+            if (BOT_TRACE) {
+                log("bots", "name " + lastExpiredBotName() + " expired unclaimed on team " + team
+                    + " (a spawn produced no soldier)");
+            }
         }
         if (claimed !== "") {
             if (rec.nameKey !== "" && rec.nameKey !== claimed) {
@@ -386,15 +390,10 @@ function registerBot(p: mod.Player, pid: number, team: number, claim: boolean): 
             rec.nameKey = claimed;
         }
     }
-    // A dead bot leaves the game and comes back as a new player, so stats kept
-    // by player id were wiped on every death: no bot ever showed a kill, death
-    // or score on the scoreboard. They are kept by team and name instead, and
-    // a respawn reuses its name (see scheduleRespawn). The same key follows the
-    // bot's fail memory in botbrain.
+    // The bot's fail memory in botbrain is keyed by team and name, because a
+    // respawn reuses its name (see scheduleRespawn) but rarely its player id.
     if (rec.nameKey !== "") {
         rec.mind.failKey = team + ":" + rec.nameKey;
-        bindBotStats(pid, team + ":" + rec.nameKey);
-        pushRow(p);
     }
     return rec;
 }
@@ -412,7 +411,7 @@ function forgetBot(pid: number): void {
     releaseClaim(pid);
     delete bots[pid];
     delete botPidSet[pid];
-    delete respawnPending[pid];
+    delete leaving[pid];
     dropOccupant(pid);
     const at: number = botOrder.indexOf(pid);
     if (at >= 0) {
@@ -444,7 +443,6 @@ function onBotDead(pid: number): void {
         if (!rec.dead) {
             rec.dead = true;
             rec.deadAt = Date.now();
-            scheduleRespawn(pid, rec.team, rec.nameKey);
         }
         endApproach(rec);
         resetSeat(rec);
@@ -456,43 +454,10 @@ function onBotDead(pid: number): void {
     dropOccupant(pid);
 }
 
-// Respawn is scheduled from OnPlayerDied, not from OnPlayerUndeploy. The old
-// code only armed the timer in the undeploy handler, and a playtest showed no
-// respawns at all: the engine unspawns a dead AI soldier without raising
-// OnPlayerUndeploy, so nothing was ever queued. OnPlayerDied is reliable (the
-// death handler demonstrably runs), so it is the safe anchor.
-function scheduleRespawn(pid: number, team: number, nameKey: string): void {
-    // Persistent bots redeploy by themselves; maintainPopulation replaces one
-    // that left the game.
-    if (BOT_PERSISTENT || (team !== 1 && team !== 2)) {
-        return;
-    }
-    if (respawnPending[pid] === true) {
-        return;
-    }
-    respawnPending[pid] = true;
-    const h: Timers.TimerID | null = Timers.setTimeout(() => {
-        safe("bots.respawn", () => {
-            delete respawnPending[pid];
-            if (liveCount(team) < BOT_COUNT_PER_TEAM) {
-                queueSpawn(team, nameKey);
-            }
-        });
-    }, BOT_RESPAWN_DELAY_MS);
-    if (h === null) {
-        delete respawnPending[pid];
-        logAdmin("bots", "WARNING respawn timer refused for team " + team);
-    }
-}
-
-function onBotUndeployed(p: mod.Player, pid: number): void {
+// An undeploy without a death (or the undeploy fixer's synthetic one) ends
+// the life the same way. The bot stays in the game and redeploys.
+function onBotUndeployed(pid: number): void {
     onBotDead(pid);
-    const rec: BotRec | undefined = bots[pid];
-    const team: number = rec !== undefined ? rec.team : teamIdOf(p);
-    // Safety net only. onBotDead already armed the timer; scheduleRespawn is
-    // idempotent per pid, so reaching here for a bot that has not left yet is
-    // harmless, and it covers the case where the bot undeploys without dying.
-    scheduleRespawn(pid, team, rec !== undefined ? rec.nameKey : "");
 }
 
 function onMoveFailed(p: mod.Player): void {
@@ -519,11 +484,21 @@ function onDamaged(victim: mod.Player, damager: mod.Player): void {
     if (!isEnemyTeam(teamIdOf(damager), rec.team)) {
         return;
     }
+    // Every bullet that lands is an event: re-target only when the attacker
+    // changes or BOT_RETARGET_MS has passed, so a bot under sustained fire
+    // gets one order, not one per hit.
+    const nowMs: number = Date.now();
+    const attacker: number = mod.GetObjId(damager);
+    if (attacker === rec.retargetPid && nowMs - rec.retargetAt < BOT_RETARGET_MS) {
+        return;
+    }
+    rec.retargetPid = attacker;
+    rec.retargetAt = nowMs;
     try {
         if (!rec.inVehicle) {
             // A fight cancels a walk to a vehicle.
             endApproach(rec);
-            enterBattle(victim, rec.mind, Date.now());
+            enterBattle(victim, rec.mind, nowMs);
         }
         mod.AISetTarget(victim, damager);
         mod.AIForceFire(victim, 2);
@@ -532,18 +507,28 @@ function onDamaged(victim: mod.Player, damager: mod.Player): void {
     }
 }
 
-// Bot position, read from PlayerLocations' per-tick cache instead of
-// mod.GetSoldierState. This is the module the utils docs are explicit about for
-// hot loops: the engine call is made once per tick for every connected player,
-// and everything after that is a typed-array read. The bot sweep runs 12 times a
-// second across 48 bots, so this removes the single largest recurring FFI cost
-// in the bot path without changing behaviour.
-//
-// Returns false when the bot is not currently active, which covers a soldier
-// between spawn and deploy, and a bot that has already been recycled this tick.
-function readPos(pid: number): boolean {
-    const v = PlayerLocations.getPosition(pid, posScratch);
-    return v !== null && v !== undefined;
+// Bot position from the shared snapshot (util/positions.ts) the sweep takes
+// once per sweep, so a think costs no position read of its own. False when the
+// bot was not in the snapshot: dead, between lives, or spawned since.
+function readPos(rec: BotRec): boolean {
+    const i: number = snapshotIndexOf(rec.pid);
+    if (i < 0) {
+        return false;
+    }
+    posScratch.x = snapshotX(i);
+    posScratch.y = snapshotY(i);
+    posScratch.z = snapshotZ(i);
+    return true;
+}
+
+// A fresh read, for the BOT_TRACE teleport check, which runs between sweeps.
+function readPosNow(rec: BotRec): boolean {
+    try {
+        Vectors.toVector3(mod.GetObjectPosition(rec.player), posScratch);
+    } catch (e) {
+        return false;
+    }
+    return !(posScratch.x === 0 && posScratch.y === 0 && posScratch.z === 0);
 }
 
 // Vehicles: existing ones only. mod.AllVehicles() returns an opaque mod.Array
@@ -1152,7 +1137,9 @@ function ejectFromVehicle(rec: BotRec, why: string, nowMs: number): boolean {
     if (rec.ejectTries >= 2) {
         if (rec.ejectTries === 2) {
             rec.ejectTries++;
-            log("bots", "pid=" + rec.pid + " will not leave its vehicle, leaving it to the vehicle AI");
+            if (BOT_TRACE) {
+                log("bots", "pid=" + rec.pid + " will not leave its vehicle, leaving it to the vehicle AI");
+            }
             try {
                 mod.AIBattlefieldBehavior(rec.player);
             } catch (e) {
@@ -1515,7 +1502,7 @@ function advanceLegs(nowMs: number): void {
             continue;
         }
         const m: BotMind = rec.mind;
-        if (m.leg < 0 || inBattle(m, nowMs) || !readPos(pid)) {
+        if (m.leg < 0 || inBattle(m, nowMs) || !readPos(rec)) {
             continue;
         }
         if (nodeDistSq(m.leg, posScratch.x, posScratch.z) >= reachSq) {
@@ -1529,13 +1516,18 @@ function advanceLegs(nowMs: number): void {
     }
 }
 
-// Persistent bots, every BOT_MAINTAIN_MS: deploys a bot that has been dead too
-// long, tops a team up to its target (BOT_TEAM_SLOTS less its humans, at most
-// BOT_COUNT_PER_TEAM) when a bot left the game, and makes room when a human
-// joined a full team. A persistent AI cannot be removed directly, so its
-// team's spawners unspawn on death for a moment while one bot is killed.
+// Every BOT_MAINTAIN_MS: deploys a bot that has been dead too long, tops a
+// team up to its target (BOT_TEAM_SLOTS less its humans, at most
+// BOT_COUNT_PER_TEAM) when a human left, and makes room when a human joined.
 let maintainAt: number = 0;
-let trimUntil: number = 0;
+const TEAMS: number[] = [1, 2];
+
+// Bots killed to make room, by pid -> when. Not counted as present while
+// they leave. A removal that has not left after BOT_REMOVE_CHECK_MS means the
+// engine applies unspawn-on-dead later than the death; removals then stop for
+// the round (see removeBot) instead of killing a bot every check.
+const leaving: { [pid: number]: number } = {};
+let removalBroken: boolean = false;
 
 function queuedFor(team: number): number {
     let n: number = 0;
@@ -1547,14 +1539,26 @@ function queuedFor(team: number): number {
     return n;
 }
 
+function leavingFor(team: number): number {
+    let n: number = 0;
+    for (const k in leaving) {
+        const rec: BotRec | undefined = bots[Number(k)];
+        if (rec !== undefined && rec.team === team) {
+            n++;
+        }
+    }
+    return n;
+}
+
 function maintainPopulation(nowMs: number): void {
-    if (!BOT_PERSISTENT || nowMs - maintainAt < BOT_MAINTAIN_MS) {
+    if (nowMs - maintainAt < BOT_MAINTAIN_MS) {
         return;
     }
     maintainAt = nowMs;
     for (const pid of botOrder) {
         const rec: BotRec | undefined = bots[pid];
-        if (rec === undefined || !rec.dead || rec.deadAt === 0 || nowMs - rec.deadAt < BOT_REDEPLOY_WATCHDOG_MS) {
+        if (rec === undefined || !rec.dead || rec.deadAt === 0 || nowMs - rec.deadAt < BOT_REDEPLOY_WATCHDOG_MS
+            || leaving[pid] !== undefined) {
             continue;
         }
         // Retried every 10 s while it stays dead.
@@ -1562,52 +1566,56 @@ function maintainPopulation(nowMs: number): void {
         try {
             if (mod.IsValid(rec.player)) {
                 mod.DeployPlayer(rec.player);
-                log("bots", "pid=" + pid + " t" + rec.team + " not redeployed, deploying by force");
+                if (BOT_TRACE) {
+                    log("bots", "pid=" + pid + " t" + rec.team + " not redeployed, deploying by force");
+                }
             }
         } catch (e) {
             log("bots", "pid=" + pid + " force deploy failed: " + String(e));
         }
     }
-    if (trimUntil !== 0) {
-        if (nowMs < trimUntil) {
-            return;
-        }
-        trimUntil = 0;
-        for (const t of [1, 2]) {
-            for (const sp of spawnerByTeam[t]) {
-                try {
-                    mod.AISetUnspawnOnDead(sp, false);
-                } catch (e) {
-                }
+    for (const k in leaving) {
+        if (nowMs - leaving[Number(k)] > BOT_REMOVE_CHECK_MS) {
+            delete leaving[Number(k)];
+            if (!removalBroken) {
+                removalBroken = true;
+                logAdmin("bots", "WARNING a bot killed to make room for a human did not leave in "
+                    + String(BOT_REMOVE_CHECK_MS) + " ms; no more bots are removed this round");
             }
         }
     }
     countHumans();
-    for (const team of [1, 2]) {
+    for (const team of TEAMS) {
         if (spawnerByTeam[team].length === 0) {
             continue;
         }
-        const target: number = Math.min(BOT_COUNT_PER_TEAM, BOT_TEAM_SLOTS - humansScratch[team]);
-        const have: number = presentCount(team);
+        const target: number = Math.max(0, Math.min(BOT_COUNT_PER_TEAM, BOT_TEAM_SLOTS - humansScratch[team]));
+        const have: number = presentCount(team) - leavingFor(team);
         const missing: number = target - have - queuedFor(team);
         for (let i: number = 0; i < missing; i++) {
             queueSpawn(team, "");
         }
-        if (have > target && trimBot(team)) {
-            return;
+        for (let i: number = have; i > target; i--) {
+            if (!removeBot(team)) {
+                break;
+            }
         }
     }
 }
 
-// Removes one bot from a team that is over its slots: a live bot on foot is
-// killed while its team's spawners unspawn on death. (A dead one is not used:
-// whether the flag still applies to a death that already happened is
-// unknown.)
-function trimBot(team: number): boolean {
+// Makes room for a human: one live bot on foot leaves the game for good.
+// Unspawn-on-dead is a spawner setting, so it is switched on for the team's
+// spawners only around the one kill and off again in the same tick: a bot
+// that dies later stays in the game. (The old version left it on for 12 s,
+// and every bot of that team that died meanwhile left and was replaced.)
+function removeBot(team: number): boolean {
+    if (removalBroken) {
+        return false;
+    }
     let pick: BotRec | undefined = undefined;
     for (const pid of botOrder) {
         const rec: BotRec | undefined = bots[pid];
-        if (rec !== undefined && rec.team === team && !rec.dead && !rec.inVehicle) {
+        if (rec !== undefined && rec.team === team && !rec.dead && !rec.inVehicle && leaving[pid] === undefined) {
             pick = rec;
             break;
         }
@@ -1615,76 +1623,30 @@ function trimBot(team: number): boolean {
     if (pick === undefined) {
         return false;
     }
+    leaving[pick.pid] = Date.now();
     for (const sp of spawnerByTeam[team]) {
         try {
             mod.AISetUnspawnOnDead(sp, true);
         } catch (e) {
         }
     }
-    trimUntil = Date.now() + BOT_CORPSE_SECONDS * 1000 + 2000;
-    log("bots", "team " + team + " over its slots, removing pid=" + pick.pid);
     try {
         mod.Kill(pick.player);
     } catch (e) {
     }
+    for (const sp of spawnerByTeam[team]) {
+        try {
+            mod.AISetUnspawnOnDead(sp, false);
+        } catch (e) {
+        }
+    }
+    log("bots", "team " + team + ": bot pid=" + pick.pid + " leaves to make room for a human");
     return true;
-}
-
-// Rewrites every live bot's scoreboard row each BOT_ROW_REFRESH_MS, and once a
-// minute logs how many writes worked, the last error, how many bots have no
-// name (so no score record across lives) and one bot with score, so the log
-// tells a failing write from a score that is never counted.
-let rowsAt: number = 0;
-let rowsLogAt: number = 0;
-let rowsOk: number = 0;
-let rowsFail: number = 0;
-let rowErr: string = "";
-
-function refreshBotRows(nowMs: number): void {
-    if (nowMs - rowsAt < BOT_ROW_REFRESH_MS) {
-        return;
-    }
-    rowsAt = nowMs;
-    let unnamed: number = 0;
-    let sample: string = "";
-    for (const pid of botOrder) {
-        const rec: BotRec | undefined = bots[pid];
-        if (rec === undefined || rec.dead || !mod.IsValid(rec.player)) {
-            continue;
-        }
-        if (rec.nameKey === "") {
-            unnamed++;
-        }
-        const err: string = writeRow(rec.player);
-        if (err !== "") {
-            rowsFail++;
-            rowErr = err;
-            continue;
-        }
-        rowsOk++;
-        const s: PlayerStats = statsOf(pid);
-        if (sample === "" && s.score + s.kills + s.deaths > 0) {
-            sample = "pid=" + pid + " " + rec.team + ":" + rec.nameKey + " score " + s.score
-                + " k " + s.kills + " d " + s.deaths;
-        }
-    }
-    if (nowMs - rowsLogAt < 60000) {
-        return;
-    }
-    rowsLogAt = nowMs;
-    log("scoreboard", "bot rows: " + rowsOk + " written, " + rowsFail + " failed"
-        + (rowErr !== "" ? " (last error: " + rowErr + ")" : "")
-        + ", " + unnamed + " bots without a name"
-        + (sample !== "" ? ", e.g. " + sample : ", no bot has any score yet"));
-    rowsOk = 0;
-    rowsFail = 0;
-    rowErr = "";
 }
 
 function sweep(): void {
     maintainPopulation(Date.now());
     drainSpawns();
-    refreshBotRows(Date.now());
     if (ownersNeedRefresh()) {
         refreshOwners();
         markFullRethink();
@@ -1695,6 +1657,9 @@ function sweep(): void {
         return;
     }
     const nowMs: number = Date.now();
+    // Every position this sweep reads (bots' own, enemy pressure) comes from
+    // one snapshot.
+    takeSnapshot(500);
     scanVehicles(nowMs);
     // Owner and enemy pressure for the scorer, once per sweep per team. Claims
     // are kept live by the ledger as bots pick during the sweep.
@@ -1705,7 +1670,11 @@ function sweep(): void {
     if (n === 0) {
         return;
     }
-    const count: number = fullRethink ? n : Math.min(BOT_SLICE, n);
+    // An ownership flip re-thinks every bot, spread over BOT_RETHINK_SWEEPS
+    // sweeps so the move orders do not all go out in one tick.
+    const count: number = rethinkLeft > 0
+        ? Math.min(n, Math.max(BOT_SLICE, Math.ceil(n / BOT_RETHINK_SWEEPS)))
+        : Math.min(BOT_SLICE, n);
     for (let k: number = 0; k < count; k++) {
         const pid: number = botOrder[cursor % n];
         cursor++;
@@ -1717,7 +1686,7 @@ function sweep(): void {
             if (!mod.IsValid(rec.player)) {
                 continue;
             }
-            if (!readPos(pid)) {
+            if (!readPos(rec)) {
                 continue;
             }
             syncVehicleState(rec);
@@ -1773,14 +1742,16 @@ function sweep(): void {
             log("bots", "think failed pid=" + pid + ": " + String(e));
         }
     }
-    fullRethink = false;
+    if (rethinkLeft > 0) {
+        rethinkLeft--;
+    }
     if (navActive()) {
         advanceLegs(nowMs);
     }
 }
 
 function markFullRethink(): void {
-    fullRethink = true;
+    rethinkLeft = BOT_RETHINK_SWEEPS;
 }
 
 // Bunker spawning, the CustomConquest V15 AI_ObjectiveSpawn pattern: bots can
@@ -1865,7 +1836,7 @@ function teleportNow(rec: BotRec, pid: number): void {
 
 // BOT_TRACE: did the teleport stick? One log line per teleport.
 function checkTeleport(rec: BotRec, pid: number, idx: number, tx: number, tz: number): void {
-    if (bots[pid] !== rec || rec.dead || !readPos(pid)) {
+    if (bots[pid] !== rec || rec.dead || !readPosNow(rec)) {
         return;
     }
     const dx: number = posScratch.x - tx;
@@ -1972,7 +1943,9 @@ function handleStuck(rec: BotRec, x: number, y: number, z: number, nowMs: number
     }
     rec.strikes = 0;
     giveUp(rec.pid, mind, nowMs, "stuck, recycling");
-    log("bots", "pid=" + rec.pid + " stuck, recycling");
+    if (BOT_TRACE) {
+        log("bots", "pid=" + rec.pid + " stuck, recycling");
+    }
     try {
         mod.AIIdleBehavior(rec.player);
         mod.Kill(rec.player);
@@ -1996,16 +1969,6 @@ export function initBots(): void {
     initBotNames();
     initBotObjectives();
     initNav();
-    // PlayerLocations is the vetted zero-FFI position cache: it subscribes to
-    // its own tick updates on initialize, so the bot sweep can read every
-    // bot's position and every proximity query from memory instead of calling
-    // mod.GetSoldierState per bot per second. initialize() is idempotent, and it
-    // is safe to call here because the module owns its own subscriptions.
-    try {
-        PlayerLocations.initialize();
-    } catch (e) {
-        log("bots", "PlayerLocations init failed: " + String(e));
-    }
     if (!fixerWired) {
         fixerWired = true;
         // Import-only activation plus quota-safe logging. The fixer re-fires
@@ -2029,9 +1992,11 @@ export function initBots(): void {
                 continue;
             }
             spawnerByTeam[def.team].push(sp);
-            mod.AISetUnspawnOnDead(sp, !BOT_PERSISTENT);
+            mod.AISetUnspawnOnDead(sp, false);
             mod.SetUnspawnDelayInSeconds(sp, BOT_CORPSE_SECONDS);
-            log("bots", "spawner " + def.spawnerId + " bound for team " + def.team);
+            if (BOT_TRACE) {
+                log("bots", "spawner " + def.spawnerId + " bound for team " + def.team);
+            }
         } catch (e) {
             log("bots", "spawner " + def.spawnerId + " failed: " + String(e));
         }
@@ -2078,7 +2043,7 @@ export function configureBotEvents(): void {
         safe("bots.undeployed", () => {
             const pid: number = mod.GetObjId(p);
             if (isBotPid(pid)) {
-                onBotUndeployed(p, pid);
+                onBotUndeployed(pid);
             }
         });
     });
@@ -2111,11 +2076,9 @@ export function configureBotEvents(): void {
             safe("bots.incoming", () => {
                 mod.SetPlayerIncomingDamageFactor(p, BOT_INCOMING_DAMAGE);
             });
-            if (BOT_PERSISTENT) {
-                safe("bots.redeploy", () => {
-                    mod.SetRedeployTime(p, BOT_REDEPLOY_S);
-                });
-            }
+            safe("bots.redeploy", () => {
+                mod.SetRedeployTime(p, BOT_REDEPLOY_S);
+            });
             teleportToObjective(team, pid);
         });
     });

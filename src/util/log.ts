@@ -1,8 +1,24 @@
 import { Logging } from "bf6-portal-utils/logging";
 import { CallbackHandler } from "bf6-portal-utils/callback-handler";
 import {
-    ADMIN_LOG_CAP_DEFAULT, ADMIN_LOG_CAPS, ADMIN_LOG_MIN_GAP_MS, ADMIN_LOG_SEND_MS, LOG_DEBUG
+    ADMIN_LOG_CAP_DEFAULT, ADMIN_LOG_CAPS, ADMIN_LOG_MIN_GAP_MS, ADMIN_LOG_SEND_MS, LOG_DEBUG, LOG_LEVEL,
+    LOG_TRACE_TAGS
 } from "../config";
+
+// Tags below LOG_LEVEL 2 are dropped (see LOG_TRACE_TAGS in config.ts).
+const traceTag: { [tag: string]: boolean } = {};
+for (const t of LOG_TRACE_TAGS) {
+    traceTag[t] = true;
+}
+
+// Whether log(tag, ...) writes anything at the current LOG_LEVEL. Call sites
+// that build an expensive line (or read the engine for it) check this first.
+export function logTagOn(tag: string): boolean {
+    if (LOG_LEVEL <= 0) {
+        return false;
+    }
+    return LOG_LEVEL >= 2 || traceTag[tag] !== true;
+}
 
 // Admin logs (see ADMIN_LOG_CAPS in config.ts). Off: everything is logged and
 // nothing is sent, which is what local hosting wants. On: noisy tags are
@@ -135,7 +151,7 @@ export function willLogDebug(): boolean {
 }
 
 export function log(tag: string, line: string): void {
-    if (!allowed(tag)) {
+    if (!logTagOn(tag) || !allowed(tag)) {
         return;
     }
     LOG.log("[" + tag + "] " + line, Logging.LogLevel.Info);
@@ -156,7 +172,10 @@ export function logDebug(tag: string, line: string): void {
 // SendPortalLogToAdmin itself, up to twice a tick, which on a hosted server
 // would use up the session quota early in the match.
 export function logAdmin(tag: string, line: string): void {
-    log(tag, line);
+    // Errors and warnings are written at every LOG_LEVEL.
+    if (allowed(tag)) {
+        LOG.log("[" + tag + "] " + line, Logging.LogLevel.Info);
+    }
     if (adminMode) {
         sendSoon = true;
     }

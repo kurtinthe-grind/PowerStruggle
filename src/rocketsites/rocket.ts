@@ -55,6 +55,16 @@ export function airborneAll(): number {
     return rockets.length;
 }
 
+// Any rocket of this site still in the air (no allocation, for the idle check).
+export function hasRocketsFrom(site: number): boolean {
+    for (const r of rockets) {
+        if (r.site === site) {
+            return true;
+        }
+    }
+    return false;
+}
+
 export function airborne(site: number): number {
     return rockets.filter(r => r.site === site).length;
 }
@@ -69,15 +79,6 @@ export function busyKeys(site: number, into: Set<string>): void {
 
 export function rocketTargets(site: number): number[] {
     return rockets.filter(r => r.site === site).map(r => r.pid);
-}
-
-export function newestAim(site: number): V3 | undefined {
-    for (let i = rockets.length - 1; i >= 0; i--) {
-        if (rockets[i].site === site) {
-            return rockets[i].aim;
-        }
-    }
-    return undefined;
 }
 
 // OnPlayerDied / OnPlayerLeaveGame: the rocket bursts instead of killing the

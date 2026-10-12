@@ -4,7 +4,7 @@ import { HQ_POS } from "./hqpos";
 import { HQ_HIT_RADIUS_M, RAY_MAX_DIST_M, RAY_START_OFFSET_M, RAY_PASS_M, RAY_PASS_TRIES, RORSCH_TRACE, RORSCH_MIN_CHARGE_MS, RORSCH_PITCH_FIX_RAD } from "./config";
 import { isRorschActive } from "./weapons";
 import { configureNukeFxEvents, detonate, startChargeAlarm, stopChargeAlarm } from "./nukefx";
-import { isRorschCarrier, onRorschShot } from "./rorschammo";
+import { isRorschCarrier, onRorschShot, rorschCarrier, rorschCarrierCount, rorschCarrierId } from "./rorschammo";
 import { isBotPid } from "./bots";
 import { teamIdOf } from "./util/roster";
 import { hitHq } from "./hq";
@@ -30,6 +30,9 @@ interface PendingRay {
     from: Vectors.Vector3 | undefined;
     u: number;
     tries: number;
+    // An MP-RMG TAC round (debug): explodes only, no radar or HQ effect, and
+    // is not tracked in inFlight, so any number can be in the air at once.
+    tac: boolean;
 }
 
 const inFlight: { [pid: number]: PendingRay } = {};
@@ -137,7 +140,7 @@ function shootRay(p: mod.Player): void {
         : mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition);
     const pendingRay: PendingRay = {
         pid: pid, player: p, team: team, start: Vectors.toVector3(eye), castMs: Date.now(), dir: undefined,
-        from: undefined, u: RAY_START_OFFSET_M, tries: 0
+        from: undefined, u: RAY_START_OFFSET_M, tries: 0, tac: false
     };
     inFlight[pid] = pendingRay;
     safe("nuke.cast", () => {
@@ -163,6 +166,20 @@ function shootRay(p: mod.Player): void {
                 + " (raw aim y " + String(mod.YComponentOf(facing)) + ", pitched down " + RORSCH_PITCH_FIX_RAD + " rad)"
                 + " dischargeTickDirY=" + String(live.y));
         }
+    });
+}
+
+// One MP-RMG TAC round (debug, tacrmg.ts): the Rorsch's ray from the live aim,
+// tilted down the same RORSCH_PITCH_FIX_RAD, ending in a nuke and nothing else.
+export function castTacRound(p: mod.Player, pid: number): void {
+    safe("nuke.tac", () => {
+        const eye: Vectors.Vector3 = Vectors.toVector3(mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition));
+        const facing: Vectors.Vector3 = Vectors.toVector3(mod.Normalize(
+            mod.GetSoldierState(p, mod.SoldierStateVector.GetFacingDirection)));
+        castStraight({
+            pid: pid, player: p, team: teamIdOf(p), start: eye, castMs: Date.now(),
+            dir: pitchedDown(facing, RORSCH_PITCH_FIX_RAD), from: undefined, u: RAY_START_OFFSET_M, tries: 0, tac: true
+        });
     });
 }
 
@@ -197,20 +214,24 @@ function castStraight(ray: PendingRay): void {
     ray.from = from;
     const id = Raycast.cast(from, { x: s.x + d.x * u1, y: s.y + d.y * u1, z: s.z + d.z * u1 },
         (hit: boolean, point?: Raycast.Vector3) => {
-            if (inFlight[ray.pid] !== ray) {
-                return;
+            if (!ray.tac) {
+                if (inFlight[ray.pid] !== ray) {
+                    return;
+                }
+                delete inFlight[ray.pid];
             }
-            delete inFlight[ray.pid];
             if (hit && point !== undefined) {
                 safe("nuke.hit", () => { resolveHit(ray, { x: point.x, y: point.y, z: point.z }); });
             } else {
                 safe("nuke.miss", () => { resolveMiss(ray); });
             }
         },
-        { priority: Raycast.Priority.Critical });
+        { priority: ray.tac ? Raycast.Priority.Standard : Raycast.Priority.Critical });
     if (id === null) {
-        log("nuke", "RAY rejected by the Raycast queue pid=" + ray.pid);
-        delete inFlight[ray.pid];
+        log("nuke", "RAY rejected by the Raycast queue pid=" + ray.pid + (ray.tac ? " (MP-RMG TAC)" : ""));
+        if (!ray.tac) {
+            delete inFlight[ray.pid];
+        }
     }
 }
 
@@ -267,7 +288,9 @@ function resolveHit(ray: PendingRay, hit: Vectors.Vector3): void {
         // Cast again from just past the obstacle (the queue sends it next tick).
         ray.u = ray.u + dist(ray.from, hit) + RAY_PASS_M;
         ray.tries++;
-        inFlight[pid] = ray;
+        if (!ray.tac) {
+            inFlight[pid] = ray;
+        }
         castStraight(ray);
         if (RORSCH_TRACE || willLogDebug()) {
             log("nuke", "HIT pid=" + pid + " blocked at " + String(travelled.toFixed(2))
@@ -280,7 +303,11 @@ function resolveHit(ray: PendingRay, hit: Vectors.Vector3): void {
             + " at " + String(hit.x) + "," + String(hit.y) + "," + String(hit.z));
     }
 
-    safe("nuke.detonate", () => { detonate(hit.x, hit.y, hit.z, p); });
+    if (ray.tac) {
+        safe("nuke.detonate", () => { detonate(hit.x, hit.y, hit.z, p, true); });
+        return;
+    }
+    safe("nuke.detonate", () => { detonate(hit.x, hit.y, hit.z, p, false); });
     const d3: Vectors.Vector3 | undefined = ray.dir;
     if (d3 !== undefined) {
         safe("nuke.radars", () => { raygunAtRadars(team, pid, ray.start, d3, travelled, hit); });
@@ -324,6 +351,9 @@ function resolveHit(ray: PendingRay, hit: Vectors.Vector3): void {
 // A ray that hit nothing: the radar path test still runs over its full length,
 // since RayCast passes through models.
 function resolveMiss(ray: PendingRay): void {
+    if (ray.tac) {
+        return;
+    }
     if (RORSCH_TRACE) {
         log("nuke", "RAY miss pid=" + ray.pid + " - nothing hit within " + String(RAY_MAX_DIST_M) + "m");
     }
@@ -333,38 +363,27 @@ function resolveMiss(ray: PendingRay): void {
     }
 }
 
+// Only the registered carriers (rorschammo.ts) are read: nobody holding a
+// Rorsch means no work at all.
 function probe(): void {
     if (!inited) {
         return;
     }
-    safe("nuke.probe", () => {
-        let arr: mod.Array;
-        try {
-            arr = mod.AllPlayers();
-        } catch (e) {
-            return;
+    // A hold left over from a player who no longer carries one.
+    for (const k in hold) {
+        if (!isRorschCarrier(Number(k))) {
+            forgetHold(Number(k));
         }
-        const n: number = mod.CountOf(arr);
-        for (let i: number = 0; i < n; i++) {
-            const p: mod.Player = mod.ValueInArray(arr, i) as mod.Player;
-            const pid: number = mod.GetObjId(p);
-            if (pid < 0) {
-                continue;
-            }
-            if (deployed[pid] !== true) {
-                continue;
-            }
-            // Bots never fire the Rorsch: zero-FFI registry test, before any
-            // soldier-state read. The Rorsch is also stripped at bot deploy.
-            if (isBotPid(pid)) {
-                continue;
-            }
-            // Zero-FFI filter first: a player is only read while carrying the
-            // Rorsch (rorschammo's 1 Hz poll).
-            if (!isRorschCarrier(pid)) {
-                if (hold[pid] !== undefined) {
-                    forgetHold(pid);
-                }
+    }
+    const n: number = rorschCarrierCount();
+    if (n === 0) {
+        return;
+    }
+    safe("nuke.probe", () => {
+        for (let i: number = n - 1; i >= 0; i--) {
+            const pid: number = rorschCarrierId(i);
+            const p: mod.Player | undefined = rorschCarrier(pid);
+            if (p === undefined || deployed[pid] !== true || isBotPid(pid)) {
                 continue;
             }
             let firing: boolean = false;

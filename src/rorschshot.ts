@@ -33,3 +33,26 @@ export function holdStep(st: HoldState | undefined, firing: boolean, nowMs: numb
     }
     return { next: undefined, fire: nowMs - st.pressMs >= minChargeMs };
 }
+
+// MP-RMG TAC (debug only, owner 2026-10-04: removed for the final build). The
+// engine reports no single shot, only IsFiring, so a "round" is each trigger
+// press plus one every intervalMs while it stays held. The next round counts
+// from when the last one fired, so a lag gap fires once, not a backlog.
+export interface RoundState {
+    lastMs: number;
+}
+
+export interface RoundResult {
+    next: RoundState | undefined;
+    fire: boolean;
+}
+
+export function roundStep(st: RoundState | undefined, firing: boolean, nowMs: number, intervalMs: number): RoundResult {
+    if (!firing) {
+        return { next: undefined, fire: false };
+    }
+    if (st === undefined || nowMs - st.lastMs >= intervalMs) {
+        return { next: { lastMs: nowMs }, fire: true };
+    }
+    return { next: st, fire: false };
+}

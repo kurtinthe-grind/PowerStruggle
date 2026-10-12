@@ -2,7 +2,7 @@ import { log, safe } from "./util/log";
 import { siteState } from "./state";
 import { buildingsOfKind, BuildingState, onCaptured } from "./capture";
 import { AreaBuildingDef } from "./objids";
-import { CHARGE_PER_SITE } from "./config";
+import { CHARGE_MINUTES_BY_SITES } from "./config";
 
 const SITE_SLOTS: number = 3;
 
@@ -27,12 +27,15 @@ export function energySitesHeld(team: number): number {
     return n;
 }
 
-export function energyMultiplier(team: number): number {
+// Charge speed in percent per second for a team holding the Prototype Factory.
+export function chargePercentPerSec(team: number): number {
     const held: number = energySitesHeld(team);
-    if (held <= 0) {
+    const last: number = CHARGE_MINUTES_BY_SITES.length - 1;
+    const minutes: number = CHARGE_MINUTES_BY_SITES[held < last ? held : last];
+    if (!(minutes > 0)) {
         return 0;
     }
-    return held * CHARGE_PER_SITE;
+    return 100 / (minutes * 60);
 }
 
 export function initEnergy(): void {
@@ -41,7 +44,7 @@ export function initEnergy(): void {
     onCaptured((def: AreaBuildingDef, owner: number) => {
         if (def.kind === "energy") {
             safe("energy.capture", () => {
-                log("energy", def.id + " -> team " + owner + " (mult now " + energyMultiplier(owner) + ")");
+                log("energy", def.id + " -> team " + owner + " (" + energySitesHeld(owner) + " sites, charge " + chargePercentPerSec(owner).toFixed(3) + "%/s with the factory)");
             });
         }
     });

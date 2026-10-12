@@ -933,79 +933,79 @@ export function OnTickEnd(): void {
     Events.OnTickEnd.trigger();
 }
 
-export function OngoingAreaTrigger(areaTrigger: mod.AreaTrigger): void {
+function OngoingAreaTrigger(areaTrigger: mod.AreaTrigger): void {
     Events.OngoingAreaTrigger.trigger(areaTrigger);
 }
 
-export function OngoingBlockingSphere(blockingSphere: mod.BlockingSphere): void {
+function OngoingBlockingSphere(blockingSphere: mod.BlockingSphere): void {
     Events.OngoingBlockingSphere.trigger(blockingSphere);
 }
 
-export function OngoingBomb(bomb: mod.Bomb): void {
+function OngoingBomb(bomb: mod.Bomb): void {
     Events.OngoingBomb.trigger(bomb);
 }
 
-export function OngoingCapturePoint(capturePoint: mod.CapturePoint): void {
+function OngoingCapturePoint(capturePoint: mod.CapturePoint): void {
     Events.OngoingCapturePoint.trigger(capturePoint);
 }
 
-export function OngoingEmplacementSpawner(emplacementSpawner: mod.EmplacementSpawner): void {
+function OngoingEmplacementSpawner(emplacementSpawner: mod.EmplacementSpawner): void {
     Events.OngoingEmplacementSpawner.trigger(emplacementSpawner);
 }
 
-export function OngoingHQ(hq: mod.HQ): void {
+function OngoingHQ(hq: mod.HQ): void {
     Events.OngoingHQ.trigger(hq);
 }
 
-export function OngoingInteractPoint(interactPoint: mod.InteractPoint): void {
+function OngoingInteractPoint(interactPoint: mod.InteractPoint): void {
     Events.OngoingInteractPoint.trigger(interactPoint);
 }
 
-export function OngoingLootSpawner(lootSpawner: mod.LootSpawner): void {
+function OngoingLootSpawner(lootSpawner: mod.LootSpawner): void {
     Events.OngoingLootSpawner.trigger(lootSpawner);
 }
 
-export function OngoingMCOM(mcom: mod.MCOM): void {
+function OngoingMCOM(mcom: mod.MCOM): void {
     Events.OngoingMCOM.trigger(mcom);
 }
 
-export function OngoingPlayer(player: mod.Player): void {
+function OngoingPlayer(player: mod.Player): void {
     Events.OngoingPlayer.trigger(player);
 }
 
-export function OngoingRingOfFire(ringOfFire: mod.RingOfFire): void {
+function OngoingRingOfFire(ringOfFire: mod.RingOfFire): void {
     Events.OngoingRingOfFire.trigger(ringOfFire);
 }
 
-export function OngoingSector(sector: mod.Sector): void {
+function OngoingSector(sector: mod.Sector): void {
     Events.OngoingSector.trigger(sector);
 }
 
-export function OngoingSpawner(spawner: mod.Spawner): void {
+function OngoingSpawner(spawner: mod.Spawner): void {
     Events.OngoingSpawner.trigger(spawner);
 }
 
-export function OngoingSpawnPoint(spawnPoint: mod.SpawnPoint): void {
+function OngoingSpawnPoint(spawnPoint: mod.SpawnPoint): void {
     Events.OngoingSpawnPoint.trigger(spawnPoint);
 }
 
-export function OngoingTeam(team: mod.Team): void {
+function OngoingTeam(team: mod.Team): void {
     Events.OngoingTeam.trigger(team);
 }
 
-export function OngoingVehicle(vehicle: mod.Vehicle): void {
+function OngoingVehicle(vehicle: mod.Vehicle): void {
     Events.OngoingVehicle.trigger(vehicle);
 }
 
-export function OngoingVehicleSpawner(vehicleSpawner: mod.VehicleSpawner): void {
+function OngoingVehicleSpawner(vehicleSpawner: mod.VehicleSpawner): void {
     Events.OngoingVehicleSpawner.trigger(vehicleSpawner);
 }
 
-export function OngoingWaypointPath(waypointPath: mod.WaypointPath): void {
+function OngoingWaypointPath(waypointPath: mod.WaypointPath): void {
     Events.OngoingWaypointPath.trigger(waypointPath);
 }
 
-export function OngoingWorldIcon(worldIcon: mod.WorldIcon): void {
+function OngoingWorldIcon(worldIcon: mod.WorldIcon): void {
     Events.OngoingWorldIcon.trigger(worldIcon);
 }
 
@@ -1013,43 +1013,43 @@ export function OnAIMoveToFailed(player: mod.Player): void {
     Events.OnAIMoveToFailed.trigger(player);
 }
 
-export function OnAIMoveToRunning(player: mod.Player): void {
+function OnAIMoveToRunning(player: mod.Player): void {
     Events.OnAIMoveToRunning.trigger(player);
 }
 
-export function OnAIMoveToSucceeded(player: mod.Player): void {
+function OnAIMoveToSucceeded(player: mod.Player): void {
     Events.OnAIMoveToSucceeded.trigger(player);
 }
 
-export function OnAIParachuteRunning(player: mod.Player): void {
+function OnAIParachuteRunning(player: mod.Player): void {
     Events.OnAIParachuteRunning.trigger(player);
 }
 
-export function OnAIParachuteSucceeded(player: mod.Player): void {
+function OnAIParachuteSucceeded(player: mod.Player): void {
     Events.OnAIParachuteSucceeded.trigger(player);
 }
 
-export function OnAIWaypointIdleFailed(player: mod.Player): void {
+function OnAIWaypointIdleFailed(player: mod.Player): void {
     Events.OnAIWaypointIdleFailed.trigger(player);
 }
 
-export function OnAIWaypointIdleRunning(player: mod.Player): void {
+function OnAIWaypointIdleRunning(player: mod.Player): void {
     Events.OnAIWaypointIdleRunning.trigger(player);
 }
 
-export function OnAIWaypointIdleSucceeded(player: mod.Player): void {
+function OnAIWaypointIdleSucceeded(player: mod.Player): void {
     Events.OnAIWaypointIdleSucceeded.trigger(player);
 }
 
-export function OnBombDropped(bomb: mod.Bomb, player: mod.Player): void {
+function OnBombDropped(bomb: mod.Bomb, player: mod.Player): void {
     Events.OnBombDropped.trigger(bomb, player);
 }
 
-export function OnBombPickedUp(bomb: mod.Bomb, player: mod.Player): void {
+function OnBombPickedUp(bomb: mod.Bomb, player: mod.Player): void {
     Events.OnBombPickedUp.trigger(bomb, player);
 }
 
-export function OnBombStateChanged(bomb: mod.Bomb, state: mod.BombState): void {
+function OnBombStateChanged(bomb: mod.Bomb, state: mod.BombState): void {
     Events.OnBombStateChanged.trigger(bomb, state);
 }
 
@@ -1057,7 +1057,7 @@ export function OnCapturePointCaptured(capturePoint: mod.CapturePoint): void {
     Events.OnCapturePointCaptured.trigger(capturePoint);
 }
 
-export function OnCapturePointCapturing(capturePoint: mod.CapturePoint): void {
+function OnCapturePointCapturing(capturePoint: mod.CapturePoint): void {
     Events.OnCapturePointCapturing.trigger(capturePoint);
 }
 
@@ -1073,7 +1073,7 @@ export function OnGameModeStarted(): void {
     Events.OnGameModeStarted.trigger();
 }
 
-export function OnGolmudTrainStopped(reason: mod.GolmudTrainStopReason): void {
+function OnGolmudTrainStopped(reason: mod.GolmudTrainStopReason): void {
     Events.OnGolmudTrainStopped.trigger(reason);
 }
 
@@ -1081,15 +1081,15 @@ export function OnMandown(player: mod.Player, otherPlayer: mod.Player): void {
     Events.OnMandown.trigger(player, otherPlayer);
 }
 
-export function OnMCOMArmed(mcom: mod.MCOM): void {
+function OnMCOMArmed(mcom: mod.MCOM): void {
     Events.OnMCOMArmed.trigger(mcom);
 }
 
-export function OnMCOMDefused(mcom: mod.MCOM): void {
+function OnMCOMDefused(mcom: mod.MCOM): void {
     Events.OnMCOMDefused.trigger(mcom);
 }
 
-export function OnMCOMDestroyed(mcom: mod.MCOM): void {
+function OnMCOMDestroyed(mcom: mod.MCOM): void {
     Events.OnMCOMDestroyed.trigger(mcom);
 }
 
@@ -1128,7 +1128,7 @@ export function OnPlayerEarnedKillAssist(assistingPlayer: mod.Player, victim: mo
     Events.OnPlayerEarnedKillAssist.trigger(assistingPlayer, victim);
 }
 
-export function OnPlayerEmerged(player: mod.Player): void {
+function OnPlayerEmerged(player: mod.Player): void {
     Events.OnPlayerEmerged.trigger(player);
 }
 
@@ -1140,7 +1140,7 @@ export function OnPlayerEnterCapturePoint(player: mod.Player, capturePoint: mod.
     Events.OnPlayerEnterCapturePoint.trigger(player, capturePoint);
 }
 
-export function OnPlayerEnteredWater(player: mod.Player): void {
+function OnPlayerEnteredWater(player: mod.Player): void {
     Events.OnPlayerEnteredWater.trigger(player);
 }
 
@@ -1152,7 +1152,7 @@ export function OnPlayerEnterVehicleSeat(player: mod.Player, vehicle: mod.Vehicl
     Events.OnPlayerEnterVehicleSeat.trigger(player, vehicle, seat);
 }
 
-export function OnPlayerEnterVL7Cloud(player: mod.Player, cloud: mod.VL7Cloud): void {
+function OnPlayerEnterVL7Cloud(player: mod.Player, cloud: mod.VL7Cloud): void {
     Events.OnPlayerEnterVL7Cloud.trigger(player, cloud);
 }
 
@@ -1164,7 +1164,7 @@ export function OnPlayerExitCapturePoint(player: mod.Player, capturePoint: mod.C
     Events.OnPlayerExitCapturePoint.trigger(player, capturePoint);
 }
 
-export function OnPlayerExitedWater(player: mod.Player): void {
+function OnPlayerExitedWater(player: mod.Player): void {
     Events.OnPlayerExitedWater.trigger(player);
 }
 
@@ -1176,11 +1176,11 @@ export function OnPlayerExitVehicleSeat(player: mod.Player, vehicle: mod.Vehicle
     Events.OnPlayerExitVehicleSeat.trigger(player, vehicle, seat);
 }
 
-export function OnPlayerExitVL7Cloud(player: mod.Player, cloud: mod.VL7Cloud): void {
+function OnPlayerExitVL7Cloud(player: mod.Player, cloud: mod.VL7Cloud): void {
     Events.OnPlayerExitVL7Cloud.trigger(player, cloud);
 }
 
-export function OnPlayerInteract(player: mod.Player, interactPoint: mod.InteractPoint): void {
+function OnPlayerInteract(player: mod.Player, interactPoint: mod.InteractPoint): void {
     Events.OnPlayerInteract.trigger(player, interactPoint);
 }
 
@@ -1192,7 +1192,7 @@ export function OnPlayerLeaveGame(playerId: number): void {
     Events.OnPlayerLeaveGame.trigger(playerId);
 }
 
-export function OnPlayerSubmerged(player: mod.Player): void {
+function OnPlayerSubmerged(player: mod.Player): void {
     Events.OnPlayerSubmerged.trigger(player);
 }
 
@@ -1212,11 +1212,11 @@ export function OnPlayerUndeploy(player: mod.Player): void {
     Events.OnPlayerUndeploy.trigger(player);
 }
 
-export function OnPortalGadgetAimStart(player: mod.Player): void {
+function OnPortalGadgetAimStart(player: mod.Player): void {
     Events.OnPortalGadgetAimStart.trigger(player);
 }
 
-export function OnPortalGadgetAimStop(player: mod.Player): void {
+function OnPortalGadgetAimStop(player: mod.Player): void {
     Events.OnPortalGadgetAimStop.trigger(player);
 }
 
@@ -1224,11 +1224,11 @@ export function OnPortalGadgetFireStart(player: mod.Player): void {
     Events.OnPortalGadgetFireStart.trigger(player);
 }
 
-export function OnPortalGadgetFireStop(player: mod.Player): void {
+function OnPortalGadgetFireStop(player: mod.Player): void {
     Events.OnPortalGadgetFireStop.trigger(player);
 }
 
-export function OnPortalGadgetLaserToggle(player: mod.Player, toggle: boolean): void {
+function OnPortalGadgetLaserToggle(player: mod.Player, toggle: boolean): void {
     Events.OnPortalGadgetLaserToggle.trigger(player, toggle);
 }
 
@@ -1240,11 +1240,11 @@ export function OnRayCastMissed(player: mod.Player): void {
     Events.OnRayCastMissed.trigger(player);
 }
 
-export function OnRevived(revivedPlayer: mod.Player, revivingPlayer: mod.Player): void {
+function OnRevived(revivedPlayer: mod.Player, revivingPlayer: mod.Player): void {
     Events.OnRevived.trigger(revivedPlayer, revivingPlayer);
 }
 
-export function OnRingOfFireZoneSizeChange(ringOfFire: mod.RingOfFire, number: number): void {
+function OnRingOfFireZoneSizeChange(ringOfFire: mod.RingOfFire, number: number): void {
     Events.OnRingOfFireZoneSizeChange.trigger(ringOfFire, number);
 }
 
@@ -1252,7 +1252,7 @@ export function OnSpawnerSpawned(player: mod.Player, spawner: mod.Spawner): void
     Events.OnSpawnerSpawned.trigger(player, spawner);
 }
 
-export function OnTimeLimitReached(): void {
+function OnTimeLimitReached(): void {
     if (!mod.GetMatchTimeElapsed()) return; // Avoids a bug where this event is triggered by the server prematurely.
 
     Events.OnTimeLimitReached.trigger();
@@ -1276,6 +1276,19 @@ export const PRESTIGE_STEP: number = 250;
 // message at the call site, so leaving them on costs a string build per event
 // even when nobody reads it. Flip to true to diagnose, then flip back.
 export const LOG_DEBUG: boolean = false;
+// What the PortalLog gets (owner, 2026-10-04: the log was full of noise).
+// 0: errors and warnings only. 1 (default): match events too (captures,
+// power, HQ hits, nukes, purchases, bots joining and leaving, rocket sites).
+// 2: also the per-action chatter in LOG_TRACE_TAGS (menu hovers, feed chips,
+// prestige, scoring decisions, notifications). The debug traces
+// (RORSCH_TRACE, BOT_TRACE, FAKE_SLOT_TRACE) are separate switches.
+export const LOG_LEVEL: number = 1;
+// A [perf] line (perfline.ts) this often: engine frame times and counts.
+export const PERF_LINE_MS: number = 30000;
+export const LOG_TRACE_TAGS: string[] = [
+    "uiButton", "menu", "page", "feed", "prestige", "hud", "debug", "paint", "art", "bar", "score", "stats",
+    "notify", "undeploy", "gadget", "economy", "worldicons"
+];
 // Admin logs (DEBUG tab toggle, off by default). On a "Host" (dedicated)
 // server the log only reaches the owner's PC through mod.SendPortalLogToAdmin,
 // which writes PortalLog.txt on the admin's client and has a per-session quota;
@@ -1294,9 +1307,6 @@ export const ADMIN_LOG_CAPS: { [tag: string]: number } = {
 export const ADMIN_LOG_CAP_DEFAULT: number = 20;
 export const ADMIN_LOG_SEND_MS: number = 120000;
 export const ADMIN_LOG_MIN_GAP_MS: number = 30000;
-// Debug: every item on the buy menu WEAPONS tab costs 0 prestige, so the Rorsch
-// and the other test weapons are always available. Set false for real matches.
-export const WEAPONS_TAB_FREE: boolean = true;
 export const POWER_MILESTONES: number[] = [50, 75, 100];
 export const ART_BUDGET: number = 32;
 export const SITE_LETTER: string[] = ["A", "B", "C"];
@@ -1335,8 +1345,13 @@ export const BUNKER_CAPTURE_SECONDS: number = 20;
 export const BUNKER_NEUTRALIZE_SECONDS: number = 10;
 export const BUNKER_CAPTURE_MULTIPLIER: number = 3;
 
-export const CHARGE_BASE_SECONDS: number = 300;
-export const CHARGE_PER_SITE: number = 1.5;
+// Minutes of holding the Prototype Factory to charge 0 -> 100%, indexed by
+// energy sites held (0, 1, 2, 3); 0 means no charge. Owner, 2026-10-04: a
+// match should take 30-45 min. The 2026-10-04 log took the factory about 6 min
+// in, so 100% lands near minute 25-30 with flips, leaving the rocket sites and
+// the HQ (5 Rorsch shots) for the rest. The old testing rate (300 s base,
+// x1.5 per site) filled 100% in 3.3 min with one site.
+export const CHARGE_MINUTES_BY_SITES: number[] = [0, 20, 14, 10];
 export const CHARGE_REQUIRES_FACTORY: boolean = true;
 export const CHARGE_UNLOCK_50: number = 50;
 export const CHARGE_UNLOCK_100: number = 100;
@@ -1373,6 +1388,27 @@ export const RORSCH_MIN_CHARGE_MS: number = 2100;
 // every ray outcome while a player is in an HQ fire zone. One soldier-state read
 // per tick per player in a fire zone. Set false once settled.
 export const RORSCH_TRACE: boolean = true;
+// The fake 4th gadget slot (fakeslot.ts). Its box on the 1920x1080 UI canvas,
+// matched in the UI preview to the game's slot-3 gadget box in the owner's
+// 2026-10-04 screenshot (scaled by height, right edge kept): that box is
+// 61-62 x 63, its left edge 475 px from the right edge, its bottom 66 px up,
+// and the game leaves 6 px between boxes. The card inside takes
+// FAKE_SLOT_CARD of the box, so resizing the box resizes the card.
+export const FAKE_SLOT_RIGHT: number = 481;
+export const FAKE_SLOT_BOTTOM: number = 66;
+export const FAKE_SLOT_W: number = 62;
+export const FAKE_SLOT_H: number = 63;
+export const FAKE_SLOT_CARD: number = 0.75;
+// After a swap, slot 3 is asked for every 150 ms for up to FAKE_SLOT_FORCE_MS
+// until it is in hand; slot changes within FAKE_SLOT_BUSY_MS of a swap are the
+// swap's own and never trigger another. FAKE_SLOT_TRACE logs every slot change
+// of a human (debug; off for release).
+export const FAKE_SLOT_FORCE_MS: number = 1000;
+export const FAKE_SLOT_BUSY_MS: number = 1200;
+export const FAKE_SLOT_TRACE: boolean = false;
+// The fake slot reads a player's inventory slots every this many ticks (3 at
+// the ~30 Hz tick: 10 reads a second, spread across players).
+export const FAKE_SLOT_POLL_TICKS: number = 3;
 
 // Rorsch tactical nuke (src/nukefx.ts), on every Rorsch impact anywhere, with
 // friendly fire. Inside NUKE_KILL_M a player dies (humans see a black screen
@@ -1406,12 +1442,24 @@ export const NUKE_FOLLOW_MAX: number = 16;
 // world effect of the blast after NUKE_FX_MS.
 export const NUKE_PLUME_MS: number = 6500;
 export const NUKE_FX_MS: number = 12000;
+// MP-RMG TAC (debug only; owner, 2026-10-04: removed for the final build).
+// A round on each trigger press and every TAC_RMG_ROUND_MS while held. Its
+// nukes spawn the full world effect while fewer than TAC_RMG_FULL_BLASTS full
+// blasts are still up (each lives NUKE_FX_MS, about 14 effects), a single
+// explosion after that; a player gets its screen effects at most once per
+// TAC_RMG_SCREEN_GAP_MS. Damage is never skipped.
+export const TAC_RMG_ROUND_MS: number = 400;
+export const TAC_RMG_FULL_BLASTS: number = 4;
+export const TAC_RMG_SCREEN_GAP_MS: number = 1000;
 export const NUKE_SHOCK_SCALE: number = 3;
 // The charge alarm at the shooter is heard this far.
 export const NUKE_ALARM_RANGE_M: number = 60;
 // Rorsch rounds per purchase: one loaded, one spare. Tracked across drops and
 // pickups so picking a dropped Rorsch back up cannot refill it.
 export const RORSCH_SHOTS: number = 2;
+// A dropped Rorsch is watched for a pickup this long, then forgotten (a
+// pickup after that gets no nuke shots).
+export const RORSCH_GROUND_MS: number = 120000;
 export const POWER_LEVEL_REQUIRED: number = 100;
 
 // ---- Bots: custom AI_Spawner objective players (no UI, no buy, no nuke) ----
@@ -1420,12 +1468,12 @@ export const POWER_LEVEL_REQUIRED: number = 100;
 // script-owned. All bot pathing is plain distance math over a static position
 // cache in src/botobjectives.ts; the only per-sweep FFI is one GetPosition
 // per processed bot plus a behavior call when its intent changes.
-// 32 a side, was 24: the owner reports 24 a side runs smoothly. Humans and bot
-// corpses take team slots too (the scoreboard counts them), so the live bot
-// count also stays within BOT_TEAM_SLOTS minus the humans on that team, and a
-// spawn waits while a corpse still holds a slot.
-export const BOT_COUNT_PER_TEAM: number = 32;
-export const BOT_TEAM_SLOTS: number = 32;
+// Bots per team (owner, 2026-10-04: 24 a side, to simulate a full 48-player
+// server). A human on a team takes one bot's place: the bot leaves the game
+// for good, and a bot joins again when a human leaves. Humans and bots never
+// exceed BOT_TEAM_SLOTS on a team.
+export const BOT_COUNT_PER_TEAM: number = 24;
+export const BOT_TEAM_SLOTS: number = 24;
 // Dedicated 1 Hz sweep timer, separate from OngoingGlobal so bot thinking
 // never competes with the per-frame HUD and charge work.
 export const BOT_SWEEP_MS: number = 1000;
@@ -1436,23 +1484,21 @@ export const BOT_SLICE: number = 16;
 // Spawn burst cap per sweep. Matches the 0.5 s stagger the official
 // PortalPerformanceExample uses between SpawnAIFromAISpawner calls.
 export const BOT_SPAWN_PER_SWEEP: number = 2;
-// Persistent bots, as the CustomConquest V15 template runs them: a bot stays in
-// the game when it dies and redeploys by itself as the same player, so its
-// scoreboard row, name and stats live all match. The owner's scoreboard showed
-// every bot at 0 while the log had 550 successful row writes a minute and bots
-// with score (one at 1950, 17 kills); the template, which never turns on
-// unspawn-on-dead, shows bot scores. false restores the old path: the bot
-// leaves the game on death and a new one is spawned under its name.
-export const BOT_PERSISTENT: boolean = true;
-// Persistent bots: redeploy timer (the engine allows 0-60 s), and a dead bot
-// not redeployed after BOT_REDEPLOY_WATCHDOG_MS is deployed by force.
+// Bots never leave the game when they die (the CustomConquest V15 way): they
+// redeploy as the same player, so names and stats live all match. Redeploy
+// timer (the engine allows 0-60 s), and a dead bot not redeployed after
+// BOT_REDEPLOY_WATCHDOG_MS is deployed by force.
 export const BOT_REDEPLOY_S: number = 10;
 export const BOT_REDEPLOY_WATCHDOG_MS: number = 25000;
-// Persistent bots: population check (top up, trim for humans) this often.
+// Population check (top up, make room for humans) this often.
 export const BOT_MAINTAIN_MS: number = 5000;
-// Non-persistent path only. Longer than the corpse lifetime below, so a
-// respawn never reuses the name of a body still lying on the map.
-export const BOT_RESPAWN_DELAY_MS: number = 11000;
+// A bot killed to make room for a human must have left the game within this
+// time; otherwise removals stop for the round (bots.ts removeBot).
+export const BOT_REMOVE_CHECK_MS: number = 15000;
+// A bot under fire is re-targeted at most this often by the same attacker.
+export const BOT_RETARGET_MS: number = 500;
+// An ownership flip re-thinks every bot, spread over this many sweeps.
+export const BOT_RETHINK_SWEEPS: number = 3;
 // Bunker spawning (CustomConquest V15 AI_ObjectiveSpawn): on deploy this share
 // of bots is teleported from the AI_Spawner onto the flag of a random owned
 // bunker. The template uses about 0.9; the mode owner wants only some, 0.25.
@@ -1470,11 +1516,6 @@ export const BOT_CORPSE_SECONDS: number = 10;
 export const BOT_DAMAGE_MULT: number = 0.5;
 // Per-bot damage taken, applied at spawn (ObliterationExample pattern).
 export const BOT_INCOMING_DAMAGE: number = 0.5;
-// Every live bot's scoreboard row is written again this often. The owner saw
-// every bot at zero (score, kills, deaths, assists) although rows are written
-// on each award, death and spawn; a row written right at spawn may come too
-// early for the engine, and a regular rewrite does not depend on that.
-export const BOT_ROW_REFRESH_MS: number = 5000;
 // Range cap for picking an objective. Was 500 m (CustomCQ README); on
 // PS_Isolated that hid half the map, and the 2026-10-02 playtest spent the
 // whole match on the two or three nearest objectives. Now the whole map.
@@ -1558,7 +1599,7 @@ export const BOT_KIND_WEIGHT: number[] = [1.1, 1.3, 1.5, 1.0, 0.9, 0.7];
 export const BOT_BATTLE_MS: number = 10000;
 // One line per team every BOT_TRACE_MS showing where the bots are going, plus a
 // line per give-up, boarding and eject. Diagnostic; set false once tuned.
-export const BOT_TRACE: boolean = true;
+export const BOT_TRACE: boolean = false;
 export const BOT_TRACE_MS: number = 15000;
 
 // Roaming. A bot that reached a safely-held objective used to sit on it for the
@@ -1590,7 +1631,7 @@ export const BOT_NAV_MISS_STOP: number = 25;
 export const BOT_NAV_SHOW: boolean = false;
 
 // Enemy pressure radius around an owned objective, for the DEFEND score. Read
-// from PlayerLocations' cached positions, no FFI. Was 220 m for the old
+// from the sweep's position snapshot (util/positions.ts). Was 220 m for the old
 // picker; that marks half the map as threatened once fighting starts.
 export const BOT_THREAT_REACH_M: number = 90;
 
@@ -1672,6 +1713,21 @@ export const VEHICLE_NO_SLOT_FEED: string = "shopNoSlot";
 
 
 
+
+// Tags below LOG_LEVEL 2 are dropped (see LOG_TRACE_TAGS in config.ts).
+const traceTag: { [tag: string]: boolean } = {};
+for (const t of LOG_TRACE_TAGS) {
+    traceTag[t] = true;
+}
+
+// Whether log(tag, ...) writes anything at the current LOG_LEVEL. Call sites
+// that build an expensive line (or read the engine for it) check this first.
+export function logTagOn(tag: string): boolean {
+    if (LOG_LEVEL <= 0) {
+        return false;
+    }
+    return LOG_LEVEL >= 2 || traceTag[tag] !== true;
+}
 
 // Admin logs (see ADMIN_LOG_CAPS in config.ts). Off: everything is logged and
 // nothing is sent, which is what local hosting wants. On: noisy tags are
@@ -1804,7 +1860,7 @@ export function willLogDebug(): boolean {
 }
 
 export function log(tag: string, line: string): void {
-    if (!allowed(tag)) {
+    if (!logTagOn(tag) || !allowed(tag)) {
         return;
     }
     LOG.log("[" + tag + "] " + line, Logging.LogLevel.Info);
@@ -1825,7 +1881,10 @@ export function logDebug(tag: string, line: string): void {
 // SendPortalLogToAdmin itself, up to twice a tick, which on a hosted server
 // would use up the session quota early in the match.
 export function logAdmin(tag: string, line: string): void {
-    log(tag, line);
+    // Errors and warnings are written at every LOG_LEVEL.
+    if (allowed(tag)) {
+        LOG.log("[" + tag + "] " + line, Logging.LogLevel.Info);
+    }
     if (adminMode) {
         sendSoon = true;
     }
@@ -2053,7 +2112,7 @@ export namespace PerformanceStats {
 // uses OnTickStart; that is cosmetic, they are the same channel.
 //
 // dt: onOngoingGlobal now drives the charge tick from spotDeltaMs() (clamped
-// to 1/240..1/10 s), so CHARGE_BASE_SECONDS is real seconds. Constants still
+// to 1/240..1/10 s), so CHARGE_MINUTES_BY_SITES is real time. Constants still
 // counted in frames (COOLDOWN_FRAMES, frameNo % 30, feed TTLs) follow the
 // engine's ~30 Hz tick, not 60.
 
@@ -4379,3415 +4438,6 @@ export namespace Vectors {
 }
 
 
-// --- SOURCE: node_modules\bf6-portal-utils\player-locations\index.ts ---
-
-
-
-
-
-// version: 1.0.0
-export namespace PlayerLocations {
-    const logging = new Logging('PL');
-
-    /**
-     * Re-export of the `Logging.LogLevel` enum.
-     */
-    export const LogLevel = Logging.LogLevel;
-
-    /**
-     * Attaches a logger and defines a minimum log level and whether to attempt to append a string form of the error to
-     * the text of the log message.
-     * @param log - The logger function: `(formattedText, error?) => void | Promise<void>`. `error` is the same value
-     *              passed to `log()` (if any), for inspection (e.g. `instanceof Error`, `stack`). `formattedText` may
-     *              also include ` - Error: …` when `includeRawError` is true.
-     * @param logLevel - The minimum log level to use.
-     * @param includeRawError - When true and `log()` receives an error, attempts to append a string form of the error
-     *                          to the text of the log message.
-     */
-    export function setLogging(
-        log?: (text: string, error?: unknown) => Promise<void> | void,
-        logLevel?: Logging.LogLevel,
-        includeRawError?: boolean
-    ): void {
-        logging.setLogging(log, logLevel, includeRawError);
-    }
-
-    /**
-     * Explicitly initializes the PlayerLocations spatial tracking engine.
-     *
-     * Synchronizes currently connected players via `mod.AllPlayers()` and subscribes to
-     * `Events.OnTickStart`, `Events.OnPlayerJoinGame`, and `Events.OnPlayerLeaveGame`.
-     * Safe to call multiple times (idempotent).
-     *
-     * It is strongly recommended to call this inside `Events.OnGameModeStarted.subscribe(...)`
-     * (or after initial match setup) to avoid running per-tick spatial tracking during initial server
-     * world loading and entity spawning.
-     */
-    export function initialize(): void {
-        if (_isInitialized) return;
-
-        _isInitialized = true;
-
-        _initConnectedPlayers();
-
-        // Subscribed to OnTickStart at priority Normal (0) to query player positions and rebuild spatial
-        // grids at the start of the frame, providing fresh spatial query data for all gameplay logic throughout the tick.
-        Events.OnTickStart.subscribe(_handleTick, Events.EventPriority.First);
-        Events.OnPlayerJoinGame.subscribe(_handlePlayerJoin, Events.EventPriority.First);
-        Events.OnPlayerLeaveGame.subscribe(_handlePlayerLeave, Events.EventPriority.First);
-    }
-
-    /**
-     * Checks whether the PlayerLocations spatial tracking engine has been initialized.
-     * @returns True if initialize() has already been called, false otherwise.
-     */
-    export function isInitialized(): boolean {
-        return _isInitialized;
-    }
-
-    // =========================================================================
-    // Types & Callback Signatures
-    // =========================================================================
-
-    /** Callback invoked when a player enters or exits a spatial zone or crosses a boundary. */
-    export type PlayerZoneCallback = (player: mod.Player, playerId: number) => Promise<void> | void;
-
-    /** Callback invoked when the identity of an extremum player changes. */
-    export type PlayerExtremaCallback = (
-        newPlayer: mod.Player | undefined,
-        prevPlayer: mod.Player | undefined,
-        newPlayerId: number | undefined,
-        prevPlayerId: number | undefined
-    ) => Promise<void> | void;
-
-    /** Handle returned by sphere zone subscriptions to allow updating parameters or unsubscribing. */
-    export interface SphereHandle {
-        /** Cancels the subscription and removes the zone listener. Safe to call multiple times. */
-        unsubscribe(): void;
-        /**
-         * Updates the center coordinates and optionally radius of the sphere on the fly.
-         * Has no effect if the subscription has already been unsubscribed.
-         * @param x - New center X coordinate in world meters.
-         * @param y - New center Y coordinate in world meters.
-         * @param z - New center Z coordinate in world meters.
-         * @param radiusMeters - Optional new radius in meters.
-         */
-        update(x: number, y: number, z: number, radiusMeters?: number): void;
-    }
-
-    /** Handle returned by cylinder zone subscriptions to allow updating parameters or unsubscribing. */
-    export interface CylinderHandle {
-        /** Cancels the subscription and removes the zone listener. Safe to call multiple times. */
-        unsubscribe(): void;
-        /**
-         * Updates the cylinder center coordinates, radius, and elevation bounds on the fly.
-         * Has no effect if the subscription has already been unsubscribed.
-         * @param centerX - New center X coordinate in world meters.
-         * @param centerZ - New center Z coordinate in world meters.
-         * @param radiusMeters - Optional new radius in meters.
-         * @param minY - Optional new minimum Y elevation in meters (default: -Infinity).
-         * @param maxY - Optional new maximum Y elevation in meters (default: Infinity).
-         */
-        update(centerX: number, centerZ: number, radiusMeters?: number, minY?: number, maxY?: number): void;
-    }
-
-    /** Handle returned by AABB bounding box subscriptions to allow updating parameters or unsubscribing. */
-    export interface AABBHandle {
-        /** Cancels the subscription and removes the zone listener. Safe to call multiple times. */
-        unsubscribe(): void;
-        /**
-         * Updates the bounding box coordinate limits on the fly.
-         * Has no effect if the subscription has already been unsubscribed.
-         * @param minX - New minimum X coordinate in world meters.
-         * @param minY - New minimum Y coordinate in world meters.
-         * @param minZ - New minimum Z coordinate in world meters.
-         * @param maxX - New maximum X coordinate in world meters.
-         * @param maxY - New maximum Y coordinate in world meters.
-         * @param maxZ - New maximum Z coordinate in world meters.
-         */
-        update(minX: number, minY: number, minZ: number, maxX: number, maxY: number, maxZ: number): void;
-    }
-
-    /** 2D Vertex representing a point on the XZ ground plane for polygonal prism volumes. */
-    export type PrismVertex = {
-        x: number;
-        z: number;
-    };
-
-    /** Handle returned by polygonal prism subscriptions to allow updating parameters or unsubscribing. */
-    export interface PrismHandle {
-        /** Cancels the subscription and removes the zone listener. Safe to call multiple times. */
-        unsubscribe(): void;
-        /**
-         * Updates the polygon vertices and elevation bounds on the fly.
-         * Has no effect if the subscription has already been unsubscribed.
-         * @param vertices - New polygon vertices on the XZ ground plane.
-         * @param minY - Optional new minimum Y elevation in meters (default: -Infinity).
-         * @param maxY - Optional new maximum Y elevation in meters (default: Infinity).
-         */
-        update(vertices: PrismVertex[], minY?: number, maxY?: number): void;
-    }
-
-    /** Handle returned by directional plane/boundary subscriptions to allow updating parameters or unsubscribing. */
-    export interface PlaneHandle {
-        /** Cancels the subscription and removes the boundary listener. Safe to call multiple times. */
-        unsubscribe(): void;
-        /**
-         * Updates the boundary coordinate threshold on the fly.
-         * Has no effect if the subscription has already been unsubscribed.
-         * @param threshold - New coordinate threshold in world meters.
-         */
-        update(threshold: number): void;
-    }
-
-    /** Handle returned by global extrema subscriptions (highest/lowest) to allow unsubscribing. */
-    export interface ExtremaHandle {
-        /** Cancels the subscription and removes the extremum listener. Safe to call multiple times. */
-        unsubscribe(): void;
-    }
-
-    /** Handle returned by target point extrema subscriptions (closest/farthest) to allow updating target point or unsubscribing. */
-    export interface TargetExtremaHandle extends ExtremaHandle {
-        /**
-         * Updates the target reference point coordinates on the fly.
-         * Has no effect if the subscription has already been unsubscribed.
-         * @param x - New target X coordinate in world meters.
-         * @param y - New target Y coordinate in world meters.
-         * @param z - New target Z coordinate in world meters.
-         */
-        update(x: number, y: number, z: number): void;
-    }
-
-    const enum AxisType {
-        X = 0,
-        Y = 1,
-        Z = 2,
-    }
-
-    const enum ExtremaType {
-        Closest = 0,
-        Farthest = 1,
-        Highest = 2,
-        Lowest = 3,
-    }
-
-    interface BasePresenceMask {
-        mask0: number;
-        mask1: number;
-        mask2: number;
-        mask3: number;
-        onEnter?: PlayerZoneCallback;
-        onExit?: PlayerZoneCallback;
-    }
-
-    interface SphereListener extends BasePresenceMask {
-        centerX: number;
-        centerY: number;
-        centerZ: number;
-        radiusSq: number;
-    }
-
-    interface CylinderListener extends BasePresenceMask {
-        centerX: number;
-        centerZ: number;
-        radiusSq: number;
-        minY: number;
-        maxY: number;
-    }
-
-    interface AABBListener extends BasePresenceMask {
-        minX: number;
-        minY: number;
-        minZ: number;
-        maxX: number;
-        maxY: number;
-        maxZ: number;
-    }
-
-    interface PrismListener extends BasePresenceMask {
-        coords: Float32Array;
-        vertexCount: number;
-        minX: number;
-        maxX: number;
-        minZ: number;
-        maxZ: number;
-        minY: number;
-        maxY: number;
-    }
-
-    interface PlaneListener extends BasePresenceMask {
-        axis: AxisType;
-        threshold: number;
-    }
-
-    interface ExtremaListener {
-        type: ExtremaType;
-        callback: PlayerExtremaCallback;
-        x: number;
-        y: number;
-        z: number;
-        lastPlayerId: number | undefined;
-    }
-
-    interface PrismBounds {
-        minX: number;
-        maxX: number;
-        minZ: number;
-        maxZ: number;
-    }
-
-    // =========================================================================
-    // Configuration & Pre-Allocated Storage (Zero-GC)
-    // =========================================================================
-
-    /** Maximum supported player slots in Battlefield 6 Portal (0-99). */
-    export const MAX_PLAYERS = 100;
-
-    /** Maximum supported vertices per polygonal prism (32 vertices). */
-    export const MAX_PRISM_VERTICES = 32;
-
-    /** Spatial Grid Voxel Size in world meters (25 meters). */
-    const VOXEL_SIZE = 25;
-
-    /** Hash table bucket count for the spatial grid (must be a power of 2). */
-    const GRID_TABLE_SIZE = 512;
-
-    /** Bitmask for spatial grid hash mapping (GRID_TABLE_SIZE - 1). */
-    const GRID_MASK = GRID_TABLE_SIZE - 1;
-
-    /** Sentinel coordinate value indicating an unspawned, dead, or inactive player. */
-    const INVALID_POS = -99999.0;
-
-    /** Tolerance in meters (1 millimeter) for filtering out unspawned/inactive players near origin. */
-    const ORIGIN_TOLERANCE_METERS = 0.001;
-
-    // --- State Bit Flags ---
-    const FLAG_CONNECTED = 1 << 0; // 1 = Connected / In-Game slot
-    const FLAG_ACTIVE = 1 << 1; // 2 = Spawned / Alive with valid 3D coordinates
-
-    // --- 1. Struct of Arrays (SoA) Buffers (32-bit Float Coordinates in Meters) ---
-    const posX = new Float32Array(MAX_PLAYERS);
-    const posY = new Float32Array(MAX_PLAYERS);
-    const posZ = new Float32Array(MAX_PLAYERS);
-    const stateFlags = new Uint8Array(MAX_PLAYERS);
-
-    // --- 2. Zero-GC Linked-List Spatial Grid ---
-    const gridHead = new Int8Array(GRID_TABLE_SIZE);
-    const nextPlayer = new Int8Array(MAX_PLAYERS);
-
-    // --- 3. Three Sorted Axis Arrays (Sweep-and-Prune) ---
-    const sortedX = new Uint8Array(MAX_PLAYERS);
-    const sortedY = new Uint8Array(MAX_PLAYERS);
-    const sortedZ = new Uint8Array(MAX_PLAYERS);
-
-    // --- 4. Query Visit Tracking (Prevents duplicate processing on voxel hash collisions) ---
-    const queryVisited = new Uint32Array(MAX_PLAYERS);
-    let queryToken = 1;
-
-    // --- Pre-Allocated mod.Player Cache (Fixed-Size Array: MAX_PLAYERS) ---
-    const _players: (mod.Player | undefined)[] = new Array(MAX_PLAYERS);
-
-    // --- Private Internal Scratch Buffers (Zero Heap Allocations, Never Exposed) ---
-    const _internalScratchIds: number[] = [];
-    const _scratchPos: Vectors.Vector3 = { x: 0, y: 0, z: 0 };
-    const _scratchCoords = new Float32Array(MAX_PRISM_VERTICES * 2);
-
-    const _scratchPrismBounds: PrismBounds = {
-        minX: 0,
-        maxX: 0,
-        minZ: 0,
-        maxZ: 0,
-    };
-
-    // Pre-allocated Heap Buffers for K-Closest / K-Farthest queries
-    const heapDist = new Float64Array(MAX_PLAYERS);
-    const heapId = new Uint8Array(MAX_PLAYERS);
-
-    // Event Subscriptions Storage (Separated by Geometry Type for Monomorphic Efficiency)
-    const sphereListeners: SphereListener[] = [];
-    const cylinderListeners: CylinderListener[] = [];
-    const aabbListeners: AABBListener[] = [];
-    const prismListeners: PrismListener[] = [];
-    const planeListeners: PlaneListener[] = [];
-    const extremaListeners: ExtremaListener[] = [];
-
-    // Track initialization and activity state
-    let _isInitialized = false;
-    let _lastActiveCount = 0;
-
-    // Initialize ID index and coordinate arrays
-    for (let i = 0; i < MAX_PLAYERS; ++i) {
-        sortedX[i] = i;
-        sortedY[i] = i;
-        sortedZ[i] = i;
-        posX[i] = INVALID_POS;
-        posY[i] = INVALID_POS;
-        posZ[i] = INVALID_POS;
-    }
-
-    // =========================================================================
-    // Internal State & Flag Helpers
-    // =========================================================================
-
-    function _getPlayerId(player: number | mod.Player): number | undefined {
-        if (typeof player === 'number') return player >= 0 && player < MAX_PLAYERS ? player : undefined;
-
-        const id = mod.GetObjId(player);
-
-        if (id === undefined) return undefined;
-
-        return id >= 0 && id < MAX_PLAYERS ? id : undefined;
-    }
-
-    function _isConnected(id: number | undefined): id is number {
-        return id !== undefined && id >= 0 && id < MAX_PLAYERS && (stateFlags[id] & FLAG_CONNECTED) !== 0;
-    }
-
-    function _isActive(id: number | undefined): id is number {
-        return id !== undefined && id >= 0 && id < MAX_PLAYERS && (stateFlags[id] & FLAG_ACTIVE) !== 0;
-    }
-
-    function _setFlag(id: number, flag: number): void {
-        stateFlags[id] |= flag;
-    }
-
-    function _clearFlag(id: number, flag: number): void {
-        stateFlags[id] &= ~flag;
-    }
-
-    function _clearPresence(mask: BasePresenceMask, id: number): boolean {
-        const wordIdx = id >> 5;
-        const bitMask = 1 << (id & 31);
-        let wasInside = false;
-
-        if (wordIdx === 0) {
-            wasInside = (mask.mask0 & bitMask) !== 0;
-            mask.mask0 &= ~bitMask;
-        } else if (wordIdx === 1) {
-            wasInside = (mask.mask1 & bitMask) !== 0;
-            mask.mask1 &= ~bitMask;
-        } else if (wordIdx === 2) {
-            wasInside = (mask.mask2 & bitMask) !== 0;
-            mask.mask2 &= ~bitMask;
-        } else {
-            wasInside = (mask.mask3 & bitMask) !== 0;
-            mask.mask3 &= ~bitMask;
-        }
-
-        return wasInside;
-    }
-
-    function _updatePresence(mask: BasePresenceMask, id: number, isInsideNow: boolean): boolean {
-        const wordIdx = id >> 5;
-        const bitMask = 1 << (id & 31);
-        let wasInside = false;
-
-        if (wordIdx === 0) {
-            wasInside = (mask.mask0 & bitMask) !== 0;
-
-            if (isInsideNow) {
-                mask.mask0 |= bitMask;
-            } else {
-                mask.mask0 &= ~bitMask;
-            }
-        } else if (wordIdx === 1) {
-            wasInside = (mask.mask1 & bitMask) !== 0;
-
-            if (isInsideNow) {
-                mask.mask1 |= bitMask;
-            } else {
-                mask.mask1 &= ~bitMask;
-            }
-        } else if (wordIdx === 2) {
-            wasInside = (mask.mask2 & bitMask) !== 0;
-
-            if (isInsideNow) {
-                mask.mask2 |= bitMask;
-            } else {
-                mask.mask2 &= ~bitMask;
-            }
-        } else {
-            wasInside = (mask.mask3 & bitMask) !== 0;
-
-            if (isInsideNow) {
-                mask.mask3 |= bitMask;
-            } else {
-                mask.mask3 &= ~bitMask;
-            }
-        }
-
-        return wasInside;
-    }
-
-    function _clearPlayerPresence(listener: BasePresenceMask, id: number): void {
-        const wasInside = _clearPresence(listener, id);
-
-        if (!wasInside || !listener.onExit) return;
-
-        const player = _players[id];
-
-        if (player) {
-            CallbackHandler.invoke(listener.onExit, player, id, undefined, undefined, logging, 'clearPlayerPresence');
-        }
-    }
-
-    function _resetPlayer(id: number): void {
-        _clearFlag(id, FLAG_CONNECTED | FLAG_ACTIVE);
-
-        posX[id] = INVALID_POS;
-        posY[id] = INVALID_POS;
-        posZ[id] = INVALID_POS;
-        nextPlayer[id] = -1;
-
-        for (let i = 0; i < sphereListeners.length; ++i) {
-            _clearPlayerPresence(sphereListeners[i], id);
-        }
-
-        for (let i = 0; i < cylinderListeners.length; ++i) {
-            _clearPlayerPresence(cylinderListeners[i], id);
-        }
-
-        for (let i = 0; i < aabbListeners.length; ++i) {
-            _clearPlayerPresence(aabbListeners[i], id);
-        }
-
-        for (let i = 0; i < prismListeners.length; ++i) {
-            _clearPlayerPresence(prismListeners[i], id);
-        }
-
-        for (let i = 0; i < planeListeners.length; ++i) {
-            _clearPlayerPresence(planeListeners[i], id);
-        }
-
-        _players[id] = undefined;
-    }
-
-    function _initConnectedPlayers(): void {
-        const all = mod.AllPlayers();
-        const count = mod.CountOf(all);
-
-        for (let i = 0; i < count; ++i) {
-            const player = mod.ValueInArray(all, i) as mod.Player;
-            const id = mod.GetObjId(player);
-
-            if (id < 0 || id >= MAX_PLAYERS) continue;
-
-            _setFlag(id, FLAG_CONNECTED);
-            _players[id] = player;
-        }
-    }
-
-    function _countPlayersByFlag(flag: number): number {
-        let count = 0;
-
-        for (let i = 0; i < MAX_PLAYERS; ++i) {
-            if ((stateFlags[i] & flag) === 0) continue;
-
-            ++count;
-        }
-
-        return count;
-    }
-
-    function _findPlayersByFlag(
-        flag: number,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        // Fast count-only path.
-        if (!filterFn && !idsOut && !playersOut) return _countPlayersByFlag(flag);
-
-        if (idsOut) {
-            idsOut.length = 0;
-        }
-
-        if (playersOut) {
-            playersOut.length = 0;
-        }
-
-        let count = 0;
-
-        for (let i = 0; i < MAX_PLAYERS; ++i) {
-            if ((stateFlags[i] & flag) === 0) continue;
-
-            const p = _players[i]!;
-
-            if (filterFn && !filterFn(p, i)) continue;
-
-            if (idsOut) {
-                idsOut[count] = i;
-            }
-
-            if (playersOut) {
-                playersOut[count] = p;
-            }
-
-            ++count;
-        }
-
-        return count;
-    }
-
-    // =========================================================================
-    // Event Handlers
-    // =========================================================================
-
-    function _handlePlayerJoin(player: mod.Player): void {
-        const id = mod.GetObjId(player);
-
-        if (id < 0 || id >= MAX_PLAYERS) return;
-
-        _setFlag(id, FLAG_CONNECTED);
-        _players[id] = player;
-    }
-
-    function _handlePlayerLeave(id: number): void {
-        if (id < 0 || id >= MAX_PLAYERS) return;
-
-        _resetPlayer(id);
-    }
-
-    function _updateListenerPresence(listener: BasePresenceMask, id: number, isInsideNow: boolean): void {
-        const wasInside = _updatePresence(listener, id, isInsideNow);
-
-        if (!wasInside && isInsideNow) {
-            if (!listener.onEnter) return;
-
-            const player = _players[id];
-
-            if (player) {
-                CallbackHandler.invoke(listener.onEnter, player, id, undefined, undefined, logging, 'onEnter');
-            }
-        } else if (wasInside && !isInsideNow) {
-            if (!listener.onExit) return;
-
-            const player = _players[id];
-
-            if (player) {
-                CallbackHandler.invoke(listener.onExit, player, id, undefined, undefined, logging, 'onExit');
-            }
-        }
-    }
-
-    function _evaluateSphereSubscriptions(): void {
-        const sphereCount = sphereListeners.length;
-
-        if (sphereCount === 0) return;
-
-        for (let z = 0; z < sphereCount; ++z) {
-            const l = sphereListeners[z];
-            const cx = l.centerX;
-            const cy = l.centerY;
-            const cz = l.centerZ;
-            const rSq = l.radiusSq;
-
-            for (let id = 0; id < MAX_PLAYERS; ++id) {
-                let isInside = false;
-
-                if (_isActive(id)) {
-                    const dx = posX[id] - cx;
-                    const dy = posY[id] - cy;
-                    const dz = posZ[id] - cz;
-                    isInside = dx * dx + dy * dy + dz * dz <= rSq;
-                }
-
-                _updateListenerPresence(l, id, isInside);
-            }
-        }
-    }
-
-    function _evaluateCylinderSubscriptions(): void {
-        const cylinderCount = cylinderListeners.length;
-
-        if (cylinderCount === 0) return;
-
-        for (let z = 0; z < cylinderCount; ++z) {
-            const l = cylinderListeners[z];
-            const cx = l.centerX;
-            const cz = l.centerZ;
-            const rSq = l.radiusSq;
-            const minY = l.minY;
-            const maxY = l.maxY;
-
-            for (let id = 0; id < MAX_PLAYERS; ++id) {
-                let isInside = false;
-
-                if (_isActive(id)) {
-                    const y = posY[id];
-
-                    if (y >= minY && y <= maxY) {
-                        const dx = posX[id] - cx;
-                        const dz = posZ[id] - cz;
-                        isInside = dx * dx + dz * dz <= rSq;
-                    }
-                }
-
-                _updateListenerPresence(l, id, isInside);
-            }
-        }
-    }
-
-    function _evaluateAabbSubscriptions(): void {
-        const aabbCount = aabbListeners.length;
-
-        if (aabbCount === 0) return;
-
-        for (let z = 0; z < aabbCount; ++z) {
-            const l = aabbListeners[z];
-            const minX = l.minX;
-            const minY = l.minY;
-            const minZ = l.minZ;
-            const maxX = l.maxX;
-            const maxY = l.maxY;
-            const maxZ = l.maxZ;
-
-            for (let id = 0; id < MAX_PLAYERS; ++id) {
-                let isInside = false;
-
-                if (_isActive(id)) {
-                    const x = posX[id];
-                    const y = posY[id];
-                    const z = posZ[id];
-                    isInside = x >= minX && x <= maxX && y >= minY && y <= maxY && z >= minZ && z <= maxZ;
-                }
-
-                _updateListenerPresence(l, id, isInside);
-            }
-        }
-    }
-
-    function _evaluatePrismSubscriptions(): void {
-        const prismCount = prismListeners.length;
-
-        if (prismCount === 0) return;
-
-        for (let z = 0; z < prismCount; ++z) {
-            const l = prismListeners[z];
-            const count = l.vertexCount;
-
-            if (count < 3) continue;
-
-            const minX = l.minX;
-            const maxX = l.maxX;
-            const minZ = l.minZ;
-            const maxZ = l.maxZ;
-            const minY = l.minY;
-            const maxY = l.maxY;
-            const coords = l.coords;
-
-            for (let id = 0; id < MAX_PLAYERS; ++id) {
-                let isInside = false;
-
-                if (_isActive(id)) {
-                    const y = posY[id];
-
-                    if (y >= minY && y <= maxY) {
-                        const x = posX[id];
-                        const pz = posZ[id];
-
-                        if (x >= minX && x <= maxX && pz >= minZ && pz <= maxZ) {
-                            isInside = _isPointInPolygon(x, pz, coords, count);
-                        }
-                    }
-                }
-
-                _updateListenerPresence(l, id, isInside);
-            }
-        }
-    }
-
-    function _evaluatePlaneSubscriptions(): void {
-        const planeCount = planeListeners.length;
-
-        if (planeCount === 0) return;
-
-        for (let z = 0; z < planeCount; ++z) {
-            const l = planeListeners[z];
-            const thresh = l.threshold;
-            const posArr = l.axis === AxisType.X ? posX : l.axis === AxisType.Y ? posY : posZ;
-
-            for (let id = 0; id < MAX_PLAYERS; ++id) {
-                const isInside = _isActive(id) && posArr[id] >= thresh;
-
-                _updateListenerPresence(l, id, isInside);
-            }
-        }
-    }
-
-    function _evaluateExtremaSubscriptions(): void {
-        const extremaCount = extremaListeners.length;
-
-        if (extremaCount === 0) return;
-
-        for (let i = 0; i < extremaCount; ++i) {
-            const l = extremaListeners[i];
-            let currId: number | undefined = undefined;
-
-            if (l.type === ExtremaType.Highest) {
-                currId = getHighestPlayerId();
-            } else if (l.type === ExtremaType.Lowest) {
-                currId = getLowestPlayerId();
-            } else if (l.type === ExtremaType.Closest) {
-                currId = getClosestPlayerId(l.x, l.y, l.z);
-            } else if (l.type === ExtremaType.Farthest) {
-                currId = getFarthestPlayerId(l.x, l.y, l.z);
-            }
-
-            if (currId === l.lastPlayerId) continue;
-
-            const prevId = l.lastPlayerId;
-            l.lastPlayerId = currId;
-
-            const newPlayer = currId !== undefined ? _players[currId] : undefined;
-            const prevPlayer = prevId !== undefined ? _players[prevId] : undefined;
-
-            CallbackHandler.invoke(l.callback, newPlayer, prevPlayer, currId, prevId, logging, 'onExtremaChange');
-        }
-    }
-
-    function _handleTick(): void {
-        // Fast path: if no players are connected to the server, skip all tick processing
-        if (_countPlayersByFlag(FLAG_CONNECTED) === 0) {
-            _lastActiveCount = 0;
-            return;
-        }
-
-        // Clear Grid Head Table
-        gridHead.fill(-1);
-
-        let activeCount = 0;
-
-        // Phase 1: Fetch positions for connected players, convert to scaled ints, update SoA & Grid
-        for (let id = 0; id < MAX_PLAYERS; ++id) {
-            if (!_isConnected(id)) continue;
-
-            const player = _players[id];
-
-            if (player === undefined) {
-                _resetPlayer(id);
-                continue;
-            }
-
-            Vectors.toVector3(mod.GetObjectPosition(player), _scratchPos);
-
-            // Filter out inactive/dead/unspawned players near origin (within 1mm tolerance)
-            if (Vectors.isZero(_scratchPos, ORIGIN_TOLERANCE_METERS)) {
-                _clearFlag(id, FLAG_ACTIVE);
-                posX[id] = INVALID_POS;
-                posY[id] = INVALID_POS;
-                posZ[id] = INVALID_POS;
-                nextPlayer[id] = -1;
-
-                continue;
-            }
-
-            _setFlag(id, FLAG_ACTIVE);
-            ++activeCount;
-
-            const x = _scratchPos.x;
-            const y = _scratchPos.y;
-            const z = _scratchPos.z;
-
-            posX[id] = x;
-            posY[id] = y;
-            posZ[id] = z;
-
-            // Insert into 3D Linked Voxel Grid
-            const gx = Math.floor(x / VOXEL_SIZE) | 0;
-            const gy = Math.floor(y / VOXEL_SIZE) | 0;
-            const gz = Math.floor(z / VOXEL_SIZE) | 0;
-            const cellHash = _hashVoxel(gx, gy, gz);
-
-            nextPlayer[id] = gridHead[cellHash];
-            gridHead[cellHash] = id;
-        }
-
-        // If no players are active this tick and were not active last tick, skip sorting and subscriptions
-        if (activeCount === 0 && _lastActiveCount === 0) return;
-
-        _lastActiveCount = activeCount;
-
-        // Phase 2: Update 3 Sorted Axis Arrays via Insertion Sort (O(N) near-linear time)
-        _insertionSort(sortedX, posX);
-        _insertionSort(sortedY, posY);
-        _insertionSort(sortedZ, posZ);
-
-        // Phase 3: Evaluate Active Reactive Subscriptions (Zero-GC Bitmask Diffing)
-        _evaluateSphereSubscriptions();
-        _evaluateCylinderSubscriptions();
-        _evaluateAabbSubscriptions();
-        _evaluatePrismSubscriptions();
-        _evaluatePlaneSubscriptions();
-        _evaluateExtremaSubscriptions();
-    }
-
-    // =========================================================================
-    // Internal Helper Math & Sorting
-    // =========================================================================
-
-    /**
-     * Unpacks an array of PrismVertex points into a flat interleaved Float32Array buffer
-     * [x0, z0, x1, z1, ...] and computes the 2D bounding box (minX, maxX, minZ, maxZ).
-     *
-     * Bounding box values are written into the targetBounds target object to eliminate heap allocations.
-     * @param vertices - Array of {x, z} vertex objects defining the polygon.
-     * @param targetCoords - Target Float32Array to write interleaved coordinates [x0, z0, x1, z1, ...] into.
-     * @param targetBounds - Target object to populate with bounding box.
-     */
-    function _unpackVertices(vertices: PrismVertex[], targetCoords: Float32Array, targetBounds: PrismBounds): void {
-        const count = vertices.length;
-
-        let minX = Infinity;
-        let maxX = -Infinity;
-        let minZ = Infinity;
-        let maxZ = -Infinity;
-
-        for (let i = 0; i < count; ++i) {
-            const v = vertices[i];
-            const vx = v.x;
-            const vz = v.z;
-            const i2 = i << 1;
-
-            targetCoords[i2] = vx;
-            targetCoords[i2 + 1] = vz;
-
-            if (vx < minX) {
-                minX = vx;
-            }
-
-            if (vx > maxX) {
-                maxX = vx;
-            }
-
-            if (vz < minZ) {
-                minZ = vz;
-            }
-
-            if (vz > maxZ) {
-                maxZ = vz;
-            }
-        }
-
-        targetBounds.minX = minX;
-        targetBounds.maxX = maxX;
-        targetBounds.minZ = minZ;
-        targetBounds.maxZ = maxZ;
-    }
-
-    /**
-     * Determines whether a 2D point (px, pz) lies inside a polygon defined by interleaved coordinates.
-     * Uses the Jordan Curve Theorem (Ray-Casting even-odd rule).
-     * @param px - Point X coordinate in meters.
-     * @param pz - Point Z coordinate in meters.
-     * @param coords - Flat Float32Array of interleaved polygon coordinates [x0, z0, x1, z1, ...].
-     * @param count - Total number of vertices.
-     * @returns True if point is inside the polygon, false otherwise.
-     */
-    function _isPointInPolygon(px: number, pz: number, coords: Float32Array, count: number): boolean {
-        if (count < 3) return false;
-
-        let inside = false;
-
-        for (let i = 0, j = count - 1; i < count; j = i++) {
-            const i2 = i << 1;
-            const j2 = j << 1;
-            const xi = coords[i2];
-            const zi = coords[i2 + 1];
-            const xj = coords[j2];
-            const zj = coords[j2 + 1];
-
-            const intersect = zi > pz !== zj > pz && px < ((xj - xi) * (pz - zi)) / (zj - zi) + xi;
-
-            if (!intersect) continue;
-
-            inside = !inside;
-        }
-
-        return inside;
-    }
-
-    function _hashVoxel(gx: number, gy: number, gz: number): number {
-        // Fast spatial integer hash mapped to 0..511
-        return ((gx * 73856093) ^ (gy * 19349663) ^ (gz * 83492791)) & GRID_MASK;
-    }
-
-    function _insertionSort(sortedArray: Uint8Array, posArray: Float32Array): void {
-        for (let i = 1; i < MAX_PLAYERS; ++i) {
-            const keyId = sortedArray[i];
-            const keyVal = posArray[keyId];
-            let j = i - 1;
-
-            while (j >= 0 && posArray[sortedArray[j]] > keyVal) {
-                sortedArray[j + 1] = sortedArray[j];
-                --j;
-            }
-
-            sortedArray[j + 1] = keyId;
-        }
-    }
-
-    function _findLowerBound(sortedArray: Uint8Array, posArray: Float32Array, targetVal: number): number {
-        let low = 0;
-        let high = MAX_PLAYERS - 1;
-        let ans = MAX_PLAYERS;
-
-        while (low <= high) {
-            const mid = (low + high) >> 1;
-
-            if (posArray[sortedArray[mid]] >= targetVal) {
-                ans = mid;
-                high = mid - 1;
-            } else {
-                low = mid + 1;
-            }
-        }
-
-        return ans;
-    }
-
-    function _findUpperBound(sortedArray: Uint8Array, posArray: Float32Array, targetVal: number): number {
-        let low = 0;
-        let high = MAX_PLAYERS - 1;
-        let ans = -1;
-
-        while (low <= high) {
-            const mid = (low + high) >> 1;
-
-            if (posArray[sortedArray[mid]] <= targetVal) {
-                ans = mid;
-                low = mid + 1;
-            } else {
-                high = mid - 1;
-            }
-        }
-
-        return ans;
-    }
-
-    function _findPlayersGte(
-        sortedArray: Uint8Array,
-        posArray: Float32Array,
-        valMeters: number,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        const lx = _findLowerBound(sortedArray, posArray, valMeters);
-        let count = 0;
-
-        // Fast count-only path.
-        if (!filterFn && !idsOut && !playersOut) {
-            for (let i = lx; i < MAX_PLAYERS; ++i) {
-                if (!_isActive(sortedArray[i])) continue;
-
-                ++count;
-            }
-
-            return count;
-        }
-
-        if (idsOut) {
-            idsOut.length = 0;
-        }
-
-        if (playersOut) {
-            playersOut.length = 0;
-        }
-
-        for (let i = lx; i < MAX_PLAYERS; ++i) {
-            const id = sortedArray[i];
-
-            if (!_isActive(id)) continue;
-
-            const p = _players[id]!;
-
-            if (filterFn && !filterFn(p, id)) continue;
-
-            if (idsOut) {
-                idsOut[count] = id;
-            }
-
-            if (playersOut) {
-                playersOut[count] = p;
-            }
-
-            ++count;
-        }
-
-        return count;
-    }
-
-    function _findPlayersLte(
-        sortedArray: Uint8Array,
-        posArray: Float32Array,
-        valMeters: number,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        const ux = _findUpperBound(sortedArray, posArray, valMeters);
-        let count = 0;
-
-        // Fast count-only path.
-        if (!filterFn && !idsOut && !playersOut) {
-            for (let i = 0; i <= ux; ++i) {
-                if (!_isActive(sortedArray[i])) continue;
-
-                ++count;
-            }
-
-            return count;
-        }
-
-        if (idsOut) {
-            idsOut.length = 0;
-        }
-
-        if (playersOut) {
-            playersOut.length = 0;
-        }
-
-        for (let i = 0; i <= ux; ++i) {
-            const id = sortedArray[i];
-
-            if (!_isActive(id)) continue;
-
-            const p = _players[id]!;
-
-            if (filterFn && !filterFn(p, id)) continue;
-
-            if (idsOut) {
-                idsOut[count] = id;
-            }
-
-            if (playersOut) {
-                playersOut[count] = p;
-            }
-
-            ++count;
-        }
-
-        return count;
-    }
-
-    // =========================================================================
-    // Internal Heap Helpers (Zero-GC)
-    // =========================================================================
-
-    function _heapPush(distSq: number, id: number, heapSize: number, isMax: boolean): void {
-        let idx = heapSize;
-        heapDist[idx] = distSq;
-        heapId[idx] = id;
-
-        while (idx > 0) {
-            const parent = (idx - 1) >> 1;
-
-            if (isMax ? heapDist[idx] <= heapDist[parent] : heapDist[idx] >= heapDist[parent]) break;
-
-            const td = heapDist[idx];
-            heapDist[idx] = heapDist[parent];
-            heapDist[parent] = td;
-
-            const ti = heapId[idx];
-            heapId[idx] = heapId[parent];
-            heapId[parent] = ti;
-
-            idx = parent;
-        }
-    }
-
-    function _heapReplaceRoot(distSq: number, id: number, heapSize: number, isMax: boolean): void {
-        heapDist[0] = distSq;
-        heapId[0] = id;
-        let idx = 0;
-
-        while (true) {
-            let best = idx;
-            const left = (idx << 1) + 1;
-            const right = left + 1;
-
-            if (left < heapSize && (isMax ? heapDist[left] > heapDist[best] : heapDist[left] < heapDist[best])) {
-                best = left;
-            }
-
-            if (right < heapSize && (isMax ? heapDist[right] > heapDist[best] : heapDist[right] < heapDist[best])) {
-                best = right;
-            }
-
-            if (best === idx) break;
-
-            const td = heapDist[idx];
-            heapDist[idx] = heapDist[best];
-            heapDist[best] = td;
-
-            const ti = heapId[idx];
-            heapId[idx] = heapId[best];
-            heapId[best] = ti;
-
-            idx = best;
-        }
-    }
-
-    function _getExtremumPlayer(
-        x: number,
-        y: number,
-        z: number,
-        findClosest: boolean,
-        filterFn?: (player: mod.Player, id: number) => boolean
-    ): number | undefined {
-        let bestId: number | undefined = undefined;
-        let bestDistSq = findClosest ? Infinity : -1;
-
-        for (let id = 0; id < MAX_PLAYERS; ++id) {
-            if (!_isActive(id)) continue;
-
-            if (filterFn && !filterFn(_players[id]!, id)) continue;
-
-            const dx = posX[id] - x;
-            const dy = posY[id] - y;
-            const dz = posZ[id] - z;
-            const distSq = dx * dx + dy * dy + dz * dz;
-
-            if (findClosest ? distSq < bestDistSq : distSq > bestDistSq) {
-                bestDistSq = distSq;
-                bestId = id;
-            }
-        }
-
-        return bestId;
-    }
-
-    function _getKExtremumDistancePlayers(
-        x: number,
-        y: number,
-        z: number,
-        k: number,
-        isClosest: boolean,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        if (idsOut) {
-            idsOut.length = 0;
-        }
-
-        if (playersOut) {
-            playersOut.length = 0;
-        }
-
-        if (k <= 0) return 0;
-
-        const targetK = k > MAX_PLAYERS ? MAX_PLAYERS : k;
-        let heapSize = 0;
-
-        for (let id = 0; id < MAX_PLAYERS; ++id) {
-            if (!_isActive(id)) continue;
-
-            if (filterFn && !filterFn(_players[id]!, id)) continue;
-
-            const dx = posX[id] - x;
-            const dy = posY[id] - y;
-            const dz = posZ[id] - z;
-            const distSq = dx * dx + dy * dy + dz * dz;
-
-            if (heapSize < targetK) {
-                _heapPush(distSq, id, heapSize, isClosest);
-                ++heapSize;
-            } else if (isClosest ? distSq < heapDist[0] : distSq > heapDist[0]) {
-                _heapReplaceRoot(distSq, id, heapSize, isClosest);
-            }
-        }
-
-        if (idsOut) {
-            idsOut.length = heapSize;
-        }
-
-        if (playersOut) {
-            playersOut.length = heapSize;
-        }
-
-        let currentSize = heapSize;
-
-        for (let i = heapSize - 1; i >= 0; --i) {
-            const id = heapId[0];
-
-            if (idsOut) {
-                idsOut[i] = id;
-            }
-
-            if (playersOut) {
-                playersOut[i] = _players[id]!;
-            }
-
-            if (i <= 0) break;
-
-            _heapReplaceRoot(heapDist[currentSize - 1], heapId[currentSize - 1], currentSize - 1, isClosest);
-            --currentSize;
-        }
-
-        return heapSize;
-    }
-
-    function _getKExtremes(
-        sortedArray: Uint8Array,
-        k: number,
-        reverse: boolean,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        if (idsOut) {
-            idsOut.length = 0;
-        }
-
-        if (playersOut) {
-            playersOut.length = 0;
-        }
-
-        if (k <= 0) return 0;
-
-        const targetK = k > MAX_PLAYERS ? MAX_PLAYERS : k;
-        let count = 0;
-
-        const start = reverse ? MAX_PLAYERS - 1 : 0;
-        const end = reverse ? -1 : MAX_PLAYERS;
-        const step = reverse ? -1 : 1;
-
-        for (let i = start; i !== end; i += step) {
-            const id = sortedArray[i];
-
-            if (!_isActive(id)) continue;
-
-            const p = _players[id]!;
-
-            if (filterFn && !filterFn(p, id)) continue;
-
-            if (idsOut) {
-                idsOut[count] = id;
-            }
-
-            if (playersOut) {
-                playersOut[count] = p;
-            }
-
-            if (++count === targetK) break;
-        }
-
-        return count;
-    }
-
-    // =========================================================================
-    // Exposed Player State Functions
-    // =========================================================================
-
-    /**
-     * Gets world coordinates in meters for an active player.
-     * Pass an `out` vector for zero-allocation reuse.
-     * @param player - The player slot ID (0-99) or engine mod.Player object.
-     * @param out - Optional target Vector3 to write coordinates into.
-     * @returns The Vector3 position in meters, null if the player is connected but unspawned/inactive, or undefined if not connected.
-     */
-    export function getPosition(
-        player: number | mod.Player,
-        out?: Vectors.Vector3
-    ): Vectors.Vector3 | null | undefined {
-        const id = _getPlayerId(player);
-
-        if (!_isConnected(id)) return undefined;
-
-        if (!_isActive(id)) return null;
-
-        const res = out || { x: 0, y: 0, z: 0 };
-        res.x = posX[id];
-        res.y = posY[id];
-        res.z = posZ[id];
-
-        return res;
-    }
-
-    /**
-     * Checks if a player slot is currently connected to the server.
-     * @param player - The player slot ID (0-99) or engine mod.Player object.
-     * @returns True if the player is connected, false otherwise.
-     */
-    export function isPlayerConnected(player: number | mod.Player): boolean {
-        return _isConnected(_getPlayerId(player));
-    }
-
-    /**
-     * Checks if a player is active (connected, spawned, and tracked with a valid 3D position).
-     * @param player - The player slot ID (0-99) or engine mod.Player object.
-     * @returns True if active/spawned, false if connected but inactive, or undefined if the player is not connected.
-     */
-    export function isPlayerActive(player: number | mod.Player): boolean | undefined {
-        const id = _getPlayerId(player);
-
-        if (!_isConnected(id)) return undefined;
-
-        return _isActive(id);
-    }
-
-    /**
-     * Returns the total count of currently connected players.
-     * @returns The number of connected players.
-     */
-    export function getConnectedPlayerCount(): number {
-        return _countPlayersByFlag(FLAG_CONNECTED);
-    }
-
-    /**
-     * Returns the total count of currently active (spawned) players.
-     * @returns The number of active players.
-     */
-    export function getActivePlayerCount(): number {
-        return _countPlayersByFlag(FLAG_ACTIVE);
-    }
-
-    /**
-     * Retrieves the cached engine `mod.Player` object for a given player ID or object.
-     * @param player - The player slot ID (0-99) or engine mod.Player object.
-     * @returns The engine mod.Player object, or undefined if the player is not connected or invalid.
-     */
-    export function getPlayer(player: number | mod.Player): mod.Player | undefined {
-        const id = _getPlayerId(player);
-
-        if (!_isConnected(id)) return undefined;
-
-        return _players[id!];
-    }
-
-    /**
-     * Resolves the integer slot ID (0-99) for a given player ID or engine mod.Player object.
-     * @param player - The player slot ID (0-99) or engine mod.Player object.
-     * @returns The integer player slot ID (0-99), or undefined if the player is not connected or invalid.
-     */
-    export function getPlayerId(player: number | mod.Player): number | undefined {
-        const id = _getPlayerId(player);
-
-        if (!_isConnected(id)) return undefined;
-
-        return id;
-    }
-
-    /**
-     * Zero-GC batch utility to map an array of player IDs to their corresponding cached `mod.Player` objects.
-     * Populates and returns the provided `playersOut` array.
-     * Non-connected or invalid player IDs are set to `undefined`.
-     * @param ids - Array of player IDs to convert.
-     * @param playersOut - Optional target array to write mod.Player objects into.
-     * @returns The players array.
-     */
-    export function toPlayers(
-        ids: (number | undefined)[],
-        playersOut?: (mod.Player | undefined)[]
-    ): (mod.Player | undefined)[] {
-        const out = playersOut ?? [];
-        out.length = 0;
-        const length = ids.length;
-
-        for (let i = 0; i < length; ++i) {
-            const id = ids[i];
-
-            out[i] = _isConnected(id) ? _players[id] : undefined;
-        }
-
-        return out;
-    }
-
-    /**
-     * Zero-GC batch utility to resolve an array of engine `mod.Player` objects to their integer slot IDs.
-     * Populates and returns the provided `idsOut` array.
-     * Non-connected or invalid players are set to `undefined`.
-     * @param players - Array of mod.Player objects to convert.
-     * @param idsOut - Optional target array to write player IDs into.
-     * @returns The ids array.
-     */
-    export function toPlayerIds(
-        players: (mod.Player | undefined)[],
-        idsOut?: (number | undefined)[]
-    ): (number | undefined)[] {
-        const out = idsOut ?? [];
-        out.length = 0;
-        const length = players.length;
-
-        for (let i = 0; i < length; ++i) {
-            const p = players[i];
-
-            if (!p) {
-                out[i] = undefined;
-                continue;
-            }
-
-            const id = _getPlayerId(p);
-
-            out[i] = _isConnected(id) ? id : undefined;
-        }
-
-        return out;
-    }
-
-    /**
-     * Finds all currently connected players.
-     * If no buffers are provided, simply returns the connected player count with zero memory writes.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write connected player IDs into.
-     * @param playersOut - Optional target array to write connected mod.Player objects into.
-     * @returns The total number of connected players found.
-     */
-    export function findConnectedPlayers(
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        return _findPlayersByFlag(FLAG_CONNECTED, filterFn, idsOut, playersOut);
-    }
-
-    /**
-     * Finds all currently active (spawned) players with valid 3D coordinates.
-     * If no buffers are provided, simply returns the active player count with zero memory writes.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of active players found.
-     */
-    export function findActivePlayers(
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        return _findPlayersByFlag(FLAG_ACTIVE, filterFn, idsOut, playersOut);
-    }
-
-    // =========================================================================
-    // Exposed Distance Functions
-    // =========================================================================
-
-    /**
-     * Returns the squared 3D Euclidean distance in meters squared (m^2) between two active players.
-     * Avoids square root overhead.
-     * @param playerA - The first player slot ID (0-99) or engine mod.Player object.
-     * @param playerB - The second player slot ID (0-99) or engine mod.Player object.
-     * @returns The squared distance in meters squared, Infinity if either player is inactive, or undefined if either player is not connected.
-     */
-    export function getDistanceSq(playerA: number | mod.Player, playerB: number | mod.Player): number | undefined {
-        const idA = _getPlayerId(playerA);
-        const idB = _getPlayerId(playerB);
-
-        if (!_isConnected(idA) || !_isConnected(idB)) return undefined;
-
-        if (!_isActive(idA) || !_isActive(idB)) return Infinity;
-
-        const dx = posX[idA] - posX[idB];
-        const dy = posY[idA] - posY[idB];
-        const dz = posZ[idA] - posZ[idB];
-
-        return dx * dx + dy * dy + dz * dz;
-    }
-
-    /**
-     * Returns the 3D Euclidean distance in meters between two active players.
-     * @param playerA - The first player slot ID (0-99) or engine mod.Player object.
-     * @param playerB - The second player slot ID (0-99) or engine mod.Player object.
-     * @returns The distance in meters, Infinity if either player is inactive, or undefined if either player is not connected.
-     */
-    export function getDistance(playerA: number | mod.Player, playerB: number | mod.Player): number | undefined {
-        const distSq = getDistanceSq(playerA, playerB);
-
-        if (distSq === undefined) return undefined;
-
-        return distSq === Infinity ? Infinity : Math.sqrt(distSq);
-    }
-
-    /**
-     * Returns the squared 2D horizontal distance in meters squared (m^2) on the XZ plane between two active players.
-     * Avoids square root overhead and ignores vertical elevation differences.
-     * @param playerA - The first player slot ID (0-99) or engine mod.Player object.
-     * @param playerB - The second player slot ID (0-99) or engine mod.Player object.
-     * @returns The horizontal squared distance in meters squared, Infinity if either player is inactive, or undefined if either player is not connected.
-     */
-    export function getDistanceSqXZ(playerA: number | mod.Player, playerB: number | mod.Player): number | undefined {
-        const idA = _getPlayerId(playerA);
-        const idB = _getPlayerId(playerB);
-
-        if (!_isConnected(idA) || !_isConnected(idB)) return undefined;
-
-        if (!_isActive(idA) || !_isActive(idB)) return Infinity;
-
-        const dx = posX[idA] - posX[idB];
-        const dz = posZ[idA] - posZ[idB];
-
-        return dx * dx + dz * dz;
-    }
-
-    /**
-     * Returns the 2D horizontal distance in meters on the XZ plane between two active players.
-     * Ignores vertical elevation differences.
-     * @param playerA - The first player slot ID (0-99) or engine mod.Player object.
-     * @param playerB - The second player slot ID (0-99) or engine mod.Player object.
-     * @returns The horizontal distance in meters, Infinity if either player is inactive, or undefined if either player is not connected.
-     */
-    export function getDistanceXZ(playerA: number | mod.Player, playerB: number | mod.Player): number | undefined {
-        const distSq = getDistanceSqXZ(playerA, playerB);
-
-        if (distSq === undefined) return undefined;
-
-        return distSq === Infinity ? Infinity : Math.sqrt(distSq);
-    }
-
-    // =========================================================================
-    // Exposed Proximity Query Functions
-    // =========================================================================
-
-    /**
-     * Fast 3D Volumetric Sphere Query using 3D Linked Voxel Grid.
-     * Executes in O(cells) with ZERO Garbage Collection pressure.
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param x - Target X coordinate in world meters.
-     * @param y - Target Y coordinate in world meters.
-     * @param z - Target Z coordinate in world meters.
-     * @param radiusMeters - Search sphere radius in meters.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of active players found within the sphere.
-     */
-    export function findPlayersInSphere(
-        x: number,
-        y: number,
-        z: number,
-        radiusMeters: number,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        if (idsOut) {
-            idsOut.length = 0;
-        }
-
-        if (playersOut) {
-            playersOut.length = 0;
-        }
-
-        if (radiusMeters <= 0) return 0;
-
-        const radiusSq = radiusMeters * radiusMeters;
-        const minGx = Math.floor((x - radiusMeters) / VOXEL_SIZE);
-        const maxGx = Math.floor((x + radiusMeters) / VOXEL_SIZE);
-        const minGy = Math.floor((y - radiusMeters) / VOXEL_SIZE);
-        const maxGy = Math.floor((y + radiusMeters) / VOXEL_SIZE);
-        const minGz = Math.floor((z - radiusMeters) / VOXEL_SIZE);
-        const maxGz = Math.floor((z + radiusMeters) / VOXEL_SIZE);
-
-        // Advance query token for visit stamping
-        ++queryToken;
-
-        if (queryToken === 0xffffffff) {
-            queryVisited.fill(0);
-            queryToken = 1;
-        }
-
-        const currentToken = queryToken;
-        let count = 0;
-
-        for (let gx = minGx; gx <= maxGx; ++gx) {
-            for (let gy = minGy; gy <= maxGy; ++gy) {
-                for (let gz = minGz; gz <= maxGz; ++gz) {
-                    const hash = _hashVoxel(gx, gy, gz);
-
-                    for (let pId = gridHead[hash]; pId !== -1; pId = nextPlayer[pId]) {
-                        if (queryVisited[pId] === currentToken) continue;
-
-                        queryVisited[pId] = currentToken;
-
-                        if (!_isActive(pId)) continue;
-
-                        const dx = posX[pId] - x;
-                        const dy = posY[pId] - y;
-                        const dz = posZ[pId] - z;
-
-                        if (dx * dx + dy * dy + dz * dz > radiusSq) continue;
-
-                        const p = _players[pId]!;
-
-                        if (filterFn && !filterFn(p, pId)) continue;
-
-                        if (idsOut) {
-                            idsOut[count] = pId;
-                        }
-
-                        if (playersOut) {
-                            playersOut[count] = p;
-                        }
-
-                        ++count;
-                    }
-                }
-            }
-        }
-
-        return count;
-    }
-
-    /**
-     * Finds all active players outside a 3D sphere.
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param x - Center X coordinate in world meters.
-     * @param y - Center Y coordinate in world meters.
-     * @param z - Center Z coordinate in world meters.
-     * @param radiusMeters - Sphere radius in meters.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of active players found strictly outside the sphere.
-     */
-    export function findPlayersOutsideSphere(
-        x: number,
-        y: number,
-        z: number,
-        radiusMeters: number,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        if (idsOut) {
-            idsOut.length = 0;
-        }
-
-        if (playersOut) {
-            playersOut.length = 0;
-        }
-
-        const radiusSq = radiusMeters * radiusMeters;
-        let count = 0;
-
-        for (let id = 0; id < MAX_PLAYERS; ++id) {
-            if (!_isActive(id)) continue;
-
-            const p = _players[id]!;
-
-            if (filterFn && !filterFn(p, id)) continue;
-
-            const dx = posX[id] - x;
-            const dy = posY[id] - y;
-            const dz = posZ[id] - z;
-
-            if (dx * dx + dy * dy + dz * dz <= radiusSq) continue;
-
-            if (idsOut) {
-                idsOut[count] = id;
-            }
-
-            if (playersOut) {
-                playersOut[count] = p;
-            }
-
-            ++count;
-        }
-
-        return count;
-    }
-
-    /**
-     * Fast 2.5D Volumetric Cylinder Query (horizontal radius on XZ plane with vertical Y bounds).
-     * Uses sweep-and-prune axis selection for high performance.
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param centerX - Center X coordinate in world meters.
-     * @param centerZ - Center Z coordinate in world meters.
-     * @param radiusMeters - Cylinder horizontal radius in meters.
-     * @param minY - Optional minimum Y elevation in meters (default: -Infinity).
-     * @param maxY - Optional maximum Y elevation in meters (default: Infinity).
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of active players found within the cylinder.
-     */
-    export function findPlayersInCylinder(
-        centerX: number,
-        centerZ: number,
-        radiusMeters: number,
-        minY: number = -Infinity,
-        maxY: number = Infinity,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        if (idsOut) {
-            idsOut.length = 0;
-        }
-
-        if (playersOut) {
-            playersOut.length = 0;
-        }
-
-        if (radiusMeters <= 0) return 0;
-
-        const radiusSq = radiusMeters * radiusMeters;
-        const minX = centerX - radiusMeters;
-        const maxX = centerX + radiusMeters;
-        const minZ = centerZ - radiusMeters;
-        const maxZ = centerZ + radiusMeters;
-
-        const lx = _findLowerBound(sortedX, posX, minX);
-        const ux = _findUpperBound(sortedX, posX, maxX);
-        const lz = _findLowerBound(sortedZ, posZ, minZ);
-        const uz = _findUpperBound(sortedZ, posZ, maxZ);
-
-        const countX = ux >= lx ? ux - lx + 1 : 0;
-        const countZ = uz >= lz ? uz - lz + 1 : 0;
-
-        const bestSorted = countX <= countZ ? sortedX : sortedZ;
-        const start = countX <= countZ ? lx : lz;
-        const end = countX <= countZ ? ux : uz;
-        let count = 0;
-
-        for (let i = start; i <= end; ++i) {
-            const id = bestSorted[i];
-
-            if (!_isActive(id) || posY[id] < minY || posY[id] > maxY) continue;
-
-            const dx = posX[id] - centerX;
-            const dz = posZ[id] - centerZ;
-
-            if (dx * dx + dz * dz > radiusSq) continue;
-
-            const p = _players[id]!;
-
-            if (filterFn && !filterFn(p, id)) continue;
-
-            if (idsOut) {
-                idsOut[count] = id;
-            }
-
-            if (playersOut) {
-                playersOut[count] = p;
-            }
-
-            ++count;
-        }
-
-        return count;
-    }
-
-    /**
-     * Finds all active players outside a 2.5D vertical cylinder.
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param centerX - Center X coordinate in world meters.
-     * @param centerZ - Center Z coordinate in world meters.
-     * @param radiusMeters - Cylinder horizontal radius in meters.
-     * @param minY - Optional minimum Y elevation in meters (default: -Infinity).
-     * @param maxY - Optional maximum Y elevation in meters (default: Infinity).
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of active players found strictly outside the cylinder.
-     */
-    export function findPlayersOutsideCylinder(
-        centerX: number,
-        centerZ: number,
-        radiusMeters: number,
-        minY: number = -Infinity,
-        maxY: number = Infinity,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        if (idsOut) {
-            idsOut.length = 0;
-        }
-
-        if (playersOut) {
-            playersOut.length = 0;
-        }
-
-        const radiusSq = radiusMeters * radiusMeters;
-        let count = 0;
-
-        for (let id = 0; id < MAX_PLAYERS; ++id) {
-            if (!_isActive(id)) continue;
-
-            const p = _players[id]!;
-
-            if (filterFn && !filterFn(p, id)) continue;
-
-            const y = posY[id];
-
-            if (y < minY || y > maxY) {
-                if (idsOut) {
-                    idsOut[count] = id;
-                }
-
-                if (playersOut) {
-                    playersOut[count] = p;
-                }
-
-                ++count;
-
-                continue;
-            }
-
-            const dx = posX[id] - centerX;
-            const dz = posZ[id] - centerZ;
-
-            if (dx * dx + dz * dz > radiusSq) {
-                if (idsOut) {
-                    idsOut[count] = id;
-                }
-
-                if (playersOut) {
-                    playersOut[count] = p;
-                }
-
-                ++count;
-            }
-        }
-
-        return count;
-    }
-
-    /**
-     * Fast 3D AABB Box Query using 3-Axis Sweep-and-Prune.
-     * Evaluates binary search ranges across all 3 axes and iterates along the axis with the fewest candidate elements.
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param minX - Minimum X coordinate in world meters.
-     * @param minY - Minimum Y coordinate in world meters.
-     * @param minZ - Minimum Z coordinate in world meters.
-     * @param maxX - Maximum X coordinate in world meters.
-     * @param maxY - Maximum Y coordinate in world meters.
-     * @param maxZ - Maximum Z coordinate in world meters.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of active players found within the bounding box.
-     */
-    export function findPlayersInAABB(
-        minX: number,
-        minY: number,
-        minZ: number,
-        maxX: number,
-        maxY: number,
-        maxZ: number,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        if (idsOut) {
-            idsOut.length = 0;
-        }
-
-        if (playersOut) {
-            playersOut.length = 0;
-        }
-
-        // Binary search bounds across all 3 sorted axes
-        const lx = _findLowerBound(sortedX, posX, minX);
-        const ux = _findUpperBound(sortedX, posX, maxX);
-
-        const ly = _findLowerBound(sortedY, posY, minY);
-        const uy = _findUpperBound(sortedY, posY, maxY);
-
-        const lz = _findLowerBound(sortedZ, posZ, minZ);
-        const uz = _findUpperBound(sortedZ, posZ, maxZ);
-
-        const countX = ux >= lx ? ux - lx + 1 : 0;
-        const countY = uy >= ly ? uy - ly + 1 : 0;
-        const countZ = uz >= lz ? uz - lz + 1 : 0;
-
-        // Disjoint axis: zero players can possibly match
-        if (countX === 0 || countY === 0 || countZ === 0) return 0;
-
-        // Pick whichever sorted axis has the fewest candidate elements
-        let sorted = sortedZ;
-        let start = lz;
-        let end = uz;
-
-        if (countX <= countY && countX <= countZ) {
-            sorted = sortedX;
-            start = lx;
-            end = ux;
-        } else if (countY <= countX && countY <= countZ) {
-            sorted = sortedY;
-            start = ly;
-            end = uy;
-        }
-
-        let count = 0;
-
-        for (let i = start; i <= end; ++i) {
-            const id = sorted[i];
-
-            if (!_isActive(id)) continue;
-
-            if (posX[id] < minX || posX[id] > maxX) continue;
-
-            if (posY[id] < minY || posY[id] > maxY) continue;
-
-            if (posZ[id] < minZ || posZ[id] > maxZ) continue;
-
-            const p = _players[id]!;
-
-            if (filterFn && !filterFn(p, id)) continue;
-
-            if (idsOut) {
-                idsOut[count] = id;
-            }
-
-            if (playersOut) {
-                playersOut[count] = p;
-            }
-
-            ++count;
-        }
-
-        return count;
-    }
-
-    /**
-     * Finds all active players outside a 3D Axis-Aligned Bounding Box (AABB).
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param minX - Minimum X coordinate in world meters.
-     * @param minY - Minimum Y coordinate in world meters.
-     * @param minZ - Minimum Z coordinate in world meters.
-     * @param maxX - Maximum X coordinate in world meters.
-     * @param maxY - Maximum Y coordinate in world meters.
-     * @param maxZ - Maximum Z coordinate in world meters.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of active players found strictly outside the bounding box.
-     */
-    export function findPlayersOutsideAABB(
-        minX: number,
-        minY: number,
-        minZ: number,
-        maxX: number,
-        maxY: number,
-        maxZ: number,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        if (idsOut) {
-            idsOut.length = 0;
-        }
-
-        if (playersOut) {
-            playersOut.length = 0;
-        }
-
-        let count = 0;
-
-        for (let id = 0; id < MAX_PLAYERS; ++id) {
-            if (!_isActive(id)) continue;
-
-            const p = _players[id]!;
-
-            if (filterFn && !filterFn(p, id)) continue;
-
-            const x = posX[id];
-            const y = posY[id];
-            const z = posZ[id];
-
-            if (x >= minX && x <= maxX && y >= minY && y <= maxY && z >= minZ && z <= maxZ) continue;
-
-            if (idsOut) {
-                idsOut[count] = id;
-            }
-
-            if (playersOut) {
-                playersOut[count] = p;
-            }
-
-            ++count;
-        }
-
-        return count;
-    }
-
-    /**
-     * Fast 2.5D Polygonal Prism Query (extruded polygon on XZ plane with vertical Y bounds).
-     * Uses 3-axis sweep-and-prune AABB filtering and ray-casting.
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param vertices - Array of polygon vertices ({x, z}). Capped at 32 vertices.
-     * @param minY - Optional minimum Y elevation in meters (default: -Infinity).
-     * @param maxY - Optional maximum Y elevation in meters (default: Infinity).
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of active players within the prism volume, or undefined if the vertices array is invalid (< 3 or > 32 vertices).
-     */
-    export function findPlayersInPrism(
-        vertices: PrismVertex[],
-        minY: number = -Infinity,
-        maxY: number = Infinity,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number | undefined {
-        if (idsOut) {
-            idsOut.length = 0;
-        }
-
-        if (playersOut) {
-            playersOut.length = 0;
-        }
-
-        const vertCount = vertices.length;
-
-        if (vertCount < 3 || vertCount > MAX_PRISM_VERTICES) {
-            logging.log(`Polygonal prism requires between 3 and ${MAX_PRISM_VERTICES} vertices.`, LogLevel.Warning);
-            return undefined;
-        }
-
-        _unpackVertices(vertices, _scratchCoords, _scratchPrismBounds);
-
-        // 1. Let findPlayersInAABB perform Sweep-and-Prune candidate selection using internal scratch
-        const candidateCount = findPlayersInAABB(
-            _scratchPrismBounds.minX,
-            minY,
-            _scratchPrismBounds.minZ,
-            _scratchPrismBounds.maxX,
-            maxY,
-            _scratchPrismBounds.maxZ,
-            filterFn,
-            _internalScratchIds
-        );
-
-        // 2. In-place filter candidate players against the 2D polygon with Zero-GC
-        let count = 0;
-
-        for (let i = 0; i < candidateCount; ++i) {
-            const id = _internalScratchIds[i];
-
-            if (!_isPointInPolygon(posX[id], posZ[id], _scratchCoords, vertCount)) continue;
-
-            if (idsOut) {
-                idsOut[count] = id;
-            }
-
-            if (playersOut) {
-                playersOut[count] = _players[id]!;
-            }
-
-            ++count;
-        }
-
-        return count;
-    }
-
-    /**
-     * Finds all active players outside a 2.5D polygonal prism.
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param vertices - Array of polygon vertices ({x, z}). Capped at 32 vertices.
-     * @param minY - Optional minimum Y elevation in meters (default: -Infinity).
-     * @param maxY - Optional maximum Y elevation in meters (default: Infinity).
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of active players strictly outside the prism volume, or undefined if the vertices array is invalid (< 3 or > 32 vertices).
-     */
-    export function findPlayersOutsidePrism(
-        vertices: PrismVertex[],
-        minY: number = -Infinity,
-        maxY: number = Infinity,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number | undefined {
-        if (idsOut) {
-            idsOut.length = 0;
-        }
-
-        if (playersOut) {
-            playersOut.length = 0;
-        }
-
-        const vertCount = vertices.length;
-
-        if (vertCount < 3 || vertCount > MAX_PRISM_VERTICES) {
-            logging.log(`Polygonal prism requires between 3 and ${MAX_PRISM_VERTICES} vertices.`, LogLevel.Warning);
-            return undefined;
-        }
-
-        _unpackVertices(vertices, _scratchCoords, _scratchPrismBounds);
-
-        const minX = _scratchPrismBounds.minX;
-        const maxX = _scratchPrismBounds.maxX;
-        const minZ = _scratchPrismBounds.minZ;
-        const maxZ = _scratchPrismBounds.maxZ;
-        let count = 0;
-
-        for (let id = 0; id < MAX_PLAYERS; ++id) {
-            if (!_isActive(id)) continue;
-
-            const p = _players[id]!;
-
-            if (filterFn && !filterFn(p, id)) continue;
-
-            const y = posY[id];
-
-            if (y < minY || y > maxY) {
-                if (idsOut) {
-                    idsOut[count] = id;
-                }
-
-                if (playersOut) {
-                    playersOut[count] = p;
-                }
-
-                ++count;
-
-                continue;
-            }
-
-            const x = posX[id];
-            const z = posZ[id];
-
-            if (x < minX || x > maxX || z < minZ || z > maxZ) {
-                if (idsOut) {
-                    idsOut[count] = id;
-                }
-
-                if (playersOut) {
-                    playersOut[count] = p;
-                }
-
-                ++count;
-
-                continue;
-            }
-
-            if (!_isPointInPolygon(x, z, _scratchCoords, vertCount)) {
-                if (idsOut) {
-                    idsOut[count] = id;
-                }
-
-                if (playersOut) {
-                    playersOut[count] = p;
-                }
-
-                ++count;
-            }
-        }
-
-        return count;
-    }
-
-    // =========================================================================
-    // Exposed Directional & Extremum Query Functions
-    // =========================================================================
-
-    /**
-     * Finds all active players located at or above a given Y elevation (altitude).
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param y - The elevation threshold in world meters.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of active players at or above the elevation.
-     */
-    export function findPlayersAbove(
-        y: number,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        return _findPlayersGte(sortedY, posY, y, filterFn, idsOut, playersOut);
-    }
-
-    /**
-     * Finds all active players located at or below a given Y elevation (altitude).
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param y - The elevation threshold in world meters.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of active players at or below the elevation.
-     */
-    export function findPlayersBelow(
-        y: number,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        return _findPlayersLte(sortedY, posY, y, filterFn, idsOut, playersOut);
-    }
-
-    /**
-     * Finds all active players located east of (positive X) a given X coordinate.
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param x - The X coordinate threshold in world meters.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of active players east of the coordinate.
-     */
-    export function findPlayersEastOf(
-        x: number,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        return _findPlayersGte(sortedX, posX, x, filterFn, idsOut, playersOut);
-    }
-
-    /**
-     * Finds all active players located west of (negative X) a given X coordinate.
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param x - The X coordinate threshold in world meters.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of active players west of the coordinate.
-     */
-    export function findPlayersWestOf(
-        x: number,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        return _findPlayersLte(sortedX, posX, x, filterFn, idsOut, playersOut);
-    }
-
-    /**
-     * Finds all active players located north of (negative Z) a given Z coordinate.
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param z - The Z coordinate threshold in world meters.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of active players north of the coordinate.
-     */
-    export function findPlayersNorthOf(
-        z: number,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        return _findPlayersLte(sortedZ, posZ, z, filterFn, idsOut, playersOut);
-    }
-
-    /**
-     * Finds all active players located south of (positive Z) a given Z coordinate.
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param z - The Z coordinate threshold in world meters.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of active players south of the coordinate.
-     */
-    export function findPlayersSouthOf(
-        z: number,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        return _findPlayersGte(sortedZ, posZ, z, filterFn, idsOut, playersOut);
-    }
-
-    /**
-     * Finds the single closest active player to a 3D target point.
-     * @param x - Target X coordinate in world meters.
-     * @param y - Target Y coordinate in world meters.
-     * @param z - Target Z coordinate in world meters.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @returns The ID of the closest player, or undefined if no active player satisfies the condition.
-     */
-    export function getClosestPlayerId(
-        x: number,
-        y: number,
-        z: number,
-        filterFn?: (player: mod.Player, id: number) => boolean
-    ): number | undefined {
-        return _getExtremumPlayer(x, y, z, true, filterFn);
-    }
-
-    /**
-     * Finds the single farthest active player from a 3D target point.
-     * @param x - Target X coordinate in world meters.
-     * @param y - Target Y coordinate in world meters.
-     * @param z - Target Z coordinate in world meters.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @returns The ID of the farthest player, or undefined if no active player satisfies the condition.
-     */
-    export function getFarthestPlayerId(
-        x: number,
-        y: number,
-        z: number,
-        filterFn?: (player: mod.Player, id: number) => boolean
-    ): number | undefined {
-        return _getExtremumPlayer(x, y, z, false, filterFn);
-    }
-
-    /**
-     * Finds the 'k' closest active players to a target 3D point, sorted closest-first.
-     * Executes in O(N log k) time using a bounded Max-Heap with ZERO Garbage Collection pressure.
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param x - Target X coordinate in world meters.
-     * @param y - Target Y coordinate in world meters.
-     * @param z - Target Z coordinate in world meters.
-     * @param k - Number of nearest players to find.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of players found (up to k).
-     */
-    export function findKClosestPlayers(
-        x: number,
-        y: number,
-        z: number,
-        k: number,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        return _getKExtremumDistancePlayers(x, y, z, k, true, filterFn, idsOut, playersOut);
-    }
-
-    /**
-     * Finds the 'k' farthest active players from a target 3D point, sorted farthest-first.
-     * Executes in O(N log k) time using a bounded Min-Heap with ZERO Garbage Collection pressure.
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param x - Target X coordinate in world meters.
-     * @param y - Target Y coordinate in world meters.
-     * @param z - Target Z coordinate in world meters.
-     * @param k - Number of farthest players to find.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of players found (up to k).
-     */
-    export function findKFarthestPlayers(
-        x: number,
-        y: number,
-        z: number,
-        k: number,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        return _getKExtremumDistancePlayers(x, y, z, k, false, filterFn, idsOut, playersOut);
-    }
-
-    /**
-     * Gets the highest altitude (Y axis) active player in near O(1) time using the Y-axis sorted array.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @returns The ID of the highest active player, or undefined if no active player satisfies the condition.
-     */
-    export function getHighestPlayerId(filterFn?: (player: mod.Player, id: number) => boolean): number | undefined {
-        for (let i = MAX_PLAYERS - 1; i >= 0; --i) {
-            const id = sortedY[i];
-
-            if (!_isActive(id)) continue;
-
-            const p = _players[id]!;
-
-            if (!filterFn || filterFn(p, id)) return id;
-        }
-
-        return undefined;
-    }
-
-    /**
-     * Gets the lowest altitude (Y axis) active player in near O(1) time using the Y-axis sorted array.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @returns The ID of the lowest active player, or undefined if no active player satisfies the condition.
-     */
-    export function getLowestPlayerId(filterFn?: (player: mod.Player, id: number) => boolean): number | undefined {
-        for (let i = 0; i < MAX_PLAYERS; ++i) {
-            const id = sortedY[i];
-
-            if (!_isActive(id)) continue;
-
-            const p = _players[id]!;
-
-            if (!filterFn || filterFn(p, id)) return id;
-        }
-
-        return undefined;
-    }
-
-    /**
-     * Finds the 'k' highest altitude active players, sorted from highest to lowest.
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param k - Number of highest players to find.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of players found (up to k).
-     */
-    export function findKHighestPlayers(
-        k: number,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        return _getKExtremes(sortedY, k, true, filterFn, idsOut, playersOut);
-    }
-
-    /**
-     * Finds the 'k' lowest altitude active players, sorted from lowest to highest.
-     * If no buffers are provided, simply returns the matching count with zero memory writes.
-     * @param k - Number of lowest players to find.
-     * @param filterFn - Optional filter predicate returning true for candidates to consider. Receives (player, id).
-     * @param idsOut - Optional target array to write active player IDs into.
-     * @param playersOut - Optional target array to write active mod.Player objects into.
-     * @returns The total number of players found (up to k).
-     */
-    export function findKLowestPlayers(
-        k: number,
-        filterFn?: (player: mod.Player, id: number) => boolean,
-        idsOut?: number[],
-        playersOut?: mod.Player[]
-    ): number {
-        return _getKExtremes(sortedY, k, false, filterFn, idsOut, playersOut);
-    }
-
-    // =========================================================================
-    // Exposed Proximity Check Functions
-    // =========================================================================
-
-    /**
-     * Fast 2.5D Cylinder / Capture Zone test for a player (horizontal radius on XZ plane with vertical Y bounds).
-     * @param player - The player slot ID (0-99) or engine mod.Player object.
-     * @param centerX - Center X coordinate in world meters.
-     * @param centerZ - Center Z coordinate in world meters.
-     * @param radiusMeters - Cylinder radius in meters.
-     * @param minY - Optional minimum Y elevation bound in meters (default: -Infinity).
-     * @param maxY - Optional maximum Y elevation bound in meters (default: Infinity).
-     * @returns True if active and inside, false if active and outside or inactive, or undefined if not connected.
-     */
-    export function isPlayerInCylinder(
-        player: number | mod.Player,
-        centerX: number,
-        centerZ: number,
-        radiusMeters: number,
-        minY: number = -Infinity,
-        maxY: number = Infinity
-    ): boolean | undefined {
-        const id = _getPlayerId(player);
-
-        if (!_isConnected(id)) return undefined;
-
-        if (!_isActive(id)) return false;
-
-        const y = posY[id];
-
-        if (y < minY || y > maxY) return false;
-
-        const dx = posX[id] - centerX;
-        const dz = posZ[id] - centerZ;
-
-        return dx * dx + dz * dz <= radiusMeters * radiusMeters;
-    }
-
-    /**
-     * Checks if an active player lies strictly outside a 2.5D vertical cylinder.
-     * @param player - The player slot ID (0-99) or engine mod.Player object.
-     * @param centerX - Center X coordinate in world meters.
-     * @param centerZ - Center Z coordinate in world meters.
-     * @param radiusMeters - Cylinder radius in meters.
-     * @param minY - Optional minimum Y elevation bound in meters (default: -Infinity).
-     * @param maxY - Optional maximum Y elevation bound in meters (default: Infinity).
-     * @returns True if active and outside, false if active and inside or inactive, or undefined if not connected.
-     */
-    export function isPlayerOutsideCylinder(
-        player: number | mod.Player,
-        centerX: number,
-        centerZ: number,
-        radiusMeters: number,
-        minY: number = -Infinity,
-        maxY: number = Infinity
-    ): boolean | undefined {
-        const id = _getPlayerId(player);
-
-        if (!_isConnected(id)) return undefined;
-
-        if (!_isActive(id)) return false;
-
-        return !isPlayerInCylinder(id, centerX, centerZ, radiusMeters, minY, maxY);
-    }
-
-    /**
-     * Checks if an active player lies within a 3D sphere.
-     * @param player - The player slot ID (0-99) or engine mod.Player object.
-     * @param centerX - Sphere center X coordinate in world meters.
-     * @param centerY - Sphere center Y coordinate in world meters.
-     * @param centerZ - Sphere center Z coordinate in world meters.
-     * @param radiusMeters - Sphere radius in meters.
-     * @returns True if active and inside, false if active and outside or inactive, or undefined if not connected.
-     */
-    export function isPlayerInSphere(
-        player: number | mod.Player,
-        centerX: number,
-        centerY: number,
-        centerZ: number,
-        radiusMeters: number
-    ): boolean | undefined {
-        const id = _getPlayerId(player);
-
-        if (!_isConnected(id)) return undefined;
-
-        if (!_isActive(id)) return false;
-
-        const dx = posX[id] - centerX;
-        const dy = posY[id] - centerY;
-        const dz = posZ[id] - centerZ;
-
-        return dx * dx + dy * dy + dz * dz <= radiusMeters * radiusMeters;
-    }
-
-    /**
-     * Checks if an active player lies strictly outside a 3D sphere.
-     * @param player - The player slot ID (0-99) or engine mod.Player object.
-     * @param centerX - Sphere center X coordinate in world meters.
-     * @param centerY - Sphere center Y coordinate in world meters.
-     * @param centerZ - Sphere center Z coordinate in world meters.
-     * @param radiusMeters - Sphere radius in meters.
-     * @returns True if active and outside, false if active and inside or inactive, or undefined if not connected.
-     */
-    export function isPlayerOutsideSphere(
-        player: number | mod.Player,
-        centerX: number,
-        centerY: number,
-        centerZ: number,
-        radiusMeters: number
-    ): boolean | undefined {
-        const id = _getPlayerId(player);
-
-        if (!_isConnected(id)) return undefined;
-
-        if (!_isActive(id)) return false;
-
-        return !isPlayerInSphere(id, centerX, centerY, centerZ, radiusMeters);
-    }
-
-    /**
-     * Checks if an active player lies within a 3D Axis-Aligned Bounding Box (AABB).
-     * @param player - The player slot ID (0-99) or engine mod.Player object.
-     * @param minX - Minimum X coordinate in world meters.
-     * @param minY - Minimum Y coordinate in world meters.
-     * @param minZ - Minimum Z coordinate in world meters.
-     * @param maxX - Maximum X coordinate in world meters.
-     * @param maxY - Maximum Y coordinate in world meters.
-     * @param maxZ - Maximum Z coordinate in world meters.
-     * @returns True if active and inside, false if active and outside or inactive, or undefined if not connected.
-     */
-    export function isPlayerInAABB(
-        player: number | mod.Player,
-        minX: number,
-        minY: number,
-        minZ: number,
-        maxX: number,
-        maxY: number,
-        maxZ: number
-    ): boolean | undefined {
-        const id = _getPlayerId(player);
-
-        if (!_isConnected(id)) return undefined;
-
-        if (!_isActive(id)) return false;
-
-        const x = posX[id];
-        const y = posY[id];
-        const z = posZ[id];
-
-        return x >= minX && x <= maxX && y >= minY && y <= maxY && z >= minZ && z <= maxZ;
-    }
-
-    /**
-     * Checks if an active player lies strictly outside a 3D Axis-Aligned Bounding Box (AABB).
-     * @param player - The player slot ID (0-99) or engine mod.Player object.
-     * @param minX - Minimum X coordinate in world meters.
-     * @param minY - Minimum Y coordinate in world meters.
-     * @param minZ - Minimum Z coordinate in world meters.
-     * @param maxX - Maximum X coordinate in world meters.
-     * @param maxY - Maximum Y coordinate in world meters.
-     * @param maxZ - Maximum Z coordinate in world meters.
-     * @returns True if active and outside, false if active and inside or inactive, or undefined if not connected.
-     */
-    export function isPlayerOutsideAABB(
-        player: number | mod.Player,
-        minX: number,
-        minY: number,
-        minZ: number,
-        maxX: number,
-        maxY: number,
-        maxZ: number
-    ): boolean | undefined {
-        const id = _getPlayerId(player);
-
-        if (!_isConnected(id)) return undefined;
-
-        if (!_isActive(id)) return false;
-
-        return !isPlayerInAABB(id, minX, minY, minZ, maxX, maxY, maxZ);
-    }
-
-    /**
-     * Checks if an active player lies within a 2.5D polygonal prism (extruded polygon on XZ plane with vertical Y bounds).
-     * @param player - The player slot ID (0-99) or engine mod.Player object.
-     * @param vertices - Array of polygon vertices ({x, z}). Capped at 32 vertices.
-     * @param minY - Optional minimum Y elevation bound in meters (default: -Infinity).
-     * @param maxY - Optional maximum Y elevation bound in meters (default: Infinity).
-     * @returns True if active and inside, false if active and outside or inactive, undefined if not connected, or null if the vertices array is invalid (< 3 or > 32 vertices).
-     */
-    export function isPlayerInPrism(
-        player: number | mod.Player,
-        vertices: PrismVertex[],
-        minY: number = -Infinity,
-        maxY: number = Infinity
-    ): boolean | undefined | null {
-        const id = _getPlayerId(player);
-
-        if (!_isConnected(id)) return undefined;
-
-        if (!_isActive(id)) return false;
-
-        const count = vertices.length;
-
-        if (count < 3 || count > MAX_PRISM_VERTICES) {
-            logging.log(`Polygonal prism requires between 3 and ${MAX_PRISM_VERTICES} vertices.`, LogLevel.Warning);
-            return null;
-        }
-
-        _unpackVertices(vertices, _scratchCoords, _scratchPrismBounds);
-
-        if (
-            !isPlayerInAABB(
-                id,
-                _scratchPrismBounds.minX,
-                minY,
-                _scratchPrismBounds.minZ,
-                _scratchPrismBounds.maxX,
-                maxY,
-                _scratchPrismBounds.maxZ
-            )
-        ) {
-            return false;
-        }
-
-        return _isPointInPolygon(posX[id], posZ[id], _scratchCoords, count);
-    }
-
-    /**
-     * Checks if an active player lies strictly outside a 2.5D polygonal prism.
-     * @param player - The player slot ID (0-99) or engine mod.Player object.
-     * @param vertices - Array of polygon vertices ({x, z}). Capped at 32 vertices.
-     * @param minY - Optional minimum Y elevation bound in meters (default: -Infinity).
-     * @param maxY - Optional maximum Y elevation bound in meters (default: Infinity).
-     * @returns True if active and outside, false if active and inside or inactive, undefined if not connected, or null if the vertices array is invalid (< 3 or > 32 vertices).
-     */
-    export function isPlayerOutsidePrism(
-        player: number | mod.Player,
-        vertices: PrismVertex[],
-        minY: number = -Infinity,
-        maxY: number = Infinity
-    ): boolean | undefined | null {
-        const id = _getPlayerId(player);
-
-        if (!_isConnected(id)) return undefined;
-
-        if (!_isActive(id)) return false;
-
-        const count = vertices.length;
-
-        if (count < 3 || count > MAX_PRISM_VERTICES) {
-            logging.log(`Polygonal prism requires between 3 and ${MAX_PRISM_VERTICES} vertices.`, LogLevel.Warning);
-            return null;
-        }
-
-        const isInside = isPlayerInPrism(id, vertices, minY, maxY);
-
-        return typeof isInside === 'boolean' ? !isInside : isInside;
-    }
-
-    // =========================================================================
-    // Exposed Reactive Event Subscriptions
-    // =========================================================================
-
-    /**
-     * Subscribes to events when any player enters or exits a 3D sphere.
-     * At least one callback (onEnter or onExit) must be provided.
-     * @param x - Sphere center X coordinate in world meters.
-     * @param y - Sphere center Y coordinate in world meters.
-     * @param z - Sphere center Z coordinate in world meters.
-     * @param radiusMeters - Sphere radius in meters.
-     * @param onEnter - Callback invoked when a player enters the sphere.
-     * @param onExit - Optional callback invoked when a player exits the sphere.
-     * @returns A {@link SphereHandle} to update parameters or unsubscribe.
-     */
-    export function onSphere(
-        x: number,
-        y: number,
-        z: number,
-        radiusMeters: number,
-        onEnter: PlayerZoneCallback,
-        onExit?: PlayerZoneCallback
-    ): SphereHandle;
-    /**
-     * Subscribes to events when any player exits a 3D sphere.
-     * @param x - Sphere center X coordinate in world meters.
-     * @param y - Sphere center Y coordinate in world meters.
-     * @param z - Sphere center Z coordinate in world meters.
-     * @param radiusMeters - Sphere radius in meters.
-     * @param onEnter - Explicitly undefined to indicate no enter callback.
-     * @param onExit - Callback invoked when a player exits the sphere.
-     * @returns A {@link SphereHandle} to update parameters or unsubscribe.
-     */
-    export function onSphere(
-        x: number,
-        y: number,
-        z: number,
-        radiusMeters: number,
-        onEnter: undefined,
-        onExit: PlayerZoneCallback
-    ): SphereHandle;
-    /**
-     * Implementation for {@link onSphere} subscriptions.
-     * @param x - Sphere center X coordinate in world meters.
-     * @param y - Sphere center Y coordinate in world meters.
-     * @param z - Sphere center Z coordinate in world meters.
-     * @param radiusMeters - Sphere radius in meters.
-     * @param onEnter - Optional callback invoked when a player enters the sphere.
-     * @param onExit - Optional callback invoked when a player exits the sphere.
-     * @returns A {@link SphereHandle} to update parameters or unsubscribe.
-     */
-    export function onSphere(
-        x: number,
-        y: number,
-        z: number,
-        radiusMeters: number,
-        onEnter?: PlayerZoneCallback,
-        onExit?: PlayerZoneCallback
-    ): SphereHandle {
-        const listener: SphereListener = {
-            centerX: x,
-            centerY: y,
-            centerZ: z,
-            radiusSq: radiusMeters * radiusMeters,
-            onEnter,
-            onExit,
-            mask0: 0,
-            mask1: 0,
-            mask2: 0,
-            mask3: 0,
-        };
-
-        sphereListeners.push(listener);
-
-        return {
-            unsubscribe(): void {
-                const idx = sphereListeners.indexOf(listener);
-
-                if (idx !== -1) {
-                    sphereListeners.splice(idx, 1);
-                }
-            },
-            update(newX: number, newY: number, newZ: number, newRadius?: number): void {
-                listener.centerX = newX;
-                listener.centerY = newY;
-                listener.centerZ = newZ;
-
-                if (newRadius !== undefined) {
-                    listener.radiusSq = newRadius * newRadius;
-                }
-            },
-        };
-    }
-
-    /**
-     * Subscribes to events when any player enters or exits a 2.5D cylinder (horizontal XZ radius with vertical elevation bounds).
-     * At least one callback (onEnter or onExit) must be provided.
-     * @param centerX - Cylinder center X coordinate in world meters.
-     * @param centerZ - Cylinder center Z coordinate in world meters.
-     * @param radiusMeters - Cylinder radius in meters.
-     * @param minY - Minimum Y elevation in meters (pass undefined or -Infinity for unbounded).
-     * @param maxY - Maximum Y elevation in meters (pass undefined or Infinity for unbounded).
-     * @param onEnter - Callback invoked when a player enters the cylinder.
-     * @param onExit - Optional callback invoked when a player exits the cylinder.
-     * @returns A {@link CylinderHandle} to update parameters or unsubscribe.
-     */
-    export function onCylinder(
-        centerX: number,
-        centerZ: number,
-        radiusMeters: number,
-        minY: number | undefined,
-        maxY: number | undefined,
-        onEnter: PlayerZoneCallback,
-        onExit?: PlayerZoneCallback
-    ): CylinderHandle;
-    /**
-     * Subscribes to events when any player exits a 2.5D cylinder.
-     * @param centerX - Cylinder center X coordinate in world meters.
-     * @param centerZ - Center Z coordinate in world meters.
-     * @param radiusMeters - Cylinder radius in meters.
-     * @param minY - Minimum Y elevation in meters (pass undefined or -Infinity for unbounded).
-     * @param maxY - Maximum Y elevation in meters (pass undefined or Infinity for unbounded).
-     * @param onEnter - Explicitly undefined to indicate no enter callback.
-     * @param onExit - Callback invoked when a player exits the cylinder.
-     * @returns A {@link CylinderHandle} to update parameters or unsubscribe.
-     */
-    export function onCylinder(
-        centerX: number,
-        centerZ: number,
-        radiusMeters: number,
-        minY: number | undefined,
-        maxY: number | undefined,
-        onEnter: undefined,
-        onExit: PlayerZoneCallback
-    ): CylinderHandle;
-    /**
-     * Implementation for {@link onCylinder} subscriptions.
-     * @param centerX - Cylinder center X coordinate in world meters.
-     * @param centerZ - Center Z coordinate in world meters.
-     * @param radiusMeters - Cylinder radius in meters.
-     * @param minY - Minimum Y elevation in meters (default: -Infinity).
-     * @param maxY - Maximum Y elevation in meters (default: Infinity).
-     * @param onEnter - Optional callback invoked when a player enters the cylinder.
-     * @param onExit - Optional callback invoked when a player exits the cylinder.
-     * @returns A {@link CylinderHandle} to update parameters or unsubscribe.
-     */
-    export function onCylinder(
-        centerX: number,
-        centerZ: number,
-        radiusMeters: number,
-        minY: number = -Infinity,
-        maxY: number = Infinity,
-        onEnter?: PlayerZoneCallback,
-        onExit?: PlayerZoneCallback
-    ): CylinderHandle {
-        const listener: CylinderListener = {
-            centerX,
-            centerZ,
-            radiusSq: radiusMeters * radiusMeters,
-            minY: minY !== undefined ? minY : -Infinity,
-            maxY: maxY !== undefined ? maxY : Infinity,
-            onEnter,
-            onExit,
-            mask0: 0,
-            mask1: 0,
-            mask2: 0,
-            mask3: 0,
-        };
-
-        cylinderListeners.push(listener);
-
-        return {
-            unsubscribe(): void {
-                const idx = cylinderListeners.indexOf(listener);
-
-                if (idx !== -1) {
-                    cylinderListeners.splice(idx, 1);
-                }
-            },
-            update(
-                newCenterX: number,
-                newCenterZ: number,
-                newRadius?: number,
-                newMinY?: number,
-                newMaxY?: number
-            ): void {
-                listener.centerX = newCenterX;
-                listener.centerZ = newCenterZ;
-
-                if (newRadius !== undefined) {
-                    listener.radiusSq = newRadius * newRadius;
-                }
-
-                if (newMinY !== undefined) {
-                    listener.minY = newMinY;
-                }
-
-                if (newMaxY !== undefined) {
-                    listener.maxY = newMaxY;
-                }
-            },
-        };
-    }
-
-    /**
-     * Subscribes to events when any player enters or exits a 3D Axis-Aligned Bounding Box (AABB).
-     * At least one callback (onEnter or onExit) must be provided.
-     * @param minX - Minimum X coordinate in world meters.
-     * @param minY - Minimum Y coordinate in world meters.
-     * @param minZ - Minimum Z coordinate in world meters.
-     * @param maxX - Maximum X coordinate in world meters.
-     * @param maxY - Maximum Y coordinate in world meters.
-     * @param maxZ - Maximum Z coordinate in world meters.
-     * @param onEnter - Callback invoked when a player enters the box.
-     * @param onExit - Optional callback invoked when a player exits the box.
-     * @returns An {@link AABBHandle} to update parameters or unsubscribe.
-     */
-    export function onAABB(
-        minX: number,
-        minY: number,
-        minZ: number,
-        maxX: number,
-        maxY: number,
-        maxZ: number,
-        onEnter: PlayerZoneCallback,
-        onExit?: PlayerZoneCallback
-    ): AABBHandle;
-    /**
-     * Subscribes to events when any player exits a 3D Axis-Aligned Bounding Box (AABB).
-     * @param minX - Minimum X coordinate in world meters.
-     * @param minY - Minimum Y coordinate in world meters.
-     * @param minZ - Minimum Z coordinate in world meters.
-     * @param maxX - Maximum X coordinate in world meters.
-     * @param maxY - Maximum Y coordinate in world meters.
-     * @param maxZ - Maximum Z coordinate in world meters.
-     * @param onEnter - Explicitly undefined to indicate no enter callback.
-     * @param onExit - Callback invoked when a player exits the box.
-     * @returns An {@link AABBHandle} to update parameters or unsubscribe.
-     */
-    export function onAABB(
-        minX: number,
-        minY: number,
-        minZ: number,
-        maxX: number,
-        maxY: number,
-        maxZ: number,
-        onEnter: undefined,
-        onExit: PlayerZoneCallback
-    ): AABBHandle;
-    /**
-     * Implementation for {@link onAABB} subscriptions.
-     * @param minX - Minimum X coordinate in world meters.
-     * @param minY - Minimum Y coordinate in world meters.
-     * @param minZ - Minimum Z coordinate in world meters.
-     * @param maxX - Maximum X coordinate in world meters.
-     * @param maxY - Maximum Y coordinate in world meters.
-     * @param maxZ - Maximum Z coordinate in world meters.
-     * @param onEnter - Optional callback invoked when a player enters the box.
-     * @param onExit - Optional callback invoked when a player exits the box.
-     * @returns An {@link AABBHandle} to update parameters or unsubscribe.
-     */
-    export function onAABB(
-        minX: number,
-        minY: number,
-        minZ: number,
-        maxX: number,
-        maxY: number,
-        maxZ: number,
-        onEnter?: PlayerZoneCallback,
-        onExit?: PlayerZoneCallback
-    ): AABBHandle {
-        const listener: AABBListener = {
-            minX,
-            minY,
-            minZ,
-            maxX,
-            maxY,
-            maxZ,
-            onEnter,
-            onExit,
-            mask0: 0,
-            mask1: 0,
-            mask2: 0,
-            mask3: 0,
-        };
-
-        aabbListeners.push(listener);
-
-        return {
-            unsubscribe(): void {
-                const idx = aabbListeners.indexOf(listener);
-
-                if (idx !== -1) {
-                    aabbListeners.splice(idx, 1);
-                }
-            },
-            update(
-                newMinX: number,
-                newMinY: number,
-                newMinZ: number,
-                newMaxX: number,
-                newMaxY: number,
-                newMaxZ: number
-            ): void {
-                listener.minX = newMinX;
-                listener.minY = newMinY;
-                listener.minZ = newMinZ;
-                listener.maxX = newMaxX;
-                listener.maxY = newMaxY;
-                listener.maxZ = newMaxZ;
-            },
-        };
-    }
-
-    /**
-     * Subscribes to events when any player enters or exits a 2.5D polygonal prism (extruded polygon on XZ plane with vertical elevation bounds).
-     * At least one callback (onEnter or onExit) must be provided.
-     * @param vertices - Array of polygon vertices ({x, z}). Capped at 32 vertices.
-     * @param minY - Minimum Y elevation in meters (pass undefined or -Infinity for unbounded).
-     * @param maxY - Maximum Y elevation in meters (pass undefined or Infinity for unbounded).
-     * @param onEnter - Callback invoked when a player enters the prism volume.
-     * @param onExit - Optional callback invoked when a player exits the prism volume.
-     * @returns A {@link PrismHandle} to update parameters or unsubscribe.
-     */
-    export function onPrism(
-        vertices: PrismVertex[],
-        minY: number | undefined,
-        maxY: number | undefined,
-        onEnter: PlayerZoneCallback,
-        onExit?: PlayerZoneCallback
-    ): PrismHandle | null;
-    /**
-     * Subscribes to events when any player exits a 2.5D polygonal prism.
-     * @param vertices - Array of polygon vertices ({x, z}). Capped at 32 vertices.
-     * @param minY - Minimum Y elevation in meters (pass undefined or -Infinity for unbounded).
-     * @param maxY - Maximum Y elevation in meters (pass undefined or Infinity for unbounded).
-     * @param onEnter - Explicitly undefined to indicate no enter callback.
-     * @param onExit - Callback invoked when a player exits the prism volume.
-     * @returns A {@link PrismHandle} to update parameters or unsubscribe, or null if vertices are invalid (< 3 or > 32 vertices).
-     */
-    export function onPrism(
-        vertices: PrismVertex[],
-        minY: number | undefined,
-        maxY: number | undefined,
-        onEnter: undefined,
-        onExit: PlayerZoneCallback
-    ): PrismHandle | null;
-    /**
-     * Implementation for {@link onPrism} subscriptions.
-     * @param vertices - Array of polygon vertices ({x, z}). Capped at 32 vertices.
-     * @param minY - Minimum Y elevation in meters (default: -Infinity).
-     * @param maxY - Maximum Y elevation in meters (default: Infinity).
-     * @param onEnter - Optional callback invoked when a player enters the prism volume.
-     * @param onExit - Optional callback invoked when a player exits the prism volume.
-     * @returns A {@link PrismHandle} to update parameters or unsubscribe, or null if vertices are invalid (< 3 or > 32 vertices).
-     */
-    export function onPrism(
-        vertices: PrismVertex[],
-        minY: number = -Infinity,
-        maxY: number = Infinity,
-        onEnter?: PlayerZoneCallback,
-        onExit?: PlayerZoneCallback
-    ): PrismHandle | null {
-        const count = vertices.length;
-
-        if (count < 3 || count > MAX_PRISM_VERTICES) {
-            logging.log(`Polygonal prism requires between 3 and ${MAX_PRISM_VERTICES} vertices.`, LogLevel.Warning);
-            return null;
-        }
-
-        const coords = new Float32Array(MAX_PRISM_VERTICES * 2);
-        _unpackVertices(vertices, coords, _scratchPrismBounds);
-
-        const listener: PrismListener = {
-            coords,
-            vertexCount: count,
-            minX: _scratchPrismBounds.minX,
-            maxX: _scratchPrismBounds.maxX,
-            minZ: _scratchPrismBounds.minZ,
-            maxZ: _scratchPrismBounds.maxZ,
-            minY: minY !== undefined ? minY : -Infinity,
-            maxY: maxY !== undefined ? maxY : Infinity,
-            onEnter,
-            onExit,
-            mask0: 0,
-            mask1: 0,
-            mask2: 0,
-            mask3: 0,
-        };
-
-        prismListeners.push(listener);
-
-        return {
-            unsubscribe(): void {
-                const idx = prismListeners.indexOf(listener);
-
-                if (idx !== -1) {
-                    prismListeners.splice(idx, 1);
-                }
-            },
-            update(newVertices: PrismVertex[], newMinY?: number, newMaxY?: number): void {
-                const newCount = newVertices.length;
-
-                if (newCount < 3 || newCount > MAX_PRISM_VERTICES) {
-                    logging.log(
-                        `Polygonal prism requires between 3 and ${MAX_PRISM_VERTICES} vertices.`,
-                        LogLevel.Warning
-                    );
-
-                    listener.vertexCount = 0;
-                } else {
-                    _unpackVertices(newVertices, listener.coords, _scratchPrismBounds);
-
-                    listener.vertexCount = newCount;
-                    listener.minX = _scratchPrismBounds.minX;
-                    listener.maxX = _scratchPrismBounds.maxX;
-                    listener.minZ = _scratchPrismBounds.minZ;
-                    listener.maxZ = _scratchPrismBounds.maxZ;
-                }
-
-                if (newMinY !== undefined) {
-                    listener.minY = newMinY;
-                }
-
-                if (newMaxY !== undefined) {
-                    listener.maxY = newMaxY;
-                }
-            },
-        };
-    }
-
-    function _createPlaneHandle(listener: PlaneListener): PlaneHandle {
-        planeListeners.push(listener);
-
-        return {
-            unsubscribe(): void {
-                const idx = planeListeners.indexOf(listener);
-
-                if (idx !== -1) {
-                    planeListeners.splice(idx, 1);
-                }
-            },
-            update(newThreshold: number): void {
-                listener.threshold = newThreshold;
-            },
-        };
-    }
-
-    /**
-     * Subscribes to events when any player crosses an altitude threshold (Y elevation).
-     * At least one callback (onAbove or onBelow) must be provided.
-     * @param y - Elevation threshold in world meters.
-     * @param onAbove - Callback invoked when crossing at or above the elevation.
-     * @param onBelow - Optional callback invoked when crossing below the elevation.
-     * @returns A {@link PlaneHandle} to update parameters or unsubscribe.
-     */
-    export function onCrossAltitude(y: number, onAbove: PlayerZoneCallback, onBelow?: PlayerZoneCallback): PlaneHandle;
-    /**
-     * Subscribes to events when any player crosses below an altitude threshold (Y elevation).
-     * @param y - Elevation threshold in world meters.
-     * @param onAbove - Explicitly undefined to indicate no above callback.
-     * @param onBelow - Callback invoked when crossing below the elevation.
-     * @returns A {@link PlaneHandle} to update parameters or unsubscribe.
-     */
-    export function onCrossAltitude(y: number, onAbove: undefined, onBelow: PlayerZoneCallback): PlaneHandle;
-    /**
-     * Implementation for {@link onCrossAltitude} subscriptions.
-     * @param y - Elevation threshold in world meters.
-     * @param onAbove - Optional callback invoked when crossing at or above the elevation.
-     * @param onBelow - Optional callback invoked when crossing below the elevation.
-     * @returns A {@link PlaneHandle} to update parameters or unsubscribe.
-     */
-    export function onCrossAltitude(
-        y: number,
-        onAbove?: PlayerZoneCallback,
-        onBelow?: PlayerZoneCallback
-    ): PlaneHandle {
-        return _createPlaneHandle({
-            axis: AxisType.Y,
-            threshold: y,
-            onEnter: onAbove,
-            onExit: onBelow,
-            mask0: 0,
-            mask1: 0,
-            mask2: 0,
-            mask3: 0,
-        });
-    }
-
-    /**
-     * Subscribes to events when any player crosses an East-West threshold (X axis).
-     * At least one callback (onEast or onWest) must be provided.
-     * @param x - X coordinate threshold in world meters.
-     * @param onEast - Callback invoked when crossing east (+X) of the coordinate.
-     * @param onWest - Optional callback invoked when crossing west (-X) of the coordinate.
-     * @returns A {@link PlaneHandle} to update parameters or unsubscribe.
-     */
-    export function onCrossEastWest(x: number, onEast: PlayerZoneCallback, onWest?: PlayerZoneCallback): PlaneHandle;
-    /**
-     * Subscribes to events when any player crosses west of an East-West threshold (X axis).
-     * @param x - X coordinate threshold in world meters.
-     * @param onEast - Explicitly undefined to indicate no east callback.
-     * @param onWest - Callback invoked when crossing west (-X) of the coordinate.
-     * @returns A {@link PlaneHandle} to update parameters or unsubscribe.
-     */
-    export function onCrossEastWest(x: number, onEast: undefined, onWest: PlayerZoneCallback): PlaneHandle;
-    /**
-     * Implementation for {@link onCrossEastWest} subscriptions.
-     * @param x - X coordinate threshold in world meters.
-     * @param onEast - Optional callback invoked when crossing east (+X) of the coordinate.
-     * @param onWest - Optional callback invoked when crossing west (-X) of the coordinate.
-     * @returns A {@link PlaneHandle} to update parameters or unsubscribe.
-     */
-    export function onCrossEastWest(x: number, onEast?: PlayerZoneCallback, onWest?: PlayerZoneCallback): PlaneHandle {
-        return _createPlaneHandle({
-            axis: AxisType.X,
-            threshold: x,
-            onEnter: onEast,
-            onExit: onWest,
-            mask0: 0,
-            mask1: 0,
-            mask2: 0,
-            mask3: 0,
-        });
-    }
-
-    /**
-     * Subscribes to events when any player crosses a North-South threshold (Z axis).
-     * At least one callback (onSouth or onNorth) must be provided.
-     * @param z - Z coordinate threshold in world meters.
-     * @param onSouth - Callback invoked when crossing south (+Z) of the coordinate.
-     * @param onNorth - Optional callback invoked when crossing north (-Z) of the coordinate.
-     * @returns A {@link PlaneHandle} to update parameters or unsubscribe.
-     */
-    export function onCrossNorthSouth(
-        z: number,
-        onSouth: PlayerZoneCallback,
-        onNorth?: PlayerZoneCallback
-    ): PlaneHandle;
-    /**
-     * Subscribes to events when any player crosses north of a North-South threshold (Z axis).
-     * @param z - Z coordinate threshold in world meters.
-     * @param onSouth - Explicitly undefined to indicate no south callback.
-     * @param onNorth - Callback invoked when crossing north (-Z) of the coordinate.
-     * @returns A {@link PlaneHandle} to update parameters or unsubscribe.
-     */
-    export function onCrossNorthSouth(z: number, onSouth: undefined, onNorth: PlayerZoneCallback): PlaneHandle;
-    /**
-     * Implementation for {@link onCrossNorthSouth} subscriptions.
-     * @param z - Z coordinate threshold in world meters.
-     * @param onSouth - Optional callback invoked when crossing south (+Z) of the coordinate.
-     * @param onNorth - Optional callback invoked when crossing north (-Z) of the coordinate.
-     * @returns A {@link PlaneHandle} to update parameters or unsubscribe.
-     */
-    export function onCrossNorthSouth(
-        z: number,
-        onSouth?: PlayerZoneCallback,
-        onNorth?: PlayerZoneCallback
-    ): PlaneHandle {
-        return _createPlaneHandle({
-            axis: AxisType.Z,
-            threshold: z,
-            onEnter: onSouth,
-            onExit: onNorth,
-            mask0: 0,
-            mask1: 0,
-            mask2: 0,
-            mask3: 0,
-        });
-    }
-
-    function _createExtremaHandle(listener: ExtremaListener): ExtremaHandle {
-        extremaListeners.push(listener);
-
-        return {
-            unsubscribe(): void {
-                const idx = extremaListeners.indexOf(listener);
-
-                if (idx !== -1) {
-                    extremaListeners.splice(idx, 1);
-                }
-            },
-        };
-    }
-
-    function _createTargetExtremaHandle(listener: ExtremaListener): TargetExtremaHandle {
-        extremaListeners.push(listener);
-
-        return {
-            unsubscribe(): void {
-                const idx = extremaListeners.indexOf(listener);
-
-                if (idx !== -1) {
-                    extremaListeners.splice(idx, 1);
-                }
-            },
-            update(newX: number, newY: number, newZ: number): void {
-                listener.x = newX;
-                listener.y = newY;
-                listener.z = newZ;
-            },
-        };
-    }
-
-    /**
-     * Subscribes to events when the identity of the highest altitude active player changes.
-     * @param callback - Function invoked with (newPlayer, prevPlayer, newPlayerId, prevPlayerId).
-     * @returns An {@link ExtremaHandle} to unsubscribe.
-     */
-    export function onHighestPlayerChanged(callback: PlayerExtremaCallback): ExtremaHandle {
-        return _createExtremaHandle({
-            type: ExtremaType.Highest,
-            callback,
-            x: 0,
-            y: 0,
-            z: 0,
-            lastPlayerId: getHighestPlayerId(),
-        });
-    }
-
-    /**
-     * Subscribes to events when the identity of the lowest altitude active player changes.
-     * @param callback - Function invoked with (newPlayer, prevPlayer, newPlayerId, prevPlayerId).
-     * @returns An {@link ExtremaHandle} to unsubscribe.
-     */
-    export function onLowestPlayerChanged(callback: PlayerExtremaCallback): ExtremaHandle {
-        return _createExtremaHandle({
-            type: ExtremaType.Lowest,
-            callback,
-            x: 0,
-            y: 0,
-            z: 0,
-            lastPlayerId: getLowestPlayerId(),
-        });
-    }
-
-    /**
-     * Subscribes to events when the identity of the closest active player to a 3D point changes.
-     * @param x - Target X coordinate in world meters.
-     * @param y - Target Y coordinate in world meters.
-     * @param z - Target Z coordinate in world meters.
-     * @param callback - Function invoked with (newPlayer, prevPlayer, newPlayerId, prevPlayerId).
-     * @returns A {@link TargetExtremaHandle} to update target coordinates or unsubscribe.
-     */
-    export function onClosestPlayerChanged(
-        x: number,
-        y: number,
-        z: number,
-        callback: PlayerExtremaCallback
-    ): TargetExtremaHandle {
-        return _createTargetExtremaHandle({
-            type: ExtremaType.Closest,
-            callback,
-            x,
-            y,
-            z,
-            lastPlayerId: getClosestPlayerId(x, y, z),
-        });
-    }
-
-    /**
-     * Subscribes to events when the identity of the farthest active player from a 3D point changes.
-     * @param x - Target X coordinate in world meters.
-     * @param y - Target Y coordinate in world meters.
-     * @param z - Target Z coordinate in world meters.
-     * @param callback - Function invoked with (newPlayer, prevPlayer, newPlayerId, prevPlayerId).
-     * @returns A {@link TargetExtremaHandle} to update target coordinates or unsubscribe.
-     */
-    export function onFarthestPlayerChanged(
-        x: number,
-        y: number,
-        z: number,
-        callback: PlayerExtremaCallback
-    ): TargetExtremaHandle {
-        return _createTargetExtremaHandle({
-            type: ExtremaType.Farthest,
-            callback,
-            x,
-            y,
-            z,
-            lastPlayerId: getFarthestPlayerId(x, y, z),
-        });
-    }
-}
-
-
 // --- SOURCE: node_modules\bf6-portal-utils\player-undeploy-fixer\index.ts ---
 
 
@@ -7896,6 +4546,134 @@ export namespace PlayerUndeployFixer {
             Events.OnPlayerUndeploy.trigger(player);
         }
     }
+}
+
+
+// --- SOURCE: src\util\positions.ts ---
+
+
+// One position snapshot of every deployed soldier, taken on demand. It replaces
+// bf6-portal-utils PlayerLocations, which read every player's position on every
+// tick (four engine calls each) for data Power Struggle only needs once a
+// second: the bot sweep's threat counts, and the nuke when it goes off.
+//
+// The arrays are reused between snapshots, so taking one allocates nothing.
+// A soldier reading the origin is dead or between lives and is left out, as
+// PlayerLocations did.
+
+const pids: number[] = [];
+const players: mod.Player[] = [];
+const teams: number[] = [];
+const xs: number[] = [];
+const ys: number[] = [];
+const zs: number[] = [];
+let count: number = 0;
+let takenAt: number = -1;
+// Player id -> index in the snapshot, valid while stampOf[pid] === serial.
+const slotOf: number[] = [];
+const stampOf: number[] = [];
+let serial: number = 0;
+
+const ORIGIN_EPS: number = 0.001;
+
+// Takes a new snapshot unless the current one is younger than maxAgeMs.
+export function takeSnapshot(maxAgeMs: number): void {
+    const now: number = Date.now();
+    if (takenAt >= 0 && now - takenAt < maxAgeMs) {
+        return;
+    }
+    takenAt = now;
+    count = 0;
+    serial++;
+    let arr: mod.Array;
+    try {
+        arr = mod.AllPlayers();
+    } catch (e) {
+        return;
+    }
+    const n: number = mod.CountOf(arr);
+    for (let i: number = 0; i < n; i++) {
+        try {
+            const p: mod.Player = mod.ValueInArray(arr, i) as mod.Player;
+            if (!mod.IsValid(p)) {
+                continue;
+            }
+            const v: mod.Vector = mod.GetObjectPosition(p);
+            const x: number = mod.XComponentOf(v);
+            const y: number = mod.YComponentOf(v);
+            const z: number = mod.ZComponentOf(v);
+            if (Math.abs(x) < ORIGIN_EPS && Math.abs(y) < ORIGIN_EPS && Math.abs(z) < ORIGIN_EPS) {
+                continue;
+            }
+            const pid: number = mod.GetObjId(p);
+            pids[count] = pid;
+            if (pid >= 0) {
+                slotOf[pid] = count;
+                stampOf[pid] = serial;
+            }
+            players[count] = p;
+            teams[count] = teamIdOf(p);
+            xs[count] = x;
+            ys[count] = y;
+            zs[count] = z;
+            count++;
+        } catch (e) {
+        }
+    }
+}
+
+// Index of a player in the current snapshot, or -1 when the player was not
+// in it (dead, not deployed, or joined since).
+export function snapshotIndexOf(pid: number): number {
+    return pid >= 0 && stampOf[pid] === serial ? slotOf[pid] : -1;
+}
+
+export function snapshotCount(): number {
+    return count;
+}
+
+export function snapshotPid(i: number): number {
+    return pids[i];
+}
+
+export function snapshotPlayer(i: number): mod.Player {
+    return players[i];
+}
+
+export function snapshotTeam(i: number): number {
+    return teams[i];
+}
+
+export function snapshotX(i: number): number {
+    return xs[i];
+}
+
+export function snapshotY(i: number): number {
+    return ys[i];
+}
+
+export function snapshotZ(i: number): number {
+    return zs[i];
+}
+
+// Soldiers of a team other than team (teams 1 and 2 only) within radius of
+// (x, y, z), from the current snapshot.
+export function enemiesInSphere(x: number, y: number, z: number, radius: number, team: number): number {
+    const r2: number = radius * radius;
+    let n: number = 0;
+    for (let i: number = 0; i < count; i++) {
+        const t: number = teams[i];
+        if (t === team || (t !== 1 && t !== 2)) {
+            continue;
+        }
+        const dx: number = xs[i] - x;
+        const dy: number = ys[i] - y;
+        const dz: number = zs[i] - z;
+        if (dx * dx + dy * dy + dz * dz <= r2) {
+            n++;
+        }
+    }
+    return n;
 }
 
 
@@ -8883,7 +5661,9 @@ function resolveAreaVec(
             const trigger: mod.AreaTrigger = mod.GetAreaTrigger(triggerId);
             if (mod.IsValid(trigger)) {
                 const vec: mod.Vector = mod.GetObjectPosition(trigger);
-                log("botobj", key + " anchored on AreaTrigger " + triggerId);
+                if (BOT_TRACE) {
+                    log("botobj", key + " anchored on AreaTrigger " + triggerId);
+                }
                 return vec;
             }
         } catch (e) {
@@ -9255,25 +6035,20 @@ export function occupancy(idx: number): number {
 
 // Enemy pressure on an objective for a team: how many enemy players are inside
 // the threat radius of the anchor. This is the "they are about to cap that one"
-// signal the brain reacts to, and it comes from PlayerLocations' cached
-// positions, so it costs no FFI at all - the sphere query walks a prebuilt
-// voxel grid in QuickJS memory rather than calling mod.GetSoldierState.
+// signal the brain reacts to. It reads the shared position snapshot
+// (util/positions.ts), which the bot sweep refreshes once per sweep, so the
+// whole objective list costs one snapshot rather than a read per objective.
 //
 // Distinct from isContested, which only reports players standing exactly on the
 // trigger. An objective with no one on it but two enemies walking toward it is
 // exactly the case that needs a defender sent across, and isContested cannot
 // see it.
 export function enemyPressure(idx: number, team: number, radius: number): number {
-    if (idx < 0 || idx >= objCount || !PlayerLocations.isInitialized()) {
+    if (idx < 0 || idx >= objCount) {
         return 0;
     }
-    const ax: number = objPos[idx * 3];
-    const ay: number = objPos[idx * 3 + 1];
-    const az: number = objPos[idx * 3 + 2];
-    return PlayerLocations.findPlayersInSphere(
-        ax, ay, az, radius,
-        (p: mod.Player) => isEnemyTeam(teamIdOf(p), team)
-    );
+    takeSnapshot(900);
+    return enemiesInSphere(objPos[idx * 3], objPos[idx * 3 + 1], objPos[idx * 3 + 2], radius, team);
 }
 
 // A bot's own target point on an objective: the anchor nudged by a stable
@@ -10202,7 +6977,6 @@ export function thinkBot(
 
 
 
-
 // Custom AI_Spawner bot population. The spawner prefab carries no count or
 // respawn property, so this module owns the whole lifecycle: an initial burst
 // queue, a per-sweep spawn drain, death -> timed re-queue, and a registry the
@@ -10306,9 +7080,12 @@ interface BotRec {
     // After being dropped off: no ride in that vehicle until rideBanUntil.
     rideBanVid: number;
     rideBanUntil: number;
-    // Persistent bots: when it died (0 while alive), for the redeploy
-    // watchdog.
+    // When it died (0 while alive), for the redeploy watchdog.
     deadAt: number;
+    // Last retaliation (onDamaged): the attacker targeted and when, so a bot
+    // under fire is not re-targeted on every hit it takes.
+    retargetPid: number;
+    retargetAt: number;
 }
 
 interface SpawnReq {
@@ -10317,8 +7094,6 @@ interface SpawnReq {
     // and keeps its scoreboard row. Empty for a brand-new bot.
     nameKey: string;
 }
-
-const respawnPending: { [pid: number]: boolean } = {};
 
 const bots: { [pid: number]: BotRec } = {};
 const botOrder: number[] = [];
@@ -10330,7 +7105,7 @@ let sweepTimer: Timers.TimerID | null = null;
 let cursor: number = 0;
 let spawnRound: number = 0;
 let fixerWired: boolean = false;
-let fullRethink: boolean = false;
+let rethinkLeft: number = 0;
 // Named distinctly rather than a third generic "inited": the bundler flattens
 // every module into one scope and suffixes colliding top-level names
 // (inited / inited_2 / inited_3), so a uniquely named flag keeps this module
@@ -10438,7 +7213,7 @@ function drainSpawns(): void {
         looked++;
         const req: SpawnReq = spawnQueue[0];
         const team: number = req.team;
-        const live: number = BOT_PERSISTENT ? presentCount(team) : liveCount(team);
+        const live: number = presentCount(team);
         if (live >= BOT_COUNT_PER_TEAM) {
             spawnQueue.shift();
             continue;
@@ -10497,7 +7272,7 @@ function registerBot(p: mod.Player, pid: number, team: number, claim: boolean): 
     let rec: BotRec | undefined = bots[pid];
     // A persistent bot redeploying is the same soldier under the same name:
     // claiming here would take the name queued for the next new bot.
-    const redeploy: boolean = BOT_PERSISTENT && rec !== undefined && rec.nameKey !== "" && rec.team === team;
+    const redeploy: boolean = rec !== undefined && rec.nameKey !== "" && rec.team === team;
     if (rec === undefined) {
         rec = {
             pid: pid, team: team, player: p, mind: newMind(), dead: false, nameKey: "",
@@ -10510,11 +7285,13 @@ function registerBot(p: mod.Player, pid: number, team: number, claim: boolean): 
             ejectPending: false, seatAir: false, seatVeh: undefined,
             approachRide: false, rideVeh: undefined, rideVid: -1, boardX: 0, boardZ: 0,
             rideX: 0, rideY: 0, rideZ: 0, rideCheckAt: 0, rideReseats: 0, rideBanVid: -1, rideBanUntil: 0,
-            deadAt: 0
+            deadAt: 0, retargetPid: -1, retargetAt: 0
         };
         bots[pid] = rec;
         botOrder.push(pid);
-        log("bots", "registered pid=" + pid + " team=" + team);
+        if (BOT_TRACE) {
+            log("bots", "registered pid=" + pid + " team=" + team);
+        }
     } else if (rec.dead || rec.team !== team) {
         rec.player = p;
         rec.team = team;
@@ -10539,8 +7316,10 @@ function registerBot(p: mod.Player, pid: number, team: number, claim: boolean): 
         const expired: number = expiredBotNames();
         const claimed: string = claimBotName(team, Date.now());
         if (expiredBotNames() !== expired) {
-            log("bots", "name " + lastExpiredBotName() + " expired unclaimed on team " + team
-                + " (a spawn produced no soldier)");
+            if (BOT_TRACE) {
+                log("bots", "name " + lastExpiredBotName() + " expired unclaimed on team " + team
+                    + " (a spawn produced no soldier)");
+            }
         }
         if (claimed !== "") {
             if (rec.nameKey !== "" && rec.nameKey !== claimed) {
@@ -10550,15 +7329,10 @@ function registerBot(p: mod.Player, pid: number, team: number, claim: boolean): 
             rec.nameKey = claimed;
         }
     }
-    // A dead bot leaves the game and comes back as a new player, so stats kept
-    // by player id were wiped on every death: no bot ever showed a kill, death
-    // or score on the scoreboard. They are kept by team and name instead, and
-    // a respawn reuses its name (see scheduleRespawn). The same key follows the
-    // bot's fail memory in botbrain.
+    // The bot's fail memory in botbrain is keyed by team and name, because a
+    // respawn reuses its name (see scheduleRespawn) but rarely its player id.
     if (rec.nameKey !== "") {
         rec.mind.failKey = team + ":" + rec.nameKey;
-        bindBotStats(pid, team + ":" + rec.nameKey);
-        pushRow(p);
     }
     return rec;
 }
@@ -10576,7 +7350,7 @@ function forgetBot(pid: number): void {
     releaseClaim(pid);
     delete bots[pid];
     delete botPidSet[pid];
-    delete respawnPending[pid];
+    delete leaving[pid];
     dropOccupant(pid);
     const at: number = botOrder.indexOf(pid);
     if (at >= 0) {
@@ -10608,7 +7382,6 @@ function onBotDead(pid: number): void {
         if (!rec.dead) {
             rec.dead = true;
             rec.deadAt = Date.now();
-            scheduleRespawn(pid, rec.team, rec.nameKey);
         }
         endApproach(rec);
         resetSeat(rec);
@@ -10620,43 +7393,10 @@ function onBotDead(pid: number): void {
     dropOccupant(pid);
 }
 
-// Respawn is scheduled from OnPlayerDied, not from OnPlayerUndeploy. The old
-// code only armed the timer in the undeploy handler, and a playtest showed no
-// respawns at all: the engine unspawns a dead AI soldier without raising
-// OnPlayerUndeploy, so nothing was ever queued. OnPlayerDied is reliable (the
-// death handler demonstrably runs), so it is the safe anchor.
-function scheduleRespawn(pid: number, team: number, nameKey: string): void {
-    // Persistent bots redeploy by themselves; maintainPopulation replaces one
-    // that left the game.
-    if (BOT_PERSISTENT || (team !== 1 && team !== 2)) {
-        return;
-    }
-    if (respawnPending[pid] === true) {
-        return;
-    }
-    respawnPending[pid] = true;
-    const h: Timers.TimerID | null = Timers.setTimeout(() => {
-        safe("bots.respawn", () => {
-            delete respawnPending[pid];
-            if (liveCount(team) < BOT_COUNT_PER_TEAM) {
-                queueSpawn(team, nameKey);
-            }
-        });
-    }, BOT_RESPAWN_DELAY_MS);
-    if (h === null) {
-        delete respawnPending[pid];
-        logAdmin("bots", "WARNING respawn timer refused for team " + team);
-    }
-}
-
-function onBotUndeployed(p: mod.Player, pid: number): void {
+// An undeploy without a death (or the undeploy fixer's synthetic one) ends
+// the life the same way. The bot stays in the game and redeploys.
+function onBotUndeployed(pid: number): void {
     onBotDead(pid);
-    const rec: BotRec | undefined = bots[pid];
-    const team: number = rec !== undefined ? rec.team : teamIdOf(p);
-    // Safety net only. onBotDead already armed the timer; scheduleRespawn is
-    // idempotent per pid, so reaching here for a bot that has not left yet is
-    // harmless, and it covers the case where the bot undeploys without dying.
-    scheduleRespawn(pid, team, rec !== undefined ? rec.nameKey : "");
 }
 
 function onMoveFailed(p: mod.Player): void {
@@ -10683,11 +7423,21 @@ function onDamaged(victim: mod.Player, damager: mod.Player): void {
     if (!isEnemyTeam(teamIdOf(damager), rec.team)) {
         return;
     }
+    // Every bullet that lands is an event: re-target only when the attacker
+    // changes or BOT_RETARGET_MS has passed, so a bot under sustained fire
+    // gets one order, not one per hit.
+    const nowMs: number = Date.now();
+    const attacker: number = mod.GetObjId(damager);
+    if (attacker === rec.retargetPid && nowMs - rec.retargetAt < BOT_RETARGET_MS) {
+        return;
+    }
+    rec.retargetPid = attacker;
+    rec.retargetAt = nowMs;
     try {
         if (!rec.inVehicle) {
             // A fight cancels a walk to a vehicle.
             endApproach(rec);
-            enterBattle(victim, rec.mind, Date.now());
+            enterBattle(victim, rec.mind, nowMs);
         }
         mod.AISetTarget(victim, damager);
         mod.AIForceFire(victim, 2);
@@ -10696,18 +7446,28 @@ function onDamaged(victim: mod.Player, damager: mod.Player): void {
     }
 }
 
-// Bot position, read from PlayerLocations' per-tick cache instead of
-// mod.GetSoldierState. This is the module the utils docs are explicit about for
-// hot loops: the engine call is made once per tick for every connected player,
-// and everything after that is a typed-array read. The bot sweep runs 12 times a
-// second across 48 bots, so this removes the single largest recurring FFI cost
-// in the bot path without changing behaviour.
-//
-// Returns false when the bot is not currently active, which covers a soldier
-// between spawn and deploy, and a bot that has already been recycled this tick.
-function readPos(pid: number): boolean {
-    const v = PlayerLocations.getPosition(pid, posScratch);
-    return v !== null && v !== undefined;
+// Bot position from the shared snapshot (util/positions.ts) the sweep takes
+// once per sweep, so a think costs no position read of its own. False when the
+// bot was not in the snapshot: dead, between lives, or spawned since.
+function readPos(rec: BotRec): boolean {
+    const i: number = snapshotIndexOf(rec.pid);
+    if (i < 0) {
+        return false;
+    }
+    posScratch.x = snapshotX(i);
+    posScratch.y = snapshotY(i);
+    posScratch.z = snapshotZ(i);
+    return true;
+}
+
+// A fresh read, for the BOT_TRACE teleport check, which runs between sweeps.
+function readPosNow(rec: BotRec): boolean {
+    try {
+        Vectors.toVector3(mod.GetObjectPosition(rec.player), posScratch);
+    } catch (e) {
+        return false;
+    }
+    return !(posScratch.x === 0 && posScratch.y === 0 && posScratch.z === 0);
 }
 
 // Vehicles: existing ones only. mod.AllVehicles() returns an opaque mod.Array
@@ -11316,7 +8076,9 @@ function ejectFromVehicle(rec: BotRec, why: string, nowMs: number): boolean {
     if (rec.ejectTries >= 2) {
         if (rec.ejectTries === 2) {
             rec.ejectTries++;
-            log("bots", "pid=" + rec.pid + " will not leave its vehicle, leaving it to the vehicle AI");
+            if (BOT_TRACE) {
+                log("bots", "pid=" + rec.pid + " will not leave its vehicle, leaving it to the vehicle AI");
+            }
             try {
                 mod.AIBattlefieldBehavior(rec.player);
             } catch (e) {
@@ -11679,7 +8441,7 @@ function advanceLegs(nowMs: number): void {
             continue;
         }
         const m: BotMind = rec.mind;
-        if (m.leg < 0 || inBattle(m, nowMs) || !readPos(pid)) {
+        if (m.leg < 0 || inBattle(m, nowMs) || !readPos(rec)) {
             continue;
         }
         if (nodeDistSq(m.leg, posScratch.x, posScratch.z) >= reachSq) {
@@ -11693,13 +8455,18 @@ function advanceLegs(nowMs: number): void {
     }
 }
 
-// Persistent bots, every BOT_MAINTAIN_MS: deploys a bot that has been dead too
-// long, tops a team up to its target (BOT_TEAM_SLOTS less its humans, at most
-// BOT_COUNT_PER_TEAM) when a bot left the game, and makes room when a human
-// joined a full team. A persistent AI cannot be removed directly, so its
-// team's spawners unspawn on death for a moment while one bot is killed.
+// Every BOT_MAINTAIN_MS: deploys a bot that has been dead too long, tops a
+// team up to its target (BOT_TEAM_SLOTS less its humans, at most
+// BOT_COUNT_PER_TEAM) when a human left, and makes room when a human joined.
 let maintainAt: number = 0;
-let trimUntil: number = 0;
+const TEAMS: number[] = [1, 2];
+
+// Bots killed to make room, by pid -> when. Not counted as present while
+// they leave. A removal that has not left after BOT_REMOVE_CHECK_MS means the
+// engine applies unspawn-on-dead later than the death; removals then stop for
+// the round (see removeBot) instead of killing a bot every check.
+const leaving: { [pid: number]: number } = {};
+let removalBroken: boolean = false;
 
 function queuedFor(team: number): number {
     let n: number = 0;
@@ -11711,14 +8478,26 @@ function queuedFor(team: number): number {
     return n;
 }
 
+function leavingFor(team: number): number {
+    let n: number = 0;
+    for (const k in leaving) {
+        const rec: BotRec | undefined = bots[Number(k)];
+        if (rec !== undefined && rec.team === team) {
+            n++;
+        }
+    }
+    return n;
+}
+
 function maintainPopulation(nowMs: number): void {
-    if (!BOT_PERSISTENT || nowMs - maintainAt < BOT_MAINTAIN_MS) {
+    if (nowMs - maintainAt < BOT_MAINTAIN_MS) {
         return;
     }
     maintainAt = nowMs;
     for (const pid of botOrder) {
         const rec: BotRec | undefined = bots[pid];
-        if (rec === undefined || !rec.dead || rec.deadAt === 0 || nowMs - rec.deadAt < BOT_REDEPLOY_WATCHDOG_MS) {
+        if (rec === undefined || !rec.dead || rec.deadAt === 0 || nowMs - rec.deadAt < BOT_REDEPLOY_WATCHDOG_MS
+            || leaving[pid] !== undefined) {
             continue;
         }
         // Retried every 10 s while it stays dead.
@@ -11726,52 +8505,56 @@ function maintainPopulation(nowMs: number): void {
         try {
             if (mod.IsValid(rec.player)) {
                 mod.DeployPlayer(rec.player);
-                log("bots", "pid=" + pid + " t" + rec.team + " not redeployed, deploying by force");
+                if (BOT_TRACE) {
+                    log("bots", "pid=" + pid + " t" + rec.team + " not redeployed, deploying by force");
+                }
             }
         } catch (e) {
             log("bots", "pid=" + pid + " force deploy failed: " + String(e));
         }
     }
-    if (trimUntil !== 0) {
-        if (nowMs < trimUntil) {
-            return;
-        }
-        trimUntil = 0;
-        for (const t of [1, 2]) {
-            for (const sp of spawnerByTeam[t]) {
-                try {
-                    mod.AISetUnspawnOnDead(sp, false);
-                } catch (e) {
-                }
+    for (const k in leaving) {
+        if (nowMs - leaving[Number(k)] > BOT_REMOVE_CHECK_MS) {
+            delete leaving[Number(k)];
+            if (!removalBroken) {
+                removalBroken = true;
+                logAdmin("bots", "WARNING a bot killed to make room for a human did not leave in "
+                    + String(BOT_REMOVE_CHECK_MS) + " ms; no more bots are removed this round");
             }
         }
     }
     countHumans();
-    for (const team of [1, 2]) {
+    for (const team of TEAMS) {
         if (spawnerByTeam[team].length === 0) {
             continue;
         }
-        const target: number = Math.min(BOT_COUNT_PER_TEAM, BOT_TEAM_SLOTS - humansScratch[team]);
-        const have: number = presentCount(team);
+        const target: number = Math.max(0, Math.min(BOT_COUNT_PER_TEAM, BOT_TEAM_SLOTS - humansScratch[team]));
+        const have: number = presentCount(team) - leavingFor(team);
         const missing: number = target - have - queuedFor(team);
         for (let i: number = 0; i < missing; i++) {
             queueSpawn(team, "");
         }
-        if (have > target && trimBot(team)) {
-            return;
+        for (let i: number = have; i > target; i--) {
+            if (!removeBot(team)) {
+                break;
+            }
         }
     }
 }
 
-// Removes one bot from a team that is over its slots: a live bot on foot is
-// killed while its team's spawners unspawn on death. (A dead one is not used:
-// whether the flag still applies to a death that already happened is
-// unknown.)
-function trimBot(team: number): boolean {
+// Makes room for a human: one live bot on foot leaves the game for good.
+// Unspawn-on-dead is a spawner setting, so it is switched on for the team's
+// spawners only around the one kill and off again in the same tick: a bot
+// that dies later stays in the game. (The old version left it on for 12 s,
+// and every bot of that team that died meanwhile left and was replaced.)
+function removeBot(team: number): boolean {
+    if (removalBroken) {
+        return false;
+    }
     let pick: BotRec | undefined = undefined;
     for (const pid of botOrder) {
         const rec: BotRec | undefined = bots[pid];
-        if (rec !== undefined && rec.team === team && !rec.dead && !rec.inVehicle) {
+        if (rec !== undefined && rec.team === team && !rec.dead && !rec.inVehicle && leaving[pid] === undefined) {
             pick = rec;
             break;
         }
@@ -11779,76 +8562,30 @@ function trimBot(team: number): boolean {
     if (pick === undefined) {
         return false;
     }
+    leaving[pick.pid] = Date.now();
     for (const sp of spawnerByTeam[team]) {
         try {
             mod.AISetUnspawnOnDead(sp, true);
         } catch (e) {
         }
     }
-    trimUntil = Date.now() + BOT_CORPSE_SECONDS * 1000 + 2000;
-    log("bots", "team " + team + " over its slots, removing pid=" + pick.pid);
     try {
         mod.Kill(pick.player);
     } catch (e) {
     }
+    for (const sp of spawnerByTeam[team]) {
+        try {
+            mod.AISetUnspawnOnDead(sp, false);
+        } catch (e) {
+        }
+    }
+    log("bots", "team " + team + ": bot pid=" + pick.pid + " leaves to make room for a human");
     return true;
-}
-
-// Rewrites every live bot's scoreboard row each BOT_ROW_REFRESH_MS, and once a
-// minute logs how many writes worked, the last error, how many bots have no
-// name (so no score record across lives) and one bot with score, so the log
-// tells a failing write from a score that is never counted.
-let rowsAt: number = 0;
-let rowsLogAt: number = 0;
-let rowsOk: number = 0;
-let rowsFail: number = 0;
-let rowErr: string = "";
-
-function refreshBotRows(nowMs: number): void {
-    if (nowMs - rowsAt < BOT_ROW_REFRESH_MS) {
-        return;
-    }
-    rowsAt = nowMs;
-    let unnamed: number = 0;
-    let sample: string = "";
-    for (const pid of botOrder) {
-        const rec: BotRec | undefined = bots[pid];
-        if (rec === undefined || rec.dead || !mod.IsValid(rec.player)) {
-            continue;
-        }
-        if (rec.nameKey === "") {
-            unnamed++;
-        }
-        const err: string = writeRow(rec.player);
-        if (err !== "") {
-            rowsFail++;
-            rowErr = err;
-            continue;
-        }
-        rowsOk++;
-        const s: PlayerStats = statsOf(pid);
-        if (sample === "" && s.score + s.kills + s.deaths > 0) {
-            sample = "pid=" + pid + " " + rec.team + ":" + rec.nameKey + " score " + s.score
-                + " k " + s.kills + " d " + s.deaths;
-        }
-    }
-    if (nowMs - rowsLogAt < 60000) {
-        return;
-    }
-    rowsLogAt = nowMs;
-    log("scoreboard", "bot rows: " + rowsOk + " written, " + rowsFail + " failed"
-        + (rowErr !== "" ? " (last error: " + rowErr + ")" : "")
-        + ", " + unnamed + " bots without a name"
-        + (sample !== "" ? ", e.g. " + sample : ", no bot has any score yet"));
-    rowsOk = 0;
-    rowsFail = 0;
-    rowErr = "";
 }
 
 function sweep(): void {
     maintainPopulation(Date.now());
     drainSpawns();
-    refreshBotRows(Date.now());
     if (ownersNeedRefresh()) {
         refreshOwners();
         markFullRethink();
@@ -11859,6 +8596,9 @@ function sweep(): void {
         return;
     }
     const nowMs: number = Date.now();
+    // Every position this sweep reads (bots' own, enemy pressure) comes from
+    // one snapshot.
+    takeSnapshot(500);
     scanVehicles(nowMs);
     // Owner and enemy pressure for the scorer, once per sweep per team. Claims
     // are kept live by the ledger as bots pick during the sweep.
@@ -11869,7 +8609,11 @@ function sweep(): void {
     if (n === 0) {
         return;
     }
-    const count: number = fullRethink ? n : Math.min(BOT_SLICE, n);
+    // An ownership flip re-thinks every bot, spread over BOT_RETHINK_SWEEPS
+    // sweeps so the move orders do not all go out in one tick.
+    const count: number = rethinkLeft > 0
+        ? Math.min(n, Math.max(BOT_SLICE, Math.ceil(n / BOT_RETHINK_SWEEPS)))
+        : Math.min(BOT_SLICE, n);
     for (let k: number = 0; k < count; k++) {
         const pid: number = botOrder[cursor % n];
         cursor++;
@@ -11881,7 +8625,7 @@ function sweep(): void {
             if (!mod.IsValid(rec.player)) {
                 continue;
             }
-            if (!readPos(pid)) {
+            if (!readPos(rec)) {
                 continue;
             }
             syncVehicleState(rec);
@@ -11937,14 +8681,16 @@ function sweep(): void {
             log("bots", "think failed pid=" + pid + ": " + String(e));
         }
     }
-    fullRethink = false;
+    if (rethinkLeft > 0) {
+        rethinkLeft--;
+    }
     if (navActive()) {
         advanceLegs(nowMs);
     }
 }
 
 function markFullRethink(): void {
-    fullRethink = true;
+    rethinkLeft = BOT_RETHINK_SWEEPS;
 }
 
 // Bunker spawning, the CustomConquest V15 AI_ObjectiveSpawn pattern: bots can
@@ -12029,7 +8775,7 @@ function teleportNow(rec: BotRec, pid: number): void {
 
 // BOT_TRACE: did the teleport stick? One log line per teleport.
 function checkTeleport(rec: BotRec, pid: number, idx: number, tx: number, tz: number): void {
-    if (bots[pid] !== rec || rec.dead || !readPos(pid)) {
+    if (bots[pid] !== rec || rec.dead || !readPosNow(rec)) {
         return;
     }
     const dx: number = posScratch.x - tx;
@@ -12136,7 +8882,9 @@ function handleStuck(rec: BotRec, x: number, y: number, z: number, nowMs: number
     }
     rec.strikes = 0;
     giveUp(rec.pid, mind, nowMs, "stuck, recycling");
-    log("bots", "pid=" + rec.pid + " stuck, recycling");
+    if (BOT_TRACE) {
+        log("bots", "pid=" + rec.pid + " stuck, recycling");
+    }
     try {
         mod.AIIdleBehavior(rec.player);
         mod.Kill(rec.player);
@@ -12160,16 +8908,6 @@ export function initBots(): void {
     initBotNames();
     initBotObjectives();
     initNav();
-    // PlayerLocations is the vetted zero-FFI position cache: it subscribes to
-    // its own tick updates on initialize, so the bot sweep can read every
-    // bot's position and every proximity query from memory instead of calling
-    // mod.GetSoldierState per bot per second. initialize() is idempotent, and it
-    // is safe to call here because the module owns its own subscriptions.
-    try {
-        PlayerLocations.initialize();
-    } catch (e) {
-        log("bots", "PlayerLocations init failed: " + String(e));
-    }
     if (!fixerWired) {
         fixerWired = true;
         // Import-only activation plus quota-safe logging. The fixer re-fires
@@ -12193,9 +8931,11 @@ export function initBots(): void {
                 continue;
             }
             spawnerByTeam[def.team].push(sp);
-            mod.AISetUnspawnOnDead(sp, !BOT_PERSISTENT);
+            mod.AISetUnspawnOnDead(sp, false);
             mod.SetUnspawnDelayInSeconds(sp, BOT_CORPSE_SECONDS);
-            log("bots", "spawner " + def.spawnerId + " bound for team " + def.team);
+            if (BOT_TRACE) {
+                log("bots", "spawner " + def.spawnerId + " bound for team " + def.team);
+            }
         } catch (e) {
             log("bots", "spawner " + def.spawnerId + " failed: " + String(e));
         }
@@ -12242,7 +8982,7 @@ export function configureBotEvents(): void {
         safe("bots.undeployed", () => {
             const pid: number = mod.GetObjId(p);
             if (isBotPid(pid)) {
-                onBotUndeployed(p, pid);
+                onBotUndeployed(pid);
             }
         });
     });
@@ -12275,11 +9015,9 @@ export function configureBotEvents(): void {
             safe("bots.incoming", () => {
                 mod.SetPlayerIncomingDamageFactor(p, BOT_INCOMING_DAMAGE);
             });
-            if (BOT_PERSISTENT) {
-                safe("bots.redeploy", () => {
-                    mod.SetRedeployTime(p, BOT_REDEPLOY_S);
-                });
-            }
+            safe("bots.redeploy", () => {
+                mod.SetRedeployTime(p, BOT_REDEPLOY_S);
+            });
             teleportToObjective(team, pid);
         });
     });
@@ -12423,24 +9161,7 @@ export type PlayerStats = {
 };
 
 let stats: { [id: number]: PlayerStats } = {};
-// Bots, keyed by "team:nameKey" instead of player id. A dead bot leaves the
-// game and its respawn is a new player (often with a different id), so per-id
-// stats died with every bot: the 2026-10-02 scoreboard never showed a bot
-// kill, death or score. The respawn reuses its name (botnames.takeBotName),
-// so keying by name carries the row across lives.
-let botStats: { [key: string]: PlayerStats } = {};
-let botKeyOf: { [id: number]: string } = {};
-
 export function statsOf(id: number): PlayerStats {
-    const key: string | undefined = botKeyOf[id];
-    if (key !== undefined) {
-        let b: PlayerStats | undefined = botStats[key];
-        if (b === undefined) {
-            b = { score: 0, kills: 0, deaths: 0, assists: 0 };
-            botStats[key] = b;
-        }
-        return b;
-    }
     let s: PlayerStats | undefined = stats[id];
     if (s === undefined) {
         s = { score: 0, kills: 0, deaths: 0, assists: 0 };
@@ -12449,34 +9170,14 @@ export function statsOf(id: number): PlayerStats {
     return s;
 }
 
-// Called by bots.ts when a bot spawns. Anything already booked under the id
-// (an event that landed before the bind) is folded into the named record.
-export function bindBotStats(id: number, key: string): void {
-    botKeyOf[id] = key;
-    const loose: PlayerStats | undefined = stats[id];
-    if (loose !== undefined) {
-        const b: PlayerStats = statsOf(id);
-        b.score += loose.score;
-        b.kills += loose.kills;
-        b.deaths += loose.deaths;
-        b.assists += loose.assists;
-        delete stats[id];
-    }
-}
-
 export function forgetPlayer(id: number): void {
-    // A bot's named record stays for its respawn; only the id binding goes,
-    // because the id can be reused by someone else.
     delete stats[id];
-    delete botKeyOf[id];
 }
 
 export function resetStats(): void {
     // Rebind rather than delete-by-key: Object.keys yields strings while this
     // map is number-keyed, so walking it would need a parse.
     stats = {};
-    botStats = {};
-    botKeyOf = {};
 }
 
 // Pays prestige and score for one action. Kills, deaths and assists must be
@@ -12496,7 +9197,7 @@ export function award(p: mod.Player, kind: AwardKind): boolean {
     } else if (kind === "assist") {
         s.assists++;
     }
-    // Bots earn score (they stay on the scoreboard) but never prestige: with
+    // Bots earn score (log only; they have no scoreboard row) but never prestige: with
     // no UI they could never spend it, so paying it would only inflate a dead
     // record. The personal award feed is skipped with it - pushPlayerFeed
     // no-ops for HUD-less players anyway.
@@ -12512,9 +9213,12 @@ export function award(p: mod.Player, kind: AwardKind): boolean {
     // Deliberately does NOT print the team total: teamScore() walks the entire
     // roster, costing roughly 400 FFI per award purely to format a string.
     // teamScore() stays exported for diagnostics that are not on a hot path.
-    log("stats", "pid=" + id + " team " + String(team) + " " + kind
-        + (bot ? " +0 prestige (bot)" : " +" + String(PRESTIGE_FOR[kind]) + " prestige")
-        + " +" + String(SCORE_FOR[kind]) + " score (player total " + String(s.score) + ")");
+    // Humans only unless BOT_TRACE: a line per bot award flooded the log.
+    if (!bot || BOT_TRACE) {
+        log("stats", "pid=" + id + " team " + String(team) + " " + kind
+            + (bot ? " +0 prestige (bot)" : " +" + String(PRESTIGE_FOR[kind]) + " prestige")
+            + " +" + String(SCORE_FOR[kind]) + " score (player total " + String(s.score) + ")");
+    }
     return true;
 }
 
@@ -12589,32 +9293,21 @@ export function pushHeader(): void {
     });
 }
 
+// Humans only. Owner, 2026-10-04: bot rows dropped. The engine showed every
+// bot at 0 although each write succeeded (about 750 a minute, real values in
+// the log), with bots persistent or not.
 export function pushRow(p: mod.Player): void {
     if (!headerReady || !mod.IsValid(p)) {
         return;
     }
     const id: number = mod.GetObjId(p);
+    if (isBotPid(id)) {
+        return;
+    }
     const s: PlayerStats = statsOf(id);
     safe("scoreboard.row", () => {
         mod.SetScoreboardPlayerValues(p, s.score, prestigeOf(id), s.kills, s.deaths, s.assists);
     });
-}
-
-// Writes one row and returns "" or the engine's error text, for the periodic
-// bot refresh in bots.ts, which counts failures itself rather than logging
-// each one.
-export function writeRow(p: mod.Player): string {
-    if (!headerReady) {
-        return "scoreboard not configured";
-    }
-    try {
-        const id: number = mod.GetObjId(p);
-        const s: PlayerStats = statsOf(id);
-        mod.SetScoreboardPlayerValues(p, s.score, prestigeOf(id), s.kills, s.deaths, s.assists);
-        return "";
-    } catch (e) {
-        return String(e);
-    }
 }
 
 export function pushAllRows(): void {
@@ -12683,12 +9376,15 @@ export function energySitesHeld(team: number): number {
     return n;
 }
 
-export function energyMultiplier(team: number): number {
+// Charge speed in percent per second for a team holding the Prototype Factory.
+export function chargePercentPerSec(team: number): number {
     const held: number = energySitesHeld(team);
-    if (held <= 0) {
+    const last: number = CHARGE_MINUTES_BY_SITES.length - 1;
+    const minutes: number = CHARGE_MINUTES_BY_SITES[held < last ? held : last];
+    if (!(minutes > 0)) {
         return 0;
     }
-    return held * CHARGE_PER_SITE;
+    return 100 / (minutes * 60);
 }
 
 export function initEnergy(): void {
@@ -12697,7 +9393,7 @@ export function initEnergy(): void {
     onCaptured((def: AreaBuildingDef, owner: number) => {
         if (def.kind === "energy") {
             safe("energy.capture", () => {
-                log("energy", def.id + " -> team " + owner + " (mult now " + energyMultiplier(owner) + ")");
+                log("energy", def.id + " -> team " + owner + " (" + energySitesHeld(owner) + " sites, charge " + chargePercentPerSec(owner).toFixed(3) + "%/s with the factory)");
             });
         }
     });
@@ -12751,11 +9447,7 @@ function computeRate(team: number): number {
     if (CHARGE_REQUIRES_FACTORY && cachedOwner !== team) {
         return 0;
     }
-    const mult: number = energyMultiplier(team);
-    if (mult <= 0) {
-        return 0;
-    }
-    return mult / CHARGE_BASE_SECONDS * 100;
+    return chargePercentPerSec(team);
 }
 
 export function factoryOwner(): number {
@@ -12794,8 +9486,10 @@ export function tickCharge(dtSeconds: number): void {
     tick_2(dtSeconds);
 }
 
+const CHARGE_TEAMS: number[] = [1, 2];
+
 function tick_2(dt: number): void {
-    for (const team of [1, 2]) {
+    for (const team of CHARGE_TEAMS) {
         const rate: number = chargeRatePerSec(team);
         if (rate <= 0) {
             continue;
@@ -13422,7 +10116,7 @@ export const SCRIPT_VERSION: string = "2026-10-03 log-levels";
 // for release), 1 events (+ shots, locks, launches, hits, radar wake/sleep,
 // a stats line every STATS_EVERY_MS), 2 trace (+ zone enter/exit, alarm,
 // launcher presses, radar read-backs). Messages above the level are never built.
-export const LOG_LEVEL: number = 1;
+export const LOG_LEVEL_2: number = 1;
 
 // Owner, 2026-10-03: "make it so it doesn't kill me for now". Off: rockets
 // still fly and explode on the target, but nobody is damaged or killed.
@@ -13457,7 +10151,8 @@ export const RADAR_SWEEP_DEG_PER_S: number = 20;
 // only syncs a transform past 1 cm / ~10 deg by default; 1 deg is invisible
 // on a radar and cuts the moves sent while tracking a slow target.
 export const RADAR_MIN_STEP_DEG: number = 1;
-export const RADAR_IDLE_UPDATE_MS: number = 100;     // a sweeping radar (no target) is redrawn this often, not every tick
+export const RADAR_IDLE_MIN_STEP_DEG: number = 3;    // the idle sweep redraws only after this much turn (20 deg/s at 200 ms = 4 deg)
+export const RADAR_IDLE_UPDATE_MS: number = 200;     // a sweeping radar (no target) is redrawn this often, not every tick
 // A tracking radar is redrawn this often rather than every tick
 // (bf6-portal-utils animations throttle with minUpdateDeltaMs the same way).
 export const RADAR_TRACK_UPDATE_MS: number = 50;
@@ -13712,11 +10407,11 @@ export function log_2(tag: string, msg: string): void {
 }
 
 export function logOn(level: number): boolean {
-    return LOG_LEVEL >= level;
+    return LOG_LEVEL_2 >= level;
 }
 
 export function logAt(level: number, tag: string, msg: () => string): void {
-    if (LOG_LEVEL >= level) {
+    if (LOG_LEVEL_2 >= level) {
         log_2(tag, msg());
     }
 }
@@ -14115,6 +10810,16 @@ export function airborneAll(): number {
     return rockets.length;
 }
 
+// Any rocket of this site still in the air (no allocation, for the idle check).
+export function hasRocketsFrom(site: number): boolean {
+    for (const r of rockets) {
+        if (r.site === site) {
+            return true;
+        }
+    }
+    return false;
+}
+
 export function airborne(site: number): number {
     return rockets.filter(r => r.site === site).length;
 }
@@ -14129,15 +10834,6 @@ export function busyKeys(site: number, into: Set<string>): void {
 
 export function rocketTargets(site: number): number[] {
     return rockets.filter(r => r.site === site).map(r => r.pid);
-}
-
-export function newestAim(site: number): V3 | undefined {
-    for (let i = rockets.length - 1; i >= 0; i--) {
-        if (rockets[i].site === site) {
-            return rockets[i].aim;
-        }
-    }
-    return undefined;
 }
 
 // OnPlayerDied / OnPlayerLeaveGame: the rocket bursts instead of killing the
@@ -14399,6 +11095,11 @@ class Site {
     private nextSilo: number = 0;
     private readonly intruders: { [pid: number]: mod.Player } = {};
     private readonly watchers: Set<number> = new Set<number>();   // players in the animation zone, any team
+    // The other team's players in the animation zone: the only players whose
+    // trigger launcher.ts reads for shots at this radar.
+    readonly enemyWatchers: { [pid: number]: mod.Player } = {};
+    enemyWatcherCount: number = 0;
+    private intruderCount: number = 0;
     private readonly lock: LockCore = new LockCore(LOCK_MS, SITE_COOLDOWN_MS);
     private readonly alarmLinger: AlarmLinger = new AlarmLinger(ALARM_LINGER_MS);
     private alarm: mod.SFX | undefined;
@@ -14461,12 +11162,20 @@ class Site {
         return mod.GetObjId(at) === this.def.animZoneId;
     }
 
-    watch(pid: number, inside: boolean): void {
+    watch(p: mod.Player | undefined, pid: number, inside: boolean): void {
         const was: number = this.watchers.size;
         if (inside) {
             this.watchers.add(pid);
+            if (p !== undefined && this.enemyWatchers[pid] === undefined && teamOf(p) !== this.team) {
+                this.enemyWatchers[pid] = p;
+                this.enemyWatcherCount++;
+            }
         } else {
             this.watchers.delete(pid);
+            if (this.enemyWatchers[pid] !== undefined) {
+                delete this.enemyWatchers[pid];
+                this.enemyWatcherCount--;
+            }
         }
         if (was === 0 && this.watchers.size > 0) {
             this.say(LOG_EVENTS, () => "radar awake (pid " + pid + " entered the animation zone)");
@@ -14481,6 +11190,9 @@ class Site {
             this.say(LOG_TRACE, () => "pid " + pid + " entered the zone (site's own team, ignored)");
             return;
         }
+        if (this.intruders[pid] === undefined) {
+            this.intruderCount++;
+        }
         this.intruders[pid] = p;
         this.say(LOG_TRACE, () => "pid " + pid + " entered the zone");
     }
@@ -14489,14 +11201,18 @@ class Site {
         const pid: number = mod.GetObjId(p);
         if (this.intruders[pid] !== undefined) {
             delete this.intruders[pid];
+            this.intruderCount--;
             this.say(LOG_TRACE, () => "pid " + pid + " left the zone");
         }
     }
 
     gone(pid: number): void {
-        delete this.intruders[pid];
+        if (this.intruders[pid] !== undefined) {
+            delete this.intruders[pid];
+            this.intruderCount--;
+        }
         if (this.watchers.has(pid)) {
-            this.watch(pid, false);
+            this.watch(undefined, pid, false);
         }
     }
 
@@ -14512,6 +11228,7 @@ class Site {
             const action = memberAction(valid, alive);
             if (action === "drop") {
                 delete this.intruders[pid];
+                this.intruderCount--;
             }
             if (action !== "keep") {
                 continue;
@@ -14589,6 +11306,12 @@ class Site {
 
     tick(now: number, dt: number): void {
         if (this.health.destroyed) {
+            return;
+        }
+        // Nobody in either zone and nothing of this site's in the air or
+        // sounding: nothing to do (owner, 2026-10-04).
+        if (this.intruderCount === 0 && this.watchers.size === 0 && this.lock.target === null
+            && this.alarm === undefined && this.lockBeep === undefined && !hasRocketsFrom(this.n)) {
             return;
         }
         const { list, byKey } = this.liveIntruders();
@@ -14711,16 +11434,17 @@ class Site {
         if (this.radarParts.length === 0 || RADAR_DRIVE === "off" || this.watchers.size === 0) {
             return;
         }
+        // Only the locked target is followed. Once its rocket is launched the
+        // radar goes back to the sweep (owner, 2026-10-04: one rocket is a
+        // sure kill, and the radar cannot turn to two players at once).
         const key: string | null = this.lock.target;
-        let target: V3 | undefined = key !== null && byKey[key] !== undefined ? soldierPos(byKey[key]) : undefined;
-        if (target === undefined) {
-            target = newestAim(this.n);
-        }
+        const target: V3 | undefined = key !== null && byKey[key] !== undefined ? soldierPos(byKey[key]) : undefined;
         const wantYaw: number = target !== undefined
             ? aimDeg(this.radarAt, target).yaw + RADAR_YAW_OFFSET_DEG
             : this.radarYaw + RADAR_SWEEP_DEG_PER_S * dt;
         this.radarYaw = wrapDeg(stepAngleDeg(this.radarYaw, wantYaw, RADAR_SLEW_DEG_PER_S * dt));
-        if (this.drawnYaw !== undefined && Math.abs(wrapDeg(this.radarYaw - this.drawnYaw)) < RADAR_MIN_STEP_DEG) {
+        const minStep: number = target !== undefined ? RADAR_MIN_STEP_DEG : RADAR_IDLE_MIN_STEP_DEG;
+        if (this.drawnYaw !== undefined && Math.abs(wrapDeg(this.radarYaw - this.drawnYaw)) < minStep) {
             return;
         }
         if (now < this.nextDrawAt) {
@@ -14783,7 +11507,7 @@ export function onEnter_2(p: mod.Player, at: mod.AreaTrigger): void {
         if (s.owns(at)) {
             s.enter(p);
         } else if (s.ownsAnim(at)) {
-            s.watch(mod.GetObjId(p), true);
+            s.watch(p, mod.GetObjId(p), true);
         }
     }
 }
@@ -14793,7 +11517,7 @@ export function onExit_2(p: mod.Player, at: mod.AreaTrigger): void {
         if (s.owns(at)) {
             s.exit(p);
         } else if (s.ownsAnim(at)) {
-            s.watch(mod.GetObjId(p), false);
+            s.watch(p, mod.GetObjId(p), false);
         }
     }
 }
@@ -14807,7 +11531,30 @@ export function onGone(pid: number): void {
 // Separate guards: one failing site must not stop the others.
 export function tickSites(now: number, dt: number): void {
     for (const s of sites) {
-        safe_2("tick.site" + s.n, () => s.tick(now, dt));
+        try {
+            s.tick(now, dt);
+        } catch (e) {
+            log_2("site", "site " + s.n + " tick threw: " + String(e));
+        }
+    }
+}
+
+// launcher.ts: every enemy player inside the animation zone of a radar that
+// still stands, once each, with the site's team. fn is a module-level
+// function so a tick allocates nothing.
+export function forEachLauncherCandidate(fn: (pid: number, p: mod.Player) => void, seen: { [pid: number]: number }, stamp: number): void {
+    for (const s of sites) {
+        if (s.health.destroyed || s.enemyWatcherCount === 0) {
+            continue;
+        }
+        for (const k in s.enemyWatchers) {
+            const pid: number = Number(k);
+            if (seen[pid] === stamp) {
+                continue;
+            }
+            seen[pid] = stamp;
+            fn(pid, s.enemyWatchers[pid]);
+        }
     }
 }
 
@@ -14828,68 +11575,6 @@ export function destroyRadarBy(n: number, pid: number, weapon: string): void {
     if (s !== undefined) {
         s.destroyBy(pid, weapon);
     }
-}
-
-
-// --- SOURCE: src\rocketsites\players.ts ---
-
-
-
-
-// Players who are deployed (OnPlayerDeployed until OnPlayerDied or leaving).
-// Reading a soldier state of a player on the deploy screen throws
-// PlayerNotDeployed: 223 of them in the 2026-10-03 14:14 log. The team is
-// read once per deploy, and positions once per tick.
-
-interface Deployed {
-    p: mod.Player;
-    pid: number;
-    team: number;
-}
-
-export interface Located extends Deployed {
-    pos: V3;
-}
-
-const deployed_2: { [pid: number]: Deployed } = {};
-let posTick: number = -1;
-let located: Located[] = [];
-
-export function markDeployed(p: mod.Player): void {
-    const pid: number = mod.GetObjId(p);
-    const team: number = tryGet("players.team", () => mod.GetObjId(mod.GetTeam(p))) ?? 0;
-    deployed_2[pid] = { p, pid, team };
-}
-
-export function markUndeployed(pid: number): void {
-    delete deployed_2[pid];
-}
-
-export function deployedCount(): number {
-    return Object.keys(deployed_2).length;
-}
-
-// Every deployed soldier with its position, read once per tick.
-export function deployedNow(tick: number): Located[] {
-    if (tick !== posTick) {
-        posTick = tick;
-        located = [];
-        for (const k of Object.keys(deployed_2)) {
-            const d: Deployed = deployed_2[Number(k)];
-            // A player can turn invalid without a leave or death event reaching
-            // us (2026-10-03 18:18 log: InvalidPlayer from GetSoldierState during
-            // a lag spike); the engine logs the throw even when it is caught.
-            if (tryGet("players.valid", () => mod.IsPlayerValid(d.p)) !== true) {
-                delete deployed_2[d.pid];
-                continue;
-            }
-            const pos: V3 | undefined = soldierPos(d.p);
-            if (pos !== undefined) {
-                located.push({ p: d.p, pid: d.pid, team: d.team, pos });
-            }
-        }
-    }
-    return located;
 }
 
 
@@ -15571,6 +12256,99 @@ export function pickRadar(
 }
 
 
+// --- SOURCE: src\util\seats.ts ---
+
+
+// Who sits in a vehicle, and who drives, kept from the engine's vehicle and
+// seat events instead of reading IsInVehicle every tick. Each event reads the
+// seat once, so a seat switch inside a vehicle is followed too.
+
+const seatOf: { [pid: number]: number } = {};
+type SeatListener = (pid: number, inVehicle: boolean, driver: boolean) => void;
+const listeners_5: SeatListener[] = [];
+
+// Told whenever a player's vehicle state changes (fakeslot.ts hides its box
+// in the driver seat).
+export function onSeatChange(fn: SeatListener): void {
+    listeners_5.push(fn);
+}
+
+export function inVehicle(pid: number): boolean {
+    return seatOf[pid] !== undefined;
+}
+
+export function isDriver(pid: number): boolean {
+    return seatOf[pid] === 0;
+}
+
+function set(pid: number, seat: number | undefined): void {
+    const was: number | undefined = seatOf[pid];
+    if (was === seat) {
+        return;
+    }
+    if (seat === undefined) {
+        delete seatOf[pid];
+    } else {
+        seatOf[pid] = seat;
+    }
+    for (const fn of listeners_5) {
+        try {
+            fn(pid, seat !== undefined, seat === 0);
+        } catch (e) {
+        }
+    }
+}
+
+// Reads the player's seat now: -1 seat numbers and failed reads count as out.
+function refresh(p: mod.Player): void {
+    let pid: number = -1;
+    let seat: number | undefined = undefined;
+    try {
+        pid = mod.GetObjId(p);
+        if (mod.GetSoldierState(p, mod.SoldierStateBool.IsInVehicle)) {
+            const s: number = mod.GetPlayerVehicleSeat(p);
+            seat = s >= 0 ? s : undefined;
+        }
+    } catch (e) {
+        seat = undefined;
+    }
+    if (pid >= 0) {
+        set(pid, seat);
+    }
+}
+
+Events.OnPlayerEnterVehicle.subscribe((p: mod.Player) => {
+    refresh(p);
+});
+Events.OnPlayerEnterVehicleSeat.subscribe((p: mod.Player) => {
+    refresh(p);
+});
+Events.OnPlayerExitVehicleSeat.subscribe((p: mod.Player) => {
+    refresh(p);
+});
+Events.OnPlayerExitVehicle.subscribe((p: mod.Player) => {
+    try {
+        set(mod.GetObjId(p), undefined);
+    } catch (e) {
+    }
+});
+Events.OnPlayerDied.subscribe((p: mod.Player) => {
+    try {
+        set(mod.GetObjId(p), undefined);
+    } catch (e) {
+    }
+});
+Events.OnPlayerUndeploy.subscribe((p: mod.Player) => {
+    try {
+        set(mod.GetObjId(p), undefined);
+    } catch (e) {
+    }
+});
+Events.OnPlayerLeaveGame.subscribe((pid: number) => {
+    set(pid, undefined);
+});
+
+
 // --- SOURCE: src\rocketsites\launcher.ts ---
 
 
@@ -15638,39 +12416,50 @@ function enemyRadarsInRange(team: number, eye: V3, standing: RadarTarget[]): Rad
     return standing.filter(r => r.team !== team && dist_2(eye, r.pos) <= LAUNCHER_RANGE_M);
 }
 
-// Only players near an enemy radar (by the shared per-tick position) have
-// their eye and trigger read.
-export function tickLaunchers(now: number, tickNo: number): void {
-    expireRays(now);
-    const standing: RadarTarget[] = liveRadars();
-    if (standing.length === 0) {
+// Only enemy players inside a standing radar's animation zone (site.ts keeps
+// them from the zone's enter and exit events) have their trigger read, one
+// read a tick: a launcher fires on the press, which can last a single tick.
+// Their eye, team and launcher are read only on a press. Nobody in a zone
+// means no reads at all, and positions are never polled.
+const seenAt: { [pid: number]: number } = {};
+let launcherTick: number = 0;
+let launcherNow: number = 0;
+
+function checkCandidate(pid: number, p: mod.Player): void {
+    if (inVehicle(pid)) {
+        firingWas[pid] = false;
         return;
     }
-    for (const d of deployedNow(tickNo)) {
-        const p: mod.Player = d.p;
-        const pid: number = d.pid;
-        const team: number = d.team;
-        if (enemyRadarsInRange(team, d.pos, standing).length === 0) {
-            firingWas[pid] = false;
-            continue;
-        }
-        const eye: V3 | undefined = tryGet("launch.eye", () => toV3(mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition)));
-        const radars: RadarTarget[] = eye === undefined ? [] : enemyRadarsInRange(team, eye, standing);
-        if (eye === undefined || radars.length === 0) {
-            firingWas[pid] = false;
-            continue;
-        }
-        const firing: boolean = tryGet("launch.firing", () => mod.GetSoldierState(p, mod.SoldierStateBool.IsFiring)) === true;
-        const press: boolean = pressed(firingWas[pid], firing);
-        firingWas[pid] = firing;
-        if (!press) {
-            continue;
-        }
-        const launcher: string | undefined = launcherInHand(p, pid);
-        if (launcher !== undefined) {
-            cast(p, pid, eye, launcher, radars, now);
-        }
+    let firing: boolean = false;
+    try {
+        firing = mod.GetSoldierState(p, mod.SoldierStateBool.IsFiring);
+    } catch (e) {
+        return;
     }
+    const press: boolean = pressed(firingWas[pid], firing);
+    firingWas[pid] = firing;
+    if (!press) {
+        return;
+    }
+    const eye: V3 | undefined = tryGet("launch.eye", () => toV3(mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition)));
+    if (eye === undefined) {
+        return;
+    }
+    const radars: RadarTarget[] = enemyRadarsInRange(teamOf(p), eye, liveRadars());
+    if (radars.length === 0) {
+        return;
+    }
+    const launcher: string | undefined = launcherInHand(p, pid);
+    if (launcher !== undefined) {
+        cast(p, pid, eye, launcher, radars, launcherNow);
+    }
+}
+
+export function tickLaunchers(now: number, tickNo: number): void {
+    expireRays(now);
+    launcherTick = tickNo;
+    launcherNow = now;
+    forEachLauncherCandidate(checkCandidate, seenAt, launcherTick);
 }
 
 // A ray with no answer is judged along its path rather than left to block
@@ -15758,7 +12547,6 @@ function onRayHit(pid: number, ray: PendingRay, hit: V3): void {
 
 
 // --- SOURCE: src\sitewire.ts ---
-
 
 
 
@@ -15868,20 +12656,12 @@ function human(pid: number): boolean {
 }
 
 function gone(pid: number): void {
-    markUndeployed(pid);
     onGone(pid);
     markDead(pid);
 }
 
 export function configureSiteEvents(): void {
     onRadarDestroyed(onSiteDown);
-    Events.OnPlayerDeployed.subscribe((p: mod.Player) => {
-        safe("sites.deployed", () => {
-            if (ready && human(mod.GetObjId(p))) {
-                markDeployed(p);
-            }
-        });
-    });
     Events.OnPlayerDied.subscribe((p: mod.Player) => {
         safe("sites.died", () => {
             if (ready) {
@@ -15934,10 +12714,33 @@ export function tickSiteWire(): void {
     lastMs = now;
     tickNo++;
     newTick();
-    safe("sites.launchers", () => { tickLaunchers(now, tickNo); });
-    safe("sites.sites", () => { tickSites(now, dt); });
-    safe("sites.rockets", () => { tickRockets(now, dt); });
-    safe("sites.vfx", () => { sweepVfx(now); });
+    tickNow = now;
+    tickDt = dt;
+    safe("sites.launchers", stepLaunchers);
+    safe("sites.sites", stepSites);
+    safe("sites.rockets", stepRockets);
+    safe("sites.vfx", stepVfx);
+}
+
+// The tick's steps as plain functions over module state, so a tick creates no
+// closures.
+let tickNow: number = 0;
+let tickDt: number = 0;
+
+function stepLaunchers(): void {
+    tickLaunchers(tickNow, tickNo);
+}
+
+function stepSites(): void {
+    tickSites(tickNow, tickDt);
+}
+
+function stepRockets(): void {
+    tickRockets(tickNow, tickDt);
+}
+
+function stepVfx(): void {
+    sweepVfx(tickNow);
 }
 
 export interface P3 {
@@ -16712,14 +13515,33 @@ export function debugWeaponReport(player: mod.Player): string {
 // pickup without a purchase gets them, so a dropped Rorsch cannot come back
 // full. The on-screen count still shows the engine's own ammo.
 //
+// Who carries one is known, not polled for (owner, 2026-10-04): the shop and
+// the Debug tab register the buyer. The only Rorsch nobody registered is one
+// lying on the ground, and that only happens when a carrier with shots left
+// dies or leaves, so the pickup check runs only while one is on the ground.
+//
 // RORSCH_TRACE logs every slot's ammo at purchase, to find out whether any
 // slot reads the Rorsch's 1/10 after all.
 
 const shotsLeft: { [pid: number]: number } = {};
-const carrying: { [pid: number]: boolean } = {};
+const carriers: { [pid: number]: mod.Player } = {};
+// The carriers' ids, for the shot probe's per-tick loop (nuke.ts).
+const carrierIds: number[] = [];
 const boughtAt: { [pid: number]: number } = {};
-// Shots left in the most recently dropped Rorsch, for whoever picks one up.
-let droppedShots: number = 1;
+// Each carrier's position at the last poll, for where a dropped Rorsch lies.
+const lastPos: { [pid: number]: { x: number; y: number; z: number } } = {};
+
+// A Rorsch on the ground: its shots, when it dropped and where (known is false
+// when the carrier's position was never read).
+interface Ground {
+    shots: number;
+    at: number;
+    x: number;
+    y: number;
+    z: number;
+    known: boolean;
+}
+const ground: Ground[] = [];
 let pollAt: number = 0;
 // Time between the last discharge and taking the weapon away, so the shot
 // itself plays out.
@@ -16727,7 +13549,45 @@ const REMOVE_AFTER_MS: number = 1500;
 
 // Zero FFI, for the shot probe.
 export function isRorschCarrier(pid: number): boolean {
-    return carrying[pid] === true;
+    return carriers[pid] !== undefined;
+}
+
+export function rorschCarrierCount(): number {
+    return carrierIds.length;
+}
+
+export function rorschCarrierId(i: number): number {
+    return carrierIds[i];
+}
+
+export function rorschCarrier(pid: number): mod.Player | undefined {
+    return carriers[pid];
+}
+
+export function rorschOnGround(): number {
+    return ground.length;
+}
+
+function addCarrier(pid: number, p: mod.Player, shots: number): void {
+    if (carriers[pid] === undefined) {
+        carrierIds.push(pid);
+    }
+    carriers[pid] = p;
+    shotsLeft[pid] = shots;
+}
+
+function removeCarrier(pid: number): void {
+    if (carriers[pid] === undefined) {
+        return;
+    }
+    delete carriers[pid];
+    delete shotsLeft[pid];
+    delete boughtAt[pid];
+    delete lastPos[pid];
+    const at: number = carrierIds.indexOf(pid);
+    if (at >= 0) {
+        carrierIds.splice(at, 1);
+    }
 }
 
 // Callins and MiscGadget throw GetAmmoRequest, so they are left out.
@@ -16783,8 +13643,7 @@ function trySetCount(p: mod.Player, pid: number, why: string): void {
 // Called by the shop right after AddEquipment.
 export function onRorschBought(p: mod.Player): void {
     const pid: number = mod.GetObjId(p);
-    shotsLeft[pid] = RORSCH_SHOTS;
-    carrying[pid] = true;
+    addCarrier(pid, p, RORSCH_SHOTS);
     boughtAt[pid] = Date.now();
     log("rorsch", "pid=" + pid + " bought the Rorsch, " + RORSCH_SHOTS + " shots");
     Timers.setTimeout(() => {
@@ -16801,7 +13660,7 @@ export function onRorschBought(p: mod.Player): void {
 
 // Debug menu "replenish": the carried Rorsch back to its full shots.
 export function refillRorsch(pid: number): boolean {
-    if (carrying[pid] !== true) {
+    if (carriers[pid] === undefined) {
         return false;
     }
     shotsLeft[pid] = RORSCH_SHOTS;
@@ -16829,41 +13688,118 @@ export function onRorschShot(p: mod.Player, pid: number): void {
                 mod.RemoveEquipment(p, RORSCH);
                 log("rorsch", "pid=" + pid + " out of shots, Rorsch removed");
             }
-            dropped(pid);
+            dropped(pid, false);
         });
     }, REMOVE_AFTER_MS);
 }
 
-// The weapon drops when its owner dies.
+// The weapon drops when its owner dies or leaves.
 export function onRorschOwnerGone(pid: number): void {
-    if (carrying[pid] !== true) {
+    if (carriers[pid] === undefined) {
         return;
     }
-    dropped(pid);
+    dropped(pid, true);
 }
 
-function dropped(pid: number): void {
+// onGround: the weapon is left lying on the map (not used up).
+function dropped(pid: number, onGround: boolean): void {
     const s: number | undefined = shotsLeft[pid];
-    if (s !== undefined && s > 0) {
-        droppedShots = s;
+    const left: boolean = onGround && s !== undefined && s > 0;
+    if (left) {
+        const at: { x: number; y: number; z: number } | undefined = lastPos[pid];
+        ground.push({
+            shots: s as number, at: Date.now(), x: at !== undefined ? at.x : 0, y: at !== undefined ? at.y : 0,
+            z: at !== undefined ? at.z : 0, known: at !== undefined
+        });
     }
     log("rorsch", "pid=" + pid + " no longer carries the Rorsch (" + (s === undefined ? "?" : String(s))
-        + " shots left)");
-    delete carrying[pid];
-    delete shotsLeft[pid];
-    delete boughtAt[pid];
+        + " shots left" + (left ? ", on the ground" : "") + ")");
+    removeCarrier(pid);
 }
 
-// Once a second: who carries the Rorsch (deployed humans only), pickups and
-// drops.
+function readPos_3(p: mod.Player): { x: number; y: number; z: number } | undefined {
+    try {
+        const v: mod.Vector = mod.GetObjectPosition(p);
+        return { x: mod.XComponentOf(v), y: mod.YComponentOf(v), z: mod.ZComponentOf(v) };
+    } catch (e) {
+        return undefined;
+    }
+}
+
+// The ground Rorsch nearest to where the picker stands (the oldest when no
+// position is known), taken off the ground.
+function takeGround(p: mod.Player): Ground {
+    let best: number = 0;
+    const at: { x: number; y: number; z: number } | undefined = readPos_3(p);
+    if (at !== undefined) {
+        let bestSq: number = Infinity;
+        for (let i: number = 0; i < ground.length; i++) {
+            const g: Ground = ground[i];
+            if (!g.known) {
+                continue;
+            }
+            const dx: number = g.x - at.x;
+            const dy: number = g.y - at.y;
+            const dz: number = g.z - at.z;
+            const sq: number = dx * dx + dy * dy + dz * dz;
+            if (sq < bestSq) {
+                bestSq = sq;
+                best = i;
+            }
+        }
+    }
+    const g: Ground = ground[best];
+    ground.splice(best, 1);
+    return g;
+}
+
+// Once a second. Carriers: where they are (for a drop), and whether they
+// still hold it (a carrier who picks up another battle pickup lets it fall).
+// Pickups: only while a Rorsch is on the ground, deployed humans who are not
+// carriers are checked for one.
 export function pollRorsch(nowMs: number): void {
     if (nowMs - pollAt < 1000) {
         return;
     }
     pollAt = nowMs;
+    for (let i: number = ground.length - 1; i >= 0; i--) {
+        if (nowMs - ground[i].at > RORSCH_GROUND_MS) {
+            log("rorsch", "a Rorsch on the ground (" + ground[i].shots + " shots) was not picked up in "
+                + String(RORSCH_GROUND_MS) + " ms; no longer watched");
+            ground.splice(i, 1);
+        }
+    }
+    for (let i: number = carrierIds.length - 1; i >= 0; i--) {
+        const pid: number = carrierIds[i];
+        const p: mod.Player = carriers[pid];
+        if (!isDeployedPid(pid)) {
+            continue;
+        }
+        let has: boolean = true;
+        try {
+            has = mod.HasEquipment(p, RORSCH);
+        } catch (e) {
+            continue;
+        }
+        const bought: number | undefined = boughtAt[pid];
+        if (!has && (bought === undefined || nowMs - bought > 2000)) {
+            dropped(pid, true);
+            continue;
+        }
+        const at: { x: number; y: number; z: number } | undefined = readPos_3(p);
+        if (at !== undefined && !(at.x === 0 && at.y === 0 && at.z === 0)) {
+            lastPos[pid] = at;
+        }
+    }
+    if (ground.length === 0) {
+        return;
+    }
     for (const p of allPlayers()) {
+        if (ground.length === 0) {
+            return;
+        }
         const pid: number = mod.GetObjId(p);
-        if (pid < 0 || isBotPid(pid) || !isDeployedPid(pid)) {
+        if (pid < 0 || isBotPid(pid) || !isDeployedPid(pid) || carriers[pid] !== undefined) {
             continue;
         }
         let has: boolean = false;
@@ -16872,25 +13808,18 @@ export function pollRorsch(nowMs: number): void {
         } catch (e) {
             continue;
         }
-        if (has && carrying[pid] !== true) {
-            carrying[pid] = true;
-            if (shotsLeft[pid] === undefined) {
-                shotsLeft[pid] = droppedShots > 0 ? droppedShots : 1;
-                log("rorsch", "pid=" + pid + " picked up a Rorsch with " + shotsLeft[pid] + " shots");
-                trySetCount(p, pid, "picked up");
-            }
-        } else if (!has && carrying[pid] === true) {
-            // The equipment may not show yet right after the purchase.
-            const bought: number | undefined = boughtAt[pid];
-            if (bought === undefined || nowMs - bought > 2000) {
-                dropped(pid);
-            }
+        if (has) {
+            const g: Ground = takeGround(p);
+            addCarrier(pid, p, g.shots);
+            log("rorsch", "pid=" + pid + " picked up a Rorsch with " + g.shots + " shots");
+            trySetCount(p, pid, "picked up");
         }
     }
 }
 
 
 // --- SOURCE: src\nukefx.ts ---
+
 
 
 
@@ -16917,14 +13846,17 @@ export function pollRorsch(nowMs: number): void {
 // effect; 400 remote-turret damage effect; 800 VL7 gas mask; 1200 the
 // death-warning drone; 1500 thermal flash; 2000 the adrenaline "making sense
 // of it" sound; 6000 the calm: VL7 and the drone off, Saturated and the
-// adrenaline effect; 10000 Saturated off. In a vehicle the drone out-of-range
-// distortion replaces the world-object screen effects.
+// adrenaline effect; 10000 Saturated off. In a vehicle only the real screen
+// effects play (VL7, Saturated): the vehicle moves the player whatever the
+// input, so world-object effects cannot stay in front of the eyes.
 //
 // The "screen effect" VFX are world objects: spawned 3 m in front of the eyes
 // they look like screen effects, but stay where they were spawned (the reason
-// the flashbang effect "stopped working" when the owner moved). They are moved
-// in front of the player's eyes every tick, for at most NUKE_FOLLOW_MAX
-// players per blast; VL7 and Saturated are real per-player effects.
+// the flashbang effect "stopped working" when the owner moved). Instead of
+// moving them every tick, the player is held still (EnableAllInputRestrictions,
+// camera included) while one plays (owner, 2026-10-04), for at most
+// NUKE_FOLLOW_MAX players per blast; VL7 and Saturated are real per-player
+// effects.
 //
 // Everything is driven by one step queue run from the per-tick hook, so a
 // blast costs no timers from the shared pool.
@@ -17072,6 +14004,7 @@ interface Follow {
     until: number;
 }
 
+// Placed screen effects still playing, for their end and for a death.
 const follows: Follow[] = [];
 
 function eyeFront(p: mod.Player): mod.Vector {
@@ -17080,12 +14013,54 @@ function eyeFront(p: mod.Player): mod.Vector {
     return mod.Add(eye, mod.Multiply(facing, 3));
 }
 
+// Input locks: pid -> until, and the player, while held still for an effect.
+const lockedUntil: { [pid: number]: number } = {};
+const lockedPlayer: { [pid: number]: mod.Player } = {};
+let lockCount: number = 0;
+
+function lockFor(pid: number, p: mod.Player, ms: number): void {
+    const until: number = Date.now() + ms;
+    const was: number | undefined = lockedUntil[pid];
+    if (was === undefined) {
+        try {
+            mod.EnableAllInputRestrictions(p, true);
+        } catch (e) {
+            return;
+        }
+        lockCount++;
+        lockedPlayer[pid] = p;
+    }
+    lockedUntil[pid] = was !== undefined && was > until ? was : until;
+}
+
+function unlock(pid: number): void {
+    if (lockedUntil[pid] === undefined) {
+        return;
+    }
+    const p: mod.Player = lockedPlayer[pid];
+    delete lockedUntil[pid];
+    delete lockedPlayer[pid];
+    lockCount--;
+    try {
+        if (mod.IsValid(p)) {
+            mod.EnableAllInputRestrictions(p, false);
+        }
+    } catch (e) {
+    }
+}
+
+// The effect is placed once, 3 m in front of the eyes, and the player is held
+// still for as long as it plays. Never in a vehicle (see above).
 function attachFx(pid: number, p: mod.Player, asset: mod.RuntimeSpawn_Common, ms: number): void {
+    if (inVehicle(pid)) {
+        return;
+    }
     try {
         const at: Vectors.Vector3 = Vectors.toVector3(eyeFront(p));
         const fx: mod.VFX | undefined = spawnFx(asset, at.x, at.y, at.z, 1);
         if (fx !== undefined) {
             follows.push({ pid: pid, player: p, fx: fx, until: Date.now() + ms });
+            lockFor(pid, p, ms);
         }
     } catch (e) {
     }
@@ -17098,19 +14073,24 @@ function dropFollows(pid: number): void {
             follows.splice(i, 1);
         }
     }
+    unlock(pid);
 }
 
-function tickFollows(nowMs: number): void {
+// Ends effects whose time is up and releases expired locks. No engine call
+// unless something ends.
+function tickHeld(nowMs: number): void {
     for (let i: number = follows.length - 1; i >= 0; i--) {
         const f: Follow = follows[i];
-        if (nowMs >= f.until || !mod.IsValid(f.player)) {
+        if (nowMs >= f.until) {
             killFx(f.fx);
             follows.splice(i, 1);
-            continue;
         }
-        try {
-            mod.MoveVFX(f.fx, eyeFront(f.player), zero());
-        } catch (e) {
+    }
+    if (lockCount > 0) {
+        for (const k in lockedUntil) {
+            if (nowMs >= lockedUntil[Number(k)]) {
+                unlock(Number(k));
+            }
         }
     }
 }
@@ -17277,7 +14257,34 @@ function dropBlack(pid: number): void {
 
 // ------------------------------------------------------------ the blast
 
+// Full world effects still up, so MP-RMG TAC bursts fall back to liteEffects.
+let fullBlasts: number = 0;
+
+// One explosion and the close sound, for an MP-RMG TAC round over the cap.
+function liteEffects(x: number, y: number, z: number): void {
+    const fx: mod.VFX | undefined = spawnFx(mod.RuntimeSpawn_Common.FX_Carrier_Explosion_Dist, x, y - NUKE_CARRIER_DROP_M, z, 1);
+    after(4000, () => { killFx(fx); });
+    play3D("blastClose", mod.RuntimeSpawn_Common.SFX_Destruction_Buildings_GasStation_Collapse_OneShot3D,
+        x, y, z, 1, 200);
+}
+
+// Screen effects per player for MP-RMG TAC rounds: at most one set per
+// TAC_RMG_SCREEN_GAP_MS. A Rorsch blast always gets them.
+const screenAt: { [pid: number]: number } = {};
+
+function screenFree(pid: number, rapid: boolean): boolean {
+    const now: number = Date.now();
+    const last: number | undefined = screenAt[pid];
+    if (rapid && last !== undefined && now - last < TAC_RMG_SCREEN_GAP_MS) {
+        return false;
+    }
+    screenAt[pid] = now;
+    return true;
+}
+
 function worldEffects(x: number, y: number, z: number): void {
+    fullBlasts++;
+    after(NUKE_FX_MS, () => { fullBlasts--; });
     const made: (mod.VFX | undefined)[] = [];
     made.push(spawnFx(mod.RuntimeSpawn_Common.FX_Carrier_Explosion_Dist, x, y - NUKE_CARRIER_DROP_M, z, 1));
     const plume: mod.VFX | undefined = spawnFx(mod.RuntimeSpawn_Common.FX_BASE_Smoke_Column_XXL, x, y, z, 1);
@@ -17374,9 +14381,8 @@ function closeSequence(v: Victim, inVehicle: boolean, follow: boolean): void {
     const pid: number = v.pid;
     const screenFx: boolean = follow && !inVehicle;
     panel(v, 1, 1, 1);
-    if (follow) {
-        attachFx(pid, p, inVehicle ? mod.RuntimeSpawn_Common.FX_Gadget_Drone_OutOfRange_Distortion
-            : mod.RuntimeSpawn_Common.FX_Gadget_ScreenEffect_Thermal_BHOT, inVehicle ? 4000 : 3000);
+    if (screenFx) {
+        attachFx(pid, p, mod.RuntimeSpawn_Common.FX_Gadget_ScreenEffect_Thermal_BHOT, 3000);
     }
     const white: mod.UIWidget | undefined = v.ui;
     if (white !== undefined) {
@@ -17438,39 +14444,35 @@ function closeSequence(v: Victim, inVehicle: boolean, follow: boolean): void {
     });
 }
 
-function inVehicleNow(p: mod.Player): boolean {
-    try {
-        return mod.GetSoldierState(p, mod.SoldierStateBool.IsInVehicle);
-    } catch (e) {
-        return false;
-    }
-}
-
 interface Hit {
     p: mod.Player;
     pid: number;
     d: number;
 }
 
-const idsScratch: number[] = [];
-const playersScratch: mod.Player[] = [];
-const posScratch_2: Vectors.Vector3 = { x: 0, y: 0, z: 0 };
 
-// The Rorsch impact at (x, y, z). nuke.ts calls this for every hit.
-export function detonate(x: number, y: number, z: number, shooter: mod.Player): void {
-    worldEffects(x, y, z);
-    const n: number = PlayerLocations.findPlayersInSphere(x, y, z, NUKE_WITNESS_M, undefined, idsScratch, playersScratch);
+// The Rorsch impact at (x, y, z). nuke.ts calls this for every hit; rapid is
+// an MP-RMG TAC round (see TAC_RMG_FULL_BLASTS).
+export function detonate(x: number, y: number, z: number, shooter: mod.Player, rapid: boolean): void {
+    if (rapid && fullBlasts >= TAC_RMG_FULL_BLASTS) {
+        liteEffects(x, y, z);
+    } else {
+        worldEffects(x, y, z);
+    }
+    // A fresh snapshot: everyone's position at the moment of the blast.
+    takeSnapshot(0);
+    const n: number = snapshotCount();
+    const r2: number = NUKE_WITNESS_M * NUKE_WITNESS_M;
     const hits: Hit[] = [];
     for (let i: number = 0; i < n; i++) {
-        const pid: number = idsScratch[i];
-        const got: Vectors.Vector3 | null | undefined = PlayerLocations.getPosition(pid, posScratch_2);
-        if (got === null || got === undefined) {
+        const dx: number = snapshotX(i) - x;
+        const dy: number = snapshotY(i) - y;
+        const dz: number = snapshotZ(i) - z;
+        const sq: number = dx * dx + dy * dy + dz * dz;
+        if (sq > r2) {
             continue;
         }
-        const dx: number = posScratch_2.x - x;
-        const dy: number = posScratch_2.y - y;
-        const dz: number = posScratch_2.z - z;
-        hits.push({ p: playersScratch[i], pid: pid, d: Math.sqrt(dx * dx + dy * dy + dz * dz) });
+        hits.push({ p: snapshotPlayer(i), pid: snapshotPid(i), d: Math.sqrt(sq) });
     }
     hits.sort((a: Hit, b: Hit) => a.d - b.d);
     let followLeft: number = NUKE_FOLLOW_MAX;
@@ -17492,22 +14494,21 @@ export function detonate(x: number, y: number, z: number, shooter: mod.Player): 
             const f: number = (h.d - NUKE_KILL_M) / (NUKE_BURN_M - NUKE_KILL_M);
             hurt(h.p, Math.round(NUKE_BLAST_DMG_NEAR - f * (NUKE_BLAST_DMG_NEAR - NUKE_BLAST_DMG_FAR)), shooter);
             let v: Victim | undefined = undefined;
-            if (human) {
+            if (human && screenFree(h.pid, rapid)) {
                 v = begin(h.pid, h.p);
                 const follow: boolean = followLeft > 0;
                 if (follow) {
                     followLeft--;
                 }
-                closeSequence(v, inVehicleNow(h.p), follow);
+                closeSequence(v, inVehicle(h.pid), follow);
             }
             burn(h.p, h.pid, v, shooter);
             continue;
         }
         witnessed++;
-        if (human && followLeft > 0) {
+        if (human && !inVehicle(h.pid) && followLeft > 0 && screenFree(h.pid, rapid)) {
             followLeft--;
-            attachFx(h.pid, h.p, inVehicleNow(h.p) ? mod.RuntimeSpawn_Common.FX_Gadget_Drone_OutOfRange_Distortion
-                : mod.RuntimeSpawn_Common.FX_Gadget_Drone_ThermalVE, 2500);
+            attachFx(h.pid, h.p, mod.RuntimeSpawn_Common.FX_Gadget_Drone_ThermalVE, 2500);
         }
     }
     log("nuke", "DETONATE at " + Math.round(x) + "," + Math.round(y) + "," + Math.round(z)
@@ -17553,8 +14554,13 @@ export function stopChargeAlarm(pid: number): void {
 
 // --------------------------------------------------------------- lifecycle
 
-// Every tick, regardless of engine health: the queued damage and the effects
-// that follow the eyes must keep running.
+// For the perf line (perfline.ts): queued steps, placed effects, held players.
+export function nukeFxCounts(): string {
+    return steps.length + " steps, " + follows.length + " effects, " + lockCount + " held";
+}
+
+// Every tick, regardless of engine health: the queued damage, the end of the
+// placed effects and the release of the input locks must keep running.
 export function tickNukeFx(): void {
     const nowMs: number = Date.now();
     pollRorsch(nowMs);
@@ -17569,8 +14575,8 @@ export function tickNukeFx(): void {
             }
         }
     }
-    if (follows.length > 0) {
-        tickFollows(nowMs);
+    if (follows.length > 0 || lockCount > 0) {
+        tickHeld(nowMs);
     }
 }
 
@@ -17589,6 +14595,7 @@ function forget_2(pid: number): void {
 function forgetAll(pid: number): void {
     forget_2(pid);
     dropBlack(pid);
+    delete screenAt[pid];
 }
 
 export function configureNukeFxEvents(): void {
@@ -17648,6 +14655,29 @@ export function holdStep(st: HoldState | undefined, firing: boolean, nowMs: numb
     return { next: undefined, fire: nowMs - st.pressMs >= minChargeMs };
 }
 
+// MP-RMG TAC (debug only, owner 2026-10-04: removed for the final build). The
+// engine reports no single shot, only IsFiring, so a "round" is each trigger
+// press plus one every intervalMs while it stays held. The next round counts
+// from when the last one fired, so a lag gap fires once, not a backlog.
+export interface RoundState {
+    lastMs: number;
+}
+
+export interface RoundResult {
+    next: RoundState | undefined;
+    fire: boolean;
+}
+
+export function roundStep(st: RoundState | undefined, firing: boolean, nowMs: number, intervalMs: number): RoundResult {
+    if (!firing) {
+        return { next: undefined, fire: false };
+    }
+    if (st === undefined || nowMs - st.lastMs >= intervalMs) {
+        return { next: { lastMs: nowMs }, fire: true };
+    }
+    return { next: st, fire: false };
+}
+
 
 // --- SOURCE: src\nuke.ts ---
 
@@ -17682,6 +14712,9 @@ interface PendingRay_2 {
     from: Vectors.Vector3 | undefined;
     u: number;
     tries: number;
+    // An MP-RMG TAC round (debug): explodes only, no radar or HQ effect, and
+    // is not tracked in inFlight, so any number can be in the air at once.
+    tac: boolean;
 }
 
 const inFlight_2: { [pid: number]: PendingRay_2 } = {};
@@ -17746,12 +14779,12 @@ function forgetHold(pid: number): void {
     delete reloadOnMs[pid];
     delete chargeAim[pid];
 }
-const deployed_3: { [pid: number]: boolean } = {};
+const deployed_2: { [pid: number]: boolean } = {};
 
 // Zero FFI: HasEquipment and the other soldier reads throw PlayerNotDeployed
 // on a player who is not deployed (rorschammo's poll).
 export function isDeployedPid(pid: number): boolean {
-    return deployed_3[pid] === true;
+    return deployed_2[pid] === true;
 }
 
 let inited_2: boolean = false;
@@ -17789,7 +14822,7 @@ function shootRay(p: mod.Player): void {
         : mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition);
     const pendingRay: PendingRay_2 = {
         pid: pid, player: p, team: team, start: Vectors.toVector3(eye), castMs: Date.now(), dir: undefined,
-        from: undefined, u: RAY_START_OFFSET_M, tries: 0
+        from: undefined, u: RAY_START_OFFSET_M, tries: 0, tac: false
     };
     inFlight_2[pid] = pendingRay;
     safe("nuke.cast", () => {
@@ -17815,6 +14848,20 @@ function shootRay(p: mod.Player): void {
                 + " (raw aim y " + String(mod.YComponentOf(facing)) + ", pitched down " + RORSCH_PITCH_FIX_RAD + " rad)"
                 + " dischargeTickDirY=" + String(live.y));
         }
+    });
+}
+
+// One MP-RMG TAC round (debug, tacrmg.ts): the Rorsch's ray from the live aim,
+// tilted down the same RORSCH_PITCH_FIX_RAD, ending in a nuke and nothing else.
+export function castTacRound(p: mod.Player, pid: number): void {
+    safe("nuke.tac", () => {
+        const eye: Vectors.Vector3 = Vectors.toVector3(mod.GetSoldierState(p, mod.SoldierStateVector.EyePosition));
+        const facing: Vectors.Vector3 = Vectors.toVector3(mod.Normalize(
+            mod.GetSoldierState(p, mod.SoldierStateVector.GetFacingDirection)));
+        castStraight({
+            pid: pid, player: p, team: teamIdOf(p), start: eye, castMs: Date.now(),
+            dir: pitchedDown(facing, RORSCH_PITCH_FIX_RAD), from: undefined, u: RAY_START_OFFSET_M, tries: 0, tac: true
+        });
     });
 }
 
@@ -17849,20 +14896,24 @@ function castStraight(ray: PendingRay_2): void {
     ray.from = from;
     const id = Raycast.cast(from, { x: s.x + d.x * u1, y: s.y + d.y * u1, z: s.z + d.z * u1 },
         (hit: boolean, point?: Raycast.Vector3) => {
-            if (inFlight_2[ray.pid] !== ray) {
-                return;
+            if (!ray.tac) {
+                if (inFlight_2[ray.pid] !== ray) {
+                    return;
+                }
+                delete inFlight_2[ray.pid];
             }
-            delete inFlight_2[ray.pid];
             if (hit && point !== undefined) {
                 safe("nuke.hit", () => { resolveHit(ray, { x: point.x, y: point.y, z: point.z }); });
             } else {
                 safe("nuke.miss", () => { resolveMiss(ray); });
             }
         },
-        { priority: Raycast.Priority.Critical });
+        { priority: ray.tac ? Raycast.Priority.Standard : Raycast.Priority.Critical });
     if (id === null) {
-        log("nuke", "RAY rejected by the Raycast queue pid=" + ray.pid);
-        delete inFlight_2[ray.pid];
+        log("nuke", "RAY rejected by the Raycast queue pid=" + ray.pid + (ray.tac ? " (MP-RMG TAC)" : ""));
+        if (!ray.tac) {
+            delete inFlight_2[ray.pid];
+        }
     }
 }
 
@@ -17919,7 +14970,9 @@ function resolveHit(ray: PendingRay_2, hit: Vectors.Vector3): void {
         // Cast again from just past the obstacle (the queue sends it next tick).
         ray.u = ray.u + dist_3(ray.from, hit) + RAY_PASS_M;
         ray.tries++;
-        inFlight_2[pid] = ray;
+        if (!ray.tac) {
+            inFlight_2[pid] = ray;
+        }
         castStraight(ray);
         if (RORSCH_TRACE || willLogDebug()) {
             log("nuke", "HIT pid=" + pid + " blocked at " + String(travelled.toFixed(2))
@@ -17932,7 +14985,11 @@ function resolveHit(ray: PendingRay_2, hit: Vectors.Vector3): void {
             + " at " + String(hit.x) + "," + String(hit.y) + "," + String(hit.z));
     }
 
-    safe("nuke.detonate", () => { detonate(hit.x, hit.y, hit.z, p); });
+    if (ray.tac) {
+        safe("nuke.detonate", () => { detonate(hit.x, hit.y, hit.z, p, true); });
+        return;
+    }
+    safe("nuke.detonate", () => { detonate(hit.x, hit.y, hit.z, p, false); });
     const d3: Vectors.Vector3 | undefined = ray.dir;
     if (d3 !== undefined) {
         safe("nuke.radars", () => { raygunAtRadars(team, pid, ray.start, d3, travelled, hit); });
@@ -17976,6 +15033,9 @@ function resolveHit(ray: PendingRay_2, hit: Vectors.Vector3): void {
 // A ray that hit nothing: the radar path test still runs over its full length,
 // since RayCast passes through models.
 function resolveMiss(ray: PendingRay_2): void {
+    if (ray.tac) {
+        return;
+    }
     if (RORSCH_TRACE) {
         log("nuke", "RAY miss pid=" + ray.pid + " - nothing hit within " + String(RAY_MAX_DIST_M) + "m");
     }
@@ -17985,38 +15045,27 @@ function resolveMiss(ray: PendingRay_2): void {
     }
 }
 
+// Only the registered carriers (rorschammo.ts) are read: nobody holding a
+// Rorsch means no work at all.
 function probe(): void {
     if (!inited_2) {
         return;
     }
-    safe("nuke.probe", () => {
-        let arr: mod.Array;
-        try {
-            arr = mod.AllPlayers();
-        } catch (e) {
-            return;
+    // A hold left over from a player who no longer carries one.
+    for (const k in hold) {
+        if (!isRorschCarrier(Number(k))) {
+            forgetHold(Number(k));
         }
-        const n: number = mod.CountOf(arr);
-        for (let i: number = 0; i < n; i++) {
-            const p: mod.Player = mod.ValueInArray(arr, i) as mod.Player;
-            const pid: number = mod.GetObjId(p);
-            if (pid < 0) {
-                continue;
-            }
-            if (deployed_3[pid] !== true) {
-                continue;
-            }
-            // Bots never fire the Rorsch: zero-FFI registry test, before any
-            // soldier-state read. The Rorsch is also stripped at bot deploy.
-            if (isBotPid(pid)) {
-                continue;
-            }
-            // Zero-FFI filter first: a player is only read while carrying the
-            // Rorsch (rorschammo's 1 Hz poll).
-            if (!isRorschCarrier(pid)) {
-                if (hold[pid] !== undefined) {
-                    forgetHold(pid);
-                }
+    }
+    const n: number = rorschCarrierCount();
+    if (n === 0) {
+        return;
+    }
+    safe("nuke.probe", () => {
+        for (let i: number = n - 1; i >= 0; i--) {
+            const pid: number = rorschCarrierId(i);
+            const p: mod.Player | undefined = rorschCarrier(pid);
+            if (p === undefined || deployed_2[pid] !== true || isBotPid(pid)) {
                 continue;
             }
             let firing: boolean = false;
@@ -18082,7 +15131,7 @@ function logNukeOnce(pid: number, reason: string): void {
     }
     nukeDiag[pid] = reason;
     log("nuke", "probe pid=" + pid + " -> " + reason
-        + " deployed=" + String(deployed_3[pid] === true));
+        + " deployed=" + String(deployed_2[pid] === true));
 }
 
 export function configureNukeEvents(): void {
@@ -18091,18 +15140,18 @@ export function configureNukeEvents(): void {
         safe("nuke.leave", () => {
             delete inFlight_2[pid];
             forgetHold(pid);
-            delete deployed_3[pid];
+            delete deployed_2[pid];
         });
     });
     Events.OnPlayerDeployed.subscribe((p: mod.Player) => {
         safe("nuke.deployed", () => {
-            deployed_3[mod.GetObjId(p)] = true;
+            deployed_2[mod.GetObjId(p)] = true;
         });
     });
     Events.OnPlayerUndeploy.subscribe((p: mod.Player) => {
         safe("nuke.undeployed", () => {
             const pid: number = mod.GetObjId(p);
-            deployed_3[pid] = false;
+            deployed_2[pid] = false;
             forgetHold(pid);
             delete inFlight_2[pid];
         });
@@ -18115,6 +15164,627 @@ export function tickNukeProbe(): void {
 
 export function inFlightCount(): number {
     return Object.keys(inFlight_2).length;
+}
+
+
+// --- SOURCE: src\tacrmg.ts ---
+
+
+
+
+
+
+
+// MP-RMG TAC: debug only, for fun (owner, 2026-10-04: removed for the final
+// build). The Debug tab hands out the ordinary MP-RMG and marks the buyer here;
+// every round it fires is the Rorsch's ray and nuke, explosion only (no radar
+// or HQ effect). A round is each trigger press and one every TAC_RMG_ROUND_MS
+// while it stays held (see roundStep). The mark goes on death, undeploy,
+// leaving, or once the MP-RMG is gone; an MP-RMG bought anywhere else is a
+// normal gun.
+
+const carriers_2: { [pid: number]: mod.Player } = {};
+const rounds: { [pid: number]: RoundState } = {};
+// A press made with another weapon in hand: nothing fires until release.
+const ignoredPress: { [pid: number]: boolean } = {};
+let checkAt: number = 0;
+
+export function markTacRmg(p: mod.Player): void {
+    const pid: number = mod.GetObjId(p);
+    carriers_2[pid] = p;
+    log("tacrmg", "pid=" + pid + " has the MP-RMG TAC");
+}
+
+export function clearTacRmg(pid: number): void {
+    if (carriers_2[pid] === undefined) {
+        return;
+    }
+    delete carriers_2[pid];
+    delete rounds[pid];
+    delete ignoredPress[pid];
+    log("tacrmg", "pid=" + pid + " no longer has the MP-RMG TAC");
+}
+
+// The MP-RMG in hand: carried, and no sidearm or gadget slot active. A battle
+// pickup reports no active slot while held (the Rorsch, test 2026-10-03).
+function rmgInHand(p: mod.Player): boolean {
+    return mod.HasEquipment(p, MOAC)
+        && !mod.IsInventorySlotActive(p, mod.InventorySlots.SecondaryWeapon)
+        && !mod.IsInventorySlotActive(p, mod.InventorySlots.GadgetOne)
+        && !mod.IsInventorySlotActive(p, mod.InventorySlots.GadgetTwo);
+}
+
+export function tickTacRmg(): void {
+    const keys: string[] = Object.keys(carriers_2);
+    if (keys.length === 0) {
+        return;
+    }
+    const nowMs: number = Date.now();
+    const check: boolean = nowMs >= checkAt;
+    if (check) {
+        checkAt = nowMs + 1000;
+    }
+    for (const k of keys) {
+        const pid: number = Number(k);
+        const p: mod.Player = carriers_2[pid];
+        safe("tacrmg.tick", () => {
+            if (!mod.IsValid(p)) {
+                clearTacRmg(pid);
+                return;
+            }
+            if (check && !mod.HasEquipment(p, MOAC)) {
+                clearTacRmg(pid);
+                return;
+            }
+            const firing: boolean = mod.GetSoldierState(p, mod.SoldierStateBool.IsFiring);
+            if (!firing) {
+                delete rounds[pid];
+                delete ignoredPress[pid];
+                return;
+            }
+            if (ignoredPress[pid] === true) {
+                return;
+            }
+            if (rounds[pid] === undefined && !rmgInHand(p)) {
+                ignoredPress[pid] = true;
+                return;
+            }
+            const r: RoundResult = roundStep(rounds[pid], true, nowMs, TAC_RMG_ROUND_MS);
+            if (r.next !== undefined) {
+                rounds[pid] = r.next;
+            }
+            if (r.fire) {
+                castTacRound(p, pid);
+            }
+        });
+    }
+}
+
+export function configureTacRmgEvents(): void {
+    Events.OnPlayerDied.subscribe((victim: mod.Player) => {
+        safe("tacrmg.died", () => { clearTacRmg(mod.GetObjId(victim)); });
+    });
+    Events.OnPlayerUndeploy.subscribe((p: mod.Player) => {
+        safe("tacrmg.undeploy", () => { clearTacRmg(mod.GetObjId(p)); });
+    });
+    Events.OnPlayerLeaveGame.subscribe((pid: number) => {
+        safe("tacrmg.leave", () => { clearTacRmg(pid); });
+    });
+}
+
+
+// --- SOURCE: src\fakeslotcore.ts ---
+// The fake 4th gadget slot's trigger, kept free of mod.* so
+// scripts/test-fakeslot.js can unit-test it in node.
+//
+// Scripts see no key presses, only which inventory slots are active. The
+// 2026-10-04 14:02 slot trace showed that pressing 3 while slot 3 is in hand
+// puts it away and returns to the weapon held before it (pri -> g1 -> pri),
+// while scrolling goes on to slot 4 (g1 -> g2). So "3 again" is slot 3 (g1)
+// closing back onto the exact set that was active before it opened, without
+// the item having been used in between (the Portal Gadget's menu opened, a
+// rocket fired): after use, going back to the gun is just going back.
+//
+// Pressing 1 looks the same as 3 when slot 3 was drawn from the primary; it is
+// told apart only when it was drawn from something else (the sidearm).
+
+export interface SlotWatch {
+    // Active slots last seen, e.g. "pri", "g1", "none" (joined with "+").
+    set: string;
+    // The set active just before slot 3 opened.
+    before: string;
+    // The item in slot 3 was used during this hold.
+    used: boolean;
+    // Changes before this time come from our own swap and never trigger one.
+    busyUntil: number;
+}
+
+export interface SlotResult {
+    next: SlotWatch;
+    swap: boolean;
+}
+
+function hasG1(set: string): boolean {
+    return ("+" + set + "+").indexOf("+g1+") >= 0;
+}
+
+export function newWatch(set: string): SlotWatch {
+    return { set: set, before: "none", used: false, busyUntil: 0 };
+}
+
+export function markUsed(w: SlotWatch): SlotWatch {
+    return { set: w.set, before: w.before, used: true, busyUntil: w.busyUntil };
+}
+
+export function markSwapped(w: SlotWatch, nowMs: number, busyMs: number): SlotWatch {
+    return { set: w.set, before: w.before, used: false, busyUntil: nowMs + busyMs };
+}
+
+export function slotStep(w: SlotWatch, set: string, nowMs: number): SlotResult {
+    if (set === w.set) {
+        return { next: w, swap: false };
+    }
+    const wasG1: boolean = hasG1(w.set);
+    const isG1: boolean = hasG1(set);
+    if (!wasG1 && isG1) {
+        return { next: { set: set, before: w.set, used: false, busyUntil: w.busyUntil }, swap: false };
+    }
+    const swap: boolean = wasG1 && !isG1 && nowMs >= w.busyUntil && !w.used
+        && w.before !== "none" && set === w.before;
+    return { next: { set: set, before: w.before, used: w.used, busyUntil: w.busyUntil }, swap: swap };
+}
+
+
+// --- SOURCE: src\fakeslot.ts ---
+
+
+
+
+
+
+// The fake 4th gadget slot (owner, 2026-10-04). The Portal Gadget can only
+// live in slot 3 (asking for the misc slot put it there anyway, 14:02 log),
+// where it took the class's own gadget, e.g. the engineer's RPG-7. Now slot 3
+// holds one of the two and pressing 3 again, before using what is in hand,
+// swaps them (see fakeslotcore.ts for how "3 again" is detected). A box the
+// size of the game's gadget boxes, just left of them, shows the card of the
+// item not in slot 3.
+//
+// Which gadget the Portal Gadget replaced is found at deploy: the gadgets the
+// soldier carries are listed before and after the grant, and the one that
+// went missing is it. Its ammo is kept while it is swapped out, so swapping
+// cannot refill it.
+
+const PORTAL: mod.Gadgets = mod.Gadgets.Misc_PortalGadget;
+
+// Gadgets that can sit in slot 3, with a name for the log.
+const SLOT3_GADGETS: [mod.Gadgets, string][] = [
+    [mod.Gadgets.Launcher_Unguided_Rocket, "RPG-7"],
+    [mod.Gadgets.Launcher_Aim_Guided, "aim-guided launcher"],
+    [mod.Gadgets.Launcher_Air_Defense, "air defense launcher"],
+    [mod.Gadgets.Launcher_Auto_Guided, "auto-guided launcher"],
+    [mod.Gadgets.Launcher_Breaching_Projectile, "breaching launcher"],
+    [mod.Gadgets.Launcher_High_Explosive, "HE launcher"],
+    [mod.Gadgets.Launcher_IGLA, "IGLA"],
+    [mod.Gadgets.Launcher_Incendiary_Airburst, "incendiary airburst"],
+    [mod.Gadgets.Launcher_Long_Range, "long range launcher"],
+    [mod.Gadgets.Launcher_Smoke_Grenade, "smoke launcher"],
+    [mod.Gadgets.Launcher_Thermobaric_Grenade, "thermobaric launcher"],
+    [mod.Gadgets.Deployable_Cover, "deployable cover"],
+    [mod.Gadgets.Deployable_Deploy_Beacon, "deploy beacon"],
+    [mod.Gadgets.Deployable_EOD_Bot, "EOD bot"],
+    [mod.Gadgets.Deployable_Grenade_Intercept_System, "grenade intercept"],
+    [mod.Gadgets.Deployable_Missile_Intercept_System, "missile intercept"],
+    [mod.Gadgets.Deployable_Portable_Mortar, "portable mortar"],
+    [mod.Gadgets.Deployable_Recon_Drone, "recon drone"],
+    [mod.Gadgets.Deployable_Vehicle_Supply_Crate, "vehicle supply crate"],
+    [mod.Gadgets.Misc_Acoustic_Sensor_AV_Mine, "acoustic AV mine"],
+    [mod.Gadgets.Misc_Anti_Personnel_Mine, "AP mine"],
+    [mod.Gadgets.Misc_Anti_Vehicle_Mine, "AV mine"],
+    [mod.Gadgets.Misc_Assault_Ladder, "assault ladder"],
+    [mod.Gadgets.Misc_Defibrillator, "defibrillator"],
+    [mod.Gadgets.Misc_Demolition_Charge, "demolition charge"],
+    [mod.Gadgets.Misc_Incendiary_Round_Shotgun, "incendiary rounds"],
+    [mod.Gadgets.Misc_Laser_Designator, "laser designator"],
+    [mod.Gadgets.Misc_Sniper_Decoy, "sniper decoy"],
+    [mod.Gadgets.Misc_Supply_Pouch, "supply pouch"],
+    [mod.Gadgets.Misc_Suppression, "suppression"],
+    [mod.Gadgets.Misc_Tracer_Dart, "tracer dart"],
+    [mod.Gadgets.Misc_Tripwire_Sensor_AV_Mine, "tripwire AV mine"],
+    [mod.Gadgets.Class_Adrenaline_Injector, "adrenaline injector"],
+    [mod.Gadgets.Class_Handheld_Jammer, "handheld jammer"],
+    [mod.Gadgets.Class_Motion_Sensor, "motion sensor"],
+    [mod.Gadgets.Class_Repair_Tool, "repair tool"],
+    [mod.Gadgets.Class_Supply_Bag, "supply bag"],
+];
+
+const SLOT_KEYS: string[] = ["pri", "sec", "g1", "g2", "class", "throw", "melee"];
+const SLOTS_2: mod.InventorySlots[] = [
+    mod.InventorySlots.PrimaryWeapon, mod.InventorySlots.SecondaryWeapon, mod.InventorySlots.GadgetOne,
+    mod.InventorySlots.GadgetTwo, mod.InventorySlots.ClassGadget, mod.InventorySlots.Throwable,
+    mod.InventorySlots.MeleeWeapon
+];
+
+interface Holder {
+    pid: number;
+    p: mod.Player;
+    // Index into SLOT3_GADGETS of the gadget the Portal Gadget replaced, or -1.
+    stash: number;
+    // What slot 3 holds now.
+    portalIn: boolean;
+    // Ammo of the stashed gadget when it was swapped out; -1 = untouched.
+    ammo: number;
+    mag: number;
+    watch: SlotWatch;
+    // After a swap, slot 3 is asked for again until it is in hand: the
+    // engine's own switch back to the gun (the "3 again" press itself) can
+    // override a ForceSwitchInventory sent in the same tick.
+    forceUntil: number;
+    forceAt: number;
+    box: mod.UIWidget | undefined;
+    icon: mod.UIWidget | undefined;
+    iconSeq: number;
+    // In a vehicle's driver seat: the box is hidden, as the game hides its
+    // own gadget boxes there (owner, 2026-10-04), and no swap is watched.
+    // Kept from the seat events (util/seats.ts), not polled.
+    driving: boolean;
+    // The buy menu is open: inventory switching is blocked, nothing to watch.
+    menuOpen: boolean;
+    // Slot 3 was in hand at the last slot read.
+    g1Seen: boolean;
+}
+
+const holders: { [pid: number]: Holder } = {};
+
+function carried(p: mod.Player): boolean[] {
+    const out: boolean[] = [];
+    for (const g of SLOT3_GADGETS) {
+        let has: boolean = false;
+        try {
+            has = mod.HasEquipment(p, g[0]);
+        } catch (e) {
+        }
+        out.push(has);
+    }
+    return out;
+}
+
+function activeSet(p: mod.Player): string {
+    let s: string = "";
+    for (let i: number = 0; i < SLOTS_2.length; i++) {
+        let on: boolean = false;
+        try {
+            on = mod.IsInventorySlotActive(p, SLOTS_2[i]);
+        } catch (e) {
+        }
+        if (on) {
+            s += (s === "" ? "" : "+") + SLOT_KEYS[i];
+        }
+    }
+    return s === "" ? "none" : s;
+}
+
+// ------------------------------------------------------------------ the box
+
+function v_2(x: number, y: number): mod.Vector {
+    return mod.CreateVector(x, y, 0);
+}
+
+function deleteWidget(w: mod.UIWidget | undefined): void {
+    if (w === undefined) {
+        return;
+    }
+    try {
+        mod.DeleteUIWidget(w);
+    } catch (e) {
+    }
+}
+
+function dropBox(h: Holder): void {
+    // The card goes with the box.
+    deleteWidget(h.box);
+    h.box = undefined;
+    h.icon = undefined;
+}
+
+// Built once per deploy, the size and colour of the game's gadget boxes.
+function buildBox(h: Holder): void {
+    dropBox(h);
+    if (h.stash < 0) {
+        return;
+    }
+    const base: string = "psh_fs_" + h.pid;
+    try {
+        mod.AddUIContainer(base, v_2(FAKE_SLOT_RIGHT, FAKE_SLOT_BOTTOM), v_2(FAKE_SLOT_W, FAKE_SLOT_H),
+            mod.UIAnchor.BottomRight, mod.GetUIRoot(), true, 0, mod.CreateVector(0.36, 0.36, 0.36), 0.55,
+            mod.UIBgFill.Solid, mod.UIDepth.AboveGameUI, h.p);
+        h.box = mod.FindUIWidgetWithName(base);
+    } catch (e) {
+        log("fakeslot", "box failed for pid=" + h.pid + ": " + String(e));
+        dropBox(h);
+        return;
+    }
+    paintBox(h);
+}
+
+// The card of the item NOT in slot 3, centred and sized relative to the box
+// (FAKE_SLOT_CARD of it), so resizing the box in config resizes the card.
+function paintBox(h: Holder): void {
+    if (h.box === undefined || h.stash < 0) {
+        return;
+    }
+    const gadget: mod.Gadgets = h.portalIn ? SLOT3_GADGETS[h.stash][0] : PORTAL;
+    const cw: number = Math.round(FAKE_SLOT_W * FAKE_SLOT_CARD);
+    const ch: number = Math.round(FAKE_SLOT_H * FAKE_SLOT_CARD);
+    try {
+        deleteWidget(h.icon);
+        h.iconSeq++;
+        const iconName: string = "psh_fs_" + h.pid + "_i" + h.iconSeq;
+        mod.AddUIGadgetImage(iconName, v_2((FAKE_SLOT_W - cw) / 2, (FAKE_SLOT_H - ch) / 2), v_2(cw, ch),
+            mod.UIAnchor.TopLeft, gadget, h.box, h.p);
+        h.icon = mod.FindUIWidgetWithName(iconName);
+    } catch (e) {
+        log("fakeslot", "card failed for pid=" + h.pid + ": " + String(e));
+    }
+}
+
+// ----------------------------------------------------------------- the swap
+
+const FORCE_EVERY_MS: number = 150;
+
+function swap(h: Holder, nowMs: number): void {
+    const stash: [mod.Gadgets, string] = SLOT3_GADGETS[h.stash];
+    const p: mod.Player = h.p;
+    try {
+        if (h.portalIn) {
+            mod.AddEquipment(p, stash[0], mod.InventorySlots.GadgetOne);
+            if (h.ammo >= 0) {
+                mod.SetInventoryAmmo(p, mod.InventorySlots.GadgetOne, h.ammo);
+                mod.SetInventoryMagazineAmmo(p, mod.InventorySlots.GadgetOne, h.mag);
+            }
+        } else {
+            h.ammo = mod.GetInventoryAmmo(p, mod.InventorySlots.GadgetOne);
+            h.mag = mod.GetInventoryMagazineAmmo(p, mod.InventorySlots.GadgetOne);
+            mod.AddEquipment(p, PORTAL, mod.InventorySlots.GadgetOne);
+        }
+        mod.ForceSwitchInventory(p, mod.InventorySlots.GadgetOne);
+    } catch (e) {
+        log("fakeslot", "swap failed for pid=" + h.pid + ": " + String(e));
+        return;
+    }
+    h.forceUntil = nowMs + FAKE_SLOT_FORCE_MS;
+    h.forceAt = nowMs + FORCE_EVERY_MS;
+    h.portalIn = !h.portalIn;
+    h.watch = markSwapped(h.watch, nowMs, FAKE_SLOT_BUSY_MS);
+    paintBox(h);
+    if (FAKE_SLOT_TRACE) {
+        log("fakeslot", "pid=" + h.pid + " slot 3 -> " + (h.portalIn ? "Portal Gadget" : stash[1])
+            + (h.portalIn ? " (ammo kept " + h.mag + "/" + h.ammo + ")" : ""));
+    }
+}
+
+// ---------------------------------------------------------------- the hooks
+
+// Replaces the per-deploy Portal Gadget grant. Slot 3 starts with the Portal
+// Gadget; the gadget it pushed out becomes the stash.
+export function grantPortalGadget(p: mod.Player): void {
+    const pid: number = mod.GetObjId(p);
+    const before: boolean[] = carried(p);
+    try {
+        mod.AddEquipment(p, PORTAL, mod.InventorySlots.GadgetOne);
+    } catch (e) {
+        log("fakeslot", "portal gadget grant failed for pid=" + pid + ": " + String(e));
+        return;
+    }
+    const after: boolean[] = carried(p);
+    let stash: number = -1;
+    for (let i: number = 0; i < SLOT3_GADGETS.length; i++) {
+        if (before[i] && !after[i]) {
+            stash = i;
+            break;
+        }
+    }
+    const old: Holder | undefined = holders[pid];
+    if (old !== undefined) {
+        dropBox(old);
+    }
+    const h: Holder = {
+        pid: pid, p: p, stash: stash, portalIn: true, ammo: -1, mag: -1, watch: newWatch(activeSet(p)),
+        forceUntil: 0, forceAt: 0, box: undefined, icon: undefined, iconSeq: old !== undefined ? old.iconSeq : 0,
+        driving: isDriver(pid), menuOpen: false, g1Seen: false
+    };
+    holders[pid] = h;
+    buildBox(h);
+    if (h.driving && h.box !== undefined) {
+        mod.SetUIWidgetVisible(h.box, false);
+    }
+    log("fakeslot", "pid=" + pid + " portal gadget in slot 3, swaps with "
+        + (stash >= 0 ? SLOT3_GADGETS[stash][1] : "nothing (slot 3 held no known gadget)"));
+}
+
+function forget_3(pid: number): void {
+    const h: Holder | undefined = holders[pid];
+    if (h === undefined) {
+        return;
+    }
+    dropBox(h);
+    delete holders[pid];
+}
+
+function hasG1_2(set: string): boolean {
+    return ("+" + set + "+").indexOf("+g1+") >= 0;
+}
+
+// The buy menu opened or closed (index.ts setMenuOpen).
+export function setFakeSlotMenuOpen(pid: number, open: boolean): void {
+    const h: Holder | undefined = holders[pid];
+    if (h !== undefined) {
+        h.menuOpen = open;
+    }
+}
+
+function setDriving(h: Holder, driving: boolean): void {
+    if (driving === h.driving) {
+        return;
+    }
+    h.driving = driving;
+    if (h.box !== undefined) {
+        try {
+            mod.SetUIWidgetVisible(h.box, !driving);
+        } catch (e) {
+        }
+    }
+}
+
+// Tick counter for the staggered slot reads.
+let fsTick: number = 0;
+
+// Every tick, but the slots of a player are read only every
+// FAKE_SLOT_POLL_TICKS ticks (spread across players by id): a slot switch
+// takes hundreds of milliseconds, so 10 reads a second see every press. Right
+// after a swap a player is read every tick until slot 3 comes up. The one
+// per-tick read is IsFiring, and only while the stashed gadget is in hand: a
+// launcher shot can last a single tick, and missing it would turn the
+// engine's switch back to the gun into a false "3 again".
+export function tickFakeSlot(): void {
+    fsTick++;
+    const nowMs: number = Date.now();
+    for (const k in holders) {
+        const h: Holder = holders[Number(k)];
+        if (h.stash < 0 || h.driving || h.menuOpen) {
+            continue;
+        }
+        try {
+            stepHolder(h, nowMs);
+        } catch (e) {
+            log("fakeslot", "pid=" + h.pid + " step failed: " + String(e));
+        }
+    }
+}
+
+function stepHolder(h: Holder, nowMs: number): void {
+    // The stashed gadget fired (a rocket, a mine thrown) counts as used.
+    if (h.g1Seen && !h.portalIn && h.forceUntil === 0 && !h.watch.used
+        && mod.GetSoldierState(h.p, mod.SoldierStateBool.IsFiring)) {
+        h.watch = markUsed(h.watch);
+    }
+    if (h.forceUntil === 0 && (fsTick + h.pid) % FAKE_SLOT_POLL_TICKS !== 0) {
+        return;
+    }
+    if (!mod.IsValid(h.p)) {
+        forget_3(h.pid);
+        return;
+    }
+    const set: string = activeSet(h.p);
+    const g1In: boolean = hasG1_2(set);
+    h.g1Seen = g1In;
+    if (h.forceUntil !== 0) {
+        if (g1In || nowMs >= h.forceUntil) {
+            if (FAKE_SLOT_TRACE) {
+                log("fakeslot", "pid=" + h.pid + (g1In ? " slot 3 in hand" : " slot 3 never came up")
+                    + " after the swap");
+            }
+            h.forceUntil = 0;
+        } else if (nowMs >= h.forceAt) {
+            h.forceAt = nowMs + FORCE_EVERY_MS;
+            mod.ForceSwitchInventory(h.p, mod.InventorySlots.GadgetOne);
+        }
+    }
+    if (FAKE_SLOT_TRACE && set !== h.watch.set) {
+        log("fakeslot", "pid=" + h.pid + " active " + h.watch.set + " -> " + set
+            + (h.watch.used ? " (used)" : "") + ", before slot 3: " + h.watch.before);
+    }
+    const r: SlotResult = slotStep(h.watch, set, nowMs);
+    h.watch = r.next;
+    if (r.swap) {
+        swap(h, nowMs);
+    }
+}
+
+export function configureFakeSlotEvents(): void {
+    onSeatChange((pid: number, _inVehicle: boolean, driver: boolean) => {
+        const h: Holder | undefined = holders[pid];
+        if (h !== undefined) {
+            setDriving(h, driver);
+        }
+    });
+    // Opening the buy menu is using the Portal Gadget.
+    Events.OnPortalGadgetFireStart.subscribe((p: mod.Player) => {
+        safe("fakeslot.portalFire", () => {
+            const h: Holder | undefined = holders[mod.GetObjId(p)];
+            if (h !== undefined) {
+                h.watch = markUsed(h.watch);
+            }
+        });
+    });
+    Events.OnPlayerDied.subscribe((p: mod.Player) => {
+        safe("fakeslot.died", () => { forget_3(mod.GetObjId(p)); });
+    });
+    Events.OnPlayerUndeploy.subscribe((p: mod.Player) => {
+        safe("fakeslot.undeploy", () => { forget_3(mod.GetObjId(p)); });
+    });
+    Events.OnPlayerLeaveGame.subscribe((pid: number) => {
+        safe("fakeslot.leave", () => { forget_3(pid); });
+    });
+}
+
+
+// --- SOURCE: src\perfline.ts ---
+
+
+
+
+
+
+
+
+
+
+// One [perf] line every PERF_LINE_MS: the engine's own frame times (DICE's
+// PortalPerformanceExample marks Portal > 3 ms and server > 20 ms as bad),
+// the tick rate, and the counts most likely to climb before a crash. Changes
+// nothing in game; it shows what each optimisation buys.
+let nextAt: number = 0;
+
+export function tickPerfLine(nowMs: number): void {
+    if (nowMs < nextAt) {
+        return;
+    }
+    const first: boolean = nextAt === 0;
+    nextAt = nowMs + PERF_LINE_MS;
+    if (first) {
+        return;
+    }
+    let portalMs: number = -1;
+    let serverMs: number = -1;
+    try {
+        portalMs = mod.GetPortalAverageFrameTime();
+        serverMs = mod.GetServerAverageFrameTime();
+    } catch (e) {
+    }
+    let humans: number = 0;
+    let soldiers: number = 0;
+    for (const p of allPlayers()) {
+        soldiers++;
+        try {
+            if (!isBotPid(mod.GetObjId(p))) {
+                humans++;
+            }
+        } catch (e) {
+        }
+    }
+    let vehicles: number = -1;
+    try {
+        vehicles = mod.CountOf(mod.AllVehicles());
+    } catch (e) {
+    }
+    const sites = takeStats();
+    log("perf", "portal " + portalMs.toFixed(2) + " ms, server " + serverMs.toFixed(2) + " ms, "
+        + smoothedTickRate().toFixed(1) + " Hz | players " + soldiers + " (" + humans + " human), bots alive "
+        + botLiveCount(1) + "/" + botLiveCount(2) + " of " + botRosterSize() + " | vehicles " + vehicles
+        + " | rorsch " + rorschCarrierCount() + " carried, " + rorschOnGround() + " on the ground | nuke "
+        + nukeFxCounts() + " | sites: " + sites.transforms + " moves, " + sites.liveVfx + " effects, "
+        + airborneAll() + " rockets");
 }
 
 
@@ -18456,6 +16126,9 @@ export function locationById(id: string): StrategicLocation | undefined {
 
 
 
+
+
+
 const MOCK_DATA: boolean = false;
 
 const PROTO_W: number = 96;
@@ -18556,13 +16229,22 @@ const TAB_H: number = 34;
 const CELL_H: number = 44;
 const ROW_STEP: number = 48;
 
-function colX(t: number, col: number): number {
-    return col * Math.floor(MENU_W / TABS_DATA[t].cols);
+// A section may set its own column count (a one-column row has room for a
+// description on its sub-line); otherwise the tab's applies.
+function secCols(t: number, sec: PshSection): number {
+    return sec.cols !== undefined ? sec.cols : TABS_DATA[t].cols;
 }
 
+function colX(cols: number, col: number): number {
+    return col * Math.floor(MENU_W / cols);
+}
+
+// pages holds the pages after the first (sections), so a tab with one
+// extra page has two. Counting only pages hid the Debug tab's second page:
+// with a count of 1 the pager was never built.
 function pageCount(t: number): number {
     const pages: PshSection[][] | undefined = TABS_DATA[t].pages;
-    return pages === undefined ? 1 : pages.length;
+    return pages === undefined ? 1 : 1 + pages.length;
 }
 
   function pageSections(t: number, page: number): PshSection[] {
@@ -18571,7 +16253,7 @@ function pageCount(t: number): number {
       }
       const pages: PshSection[][] | undefined = TABS_DATA[t].pages;
       if (pages !== undefined && page > 0) {
-          return pages[page % pages.length];
+          return pages[(page - 1) % pages.length];
       }
       return TABS_DATA[t].sections;
   }
@@ -18582,8 +16264,8 @@ function pageCount(t: number): number {
       }
       return pageSections(t, pPage[id] === undefined ? 0 : pPage[id]);
   }
-function cellW(t: number): number {
-    return Math.floor(MENU_W / TABS_DATA[t].cols) - 6;
+function cellW(cols: number): number {
+    return Math.floor(MENU_W / cols) - 6;
 }
 const SEC_TOP: number = 98;
 const SEC_HEAD_H: number = 22;
@@ -18596,25 +16278,26 @@ const DONE_Y: number = MENU_H - DONE_H - DONE_GAP;
 const SEC_HEAD_Y: number[] = [];
 const SEC_ROW_Y: number[] = [];
 
-function layoutSections(secs: PshSection[], cols: number): void {
-    const useCols: number = cols > 0 ? cols : TABS_COLS_DEFAULT;
+// Laid out per page, so a page's rows never borrow another page's spacing.
+// An empty section (the Weapons tab's "coming soon") is a heading only.
+function layoutSections(t: number, secs: PshSection[]): void {
     SEC_HEAD_Y.length = 0;
     SEC_ROW_Y.length = 0;
     let y: number = SEC_TOP;
     for (let s: number = 0; s < secs.length; s++) {
         SEC_HEAD_Y.push(y);
         SEC_ROW_Y.push(y + SEC_HEAD_H + SEC_ROW_GAP);
-        const n: number = secs[s].items.length;
-        const rows: number = Math.ceil(n / useCols);
-        y = y + SEC_HEAD_H + SEC_ROW_GAP + (rows - 1) * ROW_STEP + CELL_H + SEC_GAP;
+        const cols: number = secCols(t, secs[s]);
+        const rows: number = Math.ceil(secs[s].items.length / (cols > 0 ? cols : TABS_COLS_DEFAULT));
+        y = y + SEC_HEAD_H + SEC_GAP + (rows > 0 ? SEC_ROW_GAP + (rows - 1) * ROW_STEP + CELL_H : 0);
     }
-    PAGER_Y = y + PAGER_GAP;
 }
 
-
-let PAGER_Y: number = 456;
 const PAGER_W: number = 96;
 const PAGER_GAP: number = 8;
+// The pager sits just above DONE on every page. A page must end above it:
+// 468 px of sections, e.g. three one-row sections and one three-row section.
+const PAGER_Y: number = DONE_Y - CELL_H - PAGER_GAP;
 
 const MOCK_SITES: { [t: number]: number[] } = { 1: [0, 0, 0], 2: [0, 0, 0] };
 const MOCK_NUKE: { [t: number]: number } = { 1: 0, 2: 0 };
@@ -19043,58 +16726,74 @@ function refreshTacticalRowsForAll(): void {
     }
 }
 
-type PshItem = { key: string; sub?: string; cost: number; act?: string; give?: mod.Weapons; vehicle?: mod.VehicleList; spawnerIndex?: number };
-type PshSection = { head: string; items: PshItem[] };
+// give: a weapon; gadget (+ slot): a gadget, call-in or deployable; resupply:
+// an ammo refill. An item with none of these (and no vehicle or act) is not
+// for sale yet and is refused.
+type PshItem = {
+    key: string; sub?: string; cost: number; act?: string; give?: mod.Weapons;
+    gadget?: mod.Gadgets; slot?: mod.InventorySlots; resupply?: mod.ResupplyTypes;
+    vehicle?: mod.VehicleList; spawnerIndex?: number;
+    // MP-RMG TAC (debug, tacrmg.ts): the given MP-RMG fires nukes.
+    tacRmg?: boolean
+};
+type PshSection = { head: string; items: PshItem[]; cols?: number };
 
 type PshTab = { label: string; cols: number; sections: PshSection[]; pages?: PshSection[][] };
 
 type PshButton = { wrap: mod.UIWidget; button: mod.UIWidget };
 
+// The prototype weapons, sold by the Prototype Factory and, free, on the
+// Debug tab's last page. One column, so the sub-line has room for a
+// description. Owner, 2026-10-04: the Rorsch is sold as the RORSCH MK-4 TAC
+// (it was the "Gauss Rifle" item); MP-RMG Freeze has no engine weapon yet.
+function protoItems(free: boolean): PshItem[] {
+    return [
+        { key: "itMoac", cost: free ? 0 : 300, give: mod.Weapons.BattlePickup_MP_RMG },
+        { key: "itMoar", sub: "itSoon", cost: free ? 0 : 450 },
+        { key: "itTacLauncher", sub: "itTacLauncherSub", cost: free ? 0 : 600, give: mod.Weapons.BattlePickup_Rorsch_Mk_2_SMRW },
+    ];
+}
+
 const TABS_DATA: PshTab[] = [
     {
+        // Owner, 2026-10-04: custom weapons come here later.
         label: "tabWeapons",
         cols: 2,
         sections: [
-            {
-                head: "catProto",
-                items: [
-                    { key: "itMoac", cost: 300, give: mod.Weapons.BattlePickup_MP_RMG },
-                    { key: "itMoar", cost: 450 },
-                    { key: "itTacLauncher", cost: 1200 },
-                    { key: "itSingularity", cost: 1400 },
-                ],
-            },
-            {
-                head: "catStandard",
-                items: [
-                    { key: "itTacTank", cost: 1600 },
-                    { key: "itGauss", cost: 600, give: mod.Weapons.BattlePickup_Rorsch_Mk_2_SMRW },
-                    { key: "itAntiAir", cost: 300 },
-                    { key: "itSraw", cost: 250 },
-                ],
-            },
+            { head: "catComingSoon", items: [] },
         ],
     },
     {
+        // Call-ins go to their own slot so they take no class gadget's place;
+        // the mortar and designator go to slot 4, never slot 3, which is the
+        // Portal Gadget's swap slot (fakeslot.ts).
+        // Whether a script-given call-in works in this mode is untested.
         label: "tabEquipment",
         cols: 2,
         sections: [
             {
-                head: "catTools",
+                head: "catStrikes",
                 items: [
-                    { key: "itRepairTorch", cost: 150 },
-                    { key: "itRadarKit", cost: 200 },
-                    { key: "itBinoculars", cost: 100 },
-                    { key: "itLockpick", cost: 250 },
+                    { key: "itArtillery", cost: 400, gadget: mod.Gadgets.CallIn_Artillery_Strike, slot: mod.InventorySlots.Callins },
+                    { key: "itAirStrike", cost: 600, gadget: mod.Gadgets.CallIn_Air_Strike, slot: mod.InventorySlots.Callins },
+                    { key: "itSmokeScreen", cost: 100, gadget: mod.Gadgets.CallIn_Smoke_Screen, slot: mod.InventorySlots.Callins },
+                    { key: "itUav", cost: 250, gadget: mod.Gadgets.CallIn_UAV_Overwatch, slot: mod.InventorySlots.Callins },
+                ],
+            },
+            {
+                head: "catDrops",
+                items: [
+                    { key: "itAmmoDrop", cost: 100, gadget: mod.Gadgets.CallIn_Ammo_Drop, slot: mod.InventorySlots.Callins },
+                    { key: "itAvDrop", cost: 250, gadget: mod.Gadgets.CallIn_Anti_Vehicle_Drop, slot: mod.InventorySlots.Callins },
+                    { key: "itWeaponDrop", cost: 150, gadget: mod.Gadgets.CallIn_Weapon_Drop, slot: mod.InventorySlots.Callins },
+                    { key: "itMobileRedeploy", cost: 300, gadget: mod.Gadgets.CallIn_Mobile_Redeploy, slot: mod.InventorySlots.Callins },
                 ],
             },
             {
                 head: "catDeploy",
                 items: [
-                    { key: "itParachute", cost: 350 },
-                    { key: "itVisor", cost: 200 },
-                    { key: "itPouch", cost: 100 },
-                    { key: "itEodBot", cost: 200 },
+                    { key: "itMortar", cost: 350, gadget: mod.Gadgets.Deployable_Portable_Mortar, slot: mod.InventorySlots.GadgetTwo },
+                    { key: "itDesignator", cost: 150, gadget: mod.Gadgets.Misc_Laser_Designator, slot: mod.InventorySlots.GadgetTwo },
                 ],
             },
         ],
@@ -19106,19 +16805,9 @@ const TABS_DATA: PshTab[] = [
             {
                 head: "catAmmo",
                 items: [
-                    { key: "itAmmoRifle", cost: 5 },
-                    { key: "itAmmoSmg", cost: 5 },
-                    { key: "itAmmoLmg", cost: 5 },
-                    { key: "itGrenades", cost: 25 },
-                ],
-            },
-            {
-                head: "catAttach",
-                items: [
-                    { key: "itReflex", cost: 25 },
-                    { key: "itAssaultScope", cost: 50 },
-                    { key: "itSniperScope", cost: 100 },
-                    { key: "itSilencer", cost: 10 },
+                    { key: "itAmmoBox", cost: 25, resupply: mod.ResupplyTypes.AmmoBox },
+                    { key: "itSupplyBag", cost: 50, resupply: mod.ResupplyTypes.SupplyBag },
+                    { key: "itAmmoCrate", cost: 75, resupply: mod.ResupplyTypes.AmmoCrate },
                 ],
             },
         ],
@@ -19126,7 +16815,6 @@ const TABS_DATA: PshTab[] = [
     {
         label: "tabDebug",
         cols: 3,
-
         sections: [
             {
                 head: "catDbgNodes",
@@ -19144,32 +16832,32 @@ const TABS_DATA: PshTab[] = [
                     { key: "dbgProto", cost: 0, act: "proto" },
                 ],
             },
-              {
-                  head: "catDbgPerf",
-                  items: [
-                      { key: "dbgPerfHz", cost: 0, act: "perf:hz" },
-                      { key: "dbgPerfMs", cost: 0, act: "perf:ms" },
-                      { key: "dbgPerfHealth", cost: 0, act: "perf:health" },
-                      { key: "dbgPerfLag", cost: 0, act: "perf:lag" },
-                      { key: "dbgBots", cost: 0, act: "bots" },
-                  ],
-              },
-              {
-                  head: "catDbgUtil",
-                  items: [
-                      { key: "dbgTeam", cost: 0, act: "team" },
-                      { key: "dbgRorsch", cost: 0, act: "rorsch" },
-                      { key: "dbgPrestige", cost: 0, act: "prestige" },
-                      { key: "dbgTabState", cost: 0, act: "tabstate" },
-                      { key: "dbgAdminLog", cost: 0, act: "adminlog" },
-                      { key: "dbgSiteDmg", cost: 0, act: "sitedmg" },
-                      { key: "dbgReplenish", cost: 0, act: "replenish" },
-                      { key: "dbgReset", cost: 0, act: "reset" },
-                  ],
-              },
-          ],
+            {
+                head: "catDbgPerf",
+                items: [
+                    { key: "dbgPerfHz", cost: 0, act: "perf:hz" },
+                    { key: "dbgPerfMs", cost: 0, act: "perf:ms" },
+                    { key: "dbgPerfHealth", cost: 0, act: "perf:health" },
+                    { key: "dbgPerfLag", cost: 0, act: "perf:lag" },
+                    { key: "dbgBots", cost: 0, act: "bots" },
+                ],
+            },
+        ],
         pages: [
             [
+                {
+                    head: "catDbgUtil",
+                    items: [
+                        { key: "dbgTeam", cost: 0, act: "team" },
+                        { key: "dbgRorsch", cost: 0, act: "rorsch" },
+                        { key: "dbgPrestige", cost: 0, act: "prestige" },
+                        { key: "dbgTabState", cost: 0, act: "tabstate" },
+                        { key: "dbgAdminLog", cost: 0, act: "adminlog" },
+                        { key: "dbgSiteDmg", cost: 0, act: "sitedmg" },
+                        { key: "dbgReplenish", cost: 0, act: "replenish" },
+                        { key: "dbgReset", cost: 0, act: "reset" },
+                    ],
+                },
                 {
                     head: "catDbgFoe",
                     items: [
@@ -19186,8 +16874,16 @@ const TABS_DATA: PshTab[] = [
                     ],
                 },
             ],
+            [
+                {
+                    head: "catProto", cols: 1, items: protoItems(true).concat([
+                        // Debug only, for fun; owner, 2026-10-04: out of the final build.
+                        { key: "itRmgTac", sub: "itRmgTacSub", cost: 0, give: mod.Weapons.BattlePickup_MP_RMG, tacRmg: true },
+                    ]),
+                },
+            ],
         ],
-      },
+    },
       {
           label: "tabTactical",
           cols: 2,
@@ -19235,29 +16931,11 @@ const TABS_DATA: PshTab[] = [
       },
 ];
 
-// The WEAPONS tab is a debug tab. Its only gate is the prestige cost (the
-// factory check applies to FACTORY_TAB alone), so zeroing the costs here makes
-// it fully available without capturing anything. Done once at load, before any
-// menu is built, so the cell styling, the afford check and the charge all agree.
-const WEAPONS_TAB: number = 0;
-if (WEAPONS_TAB_FREE) {
-    for (const sec of TABS_DATA[WEAPONS_TAB].sections) {
-        for (const item of sec.items) {
-            item.cost = 0;
-        }
-    }
-}
-
 const FACTORY_TAB: number = 5;
 const activeFactoryKind: { [id: number]: string } = {};
 
 const FACTORY_ITEMS: { [kind: string]: PshItem[] } = {
-    proto: [
-        { key: "itMoac", cost: 300, give: mod.Weapons.BattlePickup_MP_RMG },
-        { key: "itGauss", cost: 600, give: mod.Weapons.BattlePickup_Rorsch_Mk_2_SMRW },
-        { key: "itTacLauncher", cost: 1200 },
-        { key: "itSingularity", cost: 1400 }
-    ],
+    proto: protoItems(false),
     war: [
         { key: "itTankLight", cost: 500, vehicle: mod.VehicleList.M2Bradley, spawnerIndex: 0 },
         { key: "itTankFlak", cost: 700, vehicle: mod.VehicleList.Gepard, spawnerIndex: 1 },
@@ -19310,6 +16988,7 @@ function siteFeedKey(viewer: number, from: number, to: number, slot: number): st
 }
 
 const FEED_CHARS_BY_KEY: { [k: string]: number } = {
+    rorschLocked: 34,
     shopRefund: 42,
     siteYoursA: 35,
     siteYoursB: 35,
@@ -20220,7 +17899,7 @@ function buildTabRows(id: number, t: number, p: mod.Player, menu: mod.UIWidget):
     beginMenuBuild(id, t);
     const panel: mod.UIWidget = mkContainer(id, false, "tp" + t, 0, 0, MENU_W, MENU_H, mod.UIAnchor.TopLeft, menu, C_BLACK, 0, mod.UIBgFill.None, p);
     const secs: PshSection[] = tabSectionsFor(id, t);
-    layoutSections(widestSections(t), data.cols);
+    layoutSections(t, secs);
     for (let s: number = 0; s < secs.length; s++) {
         const sec: PshSection = secs[s];
         const headY: number = SEC_HEAD_Y[s];
@@ -20231,9 +17910,10 @@ function buildTabRows(id: number, t: number, p: mod.Player, menu: mod.UIWidget):
             const item: PshItem = sec.items[i];
             const afford: boolean = item.cost <= pPrestige[id];
 
-            const cellX: number = colX(t, i % TABS_DATA[t].cols);
-            const cellY: number = rowY + Math.floor(i / TABS_DATA[t].cols) * ROW_STEP;
-            const cw: number = cellW(t);
+            const cols: number = secCols(t, sec);
+            const cellX: number = colX(cols, i % cols);
+            const cellY: number = rowY + Math.floor(i / cols) * ROW_STEP;
+            const cw: number = cellW(cols);
             const ckey: string = cellKey(id, t, s, i);
             const tc: mod.Vector = afford ? MENU_TITLE : MENU_LOCKTXT;
 
@@ -20515,6 +18195,7 @@ function setPrestige(id: number, v: number): void {
 
 function setMenuOpen(id: number, p: mod.Player, open: boolean): void {
     menuOpen[id] = open;
+    setFakeSlotMenuOpen(id, open);
     if (!open) {
         // Destroy-on-close. The buy menu used to be built once and only hidden,
         // so at 64 players visiting all tabs roughly 19,400 widgets stayed alive
@@ -20689,15 +18370,6 @@ function destroyPlayerHud(id: number): void {
         pCellHover[id] = -1;
         pDoneHover[id] = false;
     });
-}
-
-function grantPortalGadget(p: mod.Player): void {
-    try {
-        mod.AddEquipment(p, mod.Gadgets.Misc_PortalGadget);
-        log("gadget", "portal gadget granted to " + mod.GetObjId(p));
-    } catch (e) {
-        log("gadget", "grant failed: " + String(e));
-    }
 }
 
 function renderFeedChip(prefix: string, slot: number, key: string, a0: string | number, a1: string | number): void {
@@ -21027,7 +18699,10 @@ function onGameModeStarted(): void {
 }
 
 function onPlayerJoinGame(eventPlayer: mod.Player): void {
-    log("join", "pid=" + mod.GetObjId(eventPlayer) + " team=" + teamId(eventPlayer));
+    // Humans only: bots join on every spawn and flooded the log.
+    if (!isBotPlayer(eventPlayer)) {
+        log("join", "pid=" + mod.GetObjId(eventPlayer) + " team=" + teamId(eventPlayer));
+    }
 }
 
   function onPlayerDeployed(eventPlayer: mod.Player): void {
@@ -21066,9 +18741,11 @@ function onPlayerLeaveGame(eventNumber: number): void {
 // and only repaint when it actually changes.
 const shownPower: { [t: number]: number } = { 1: -1, 2: -1 };
 
+const HUD_TEAMS: number[] = [1, 2];
+
 function syncPowerHud(): void {
     let dirty: boolean = false;
-    for (const t of [1, 2]) {
+    for (const t of HUD_TEAMS) {
         const r: number = Math.round(powerVal[t]);
         if (shownPower[t] !== r) {
             shownPower[t] = r;
@@ -21099,11 +18776,15 @@ function tickChargeThisFrame(): void {
     tickCharge(frameDt);
 }
 
+function tickPerfLineNow(): void {
+    tickPerfLine(Date.now());
+}
+
 function onOngoingGlobal(): void {
     // Measured, not assumed. The engine ticks nearer 30 Hz, so a hardcoded
     // 1/60 made every rate-based system advance at half wall-clock speed: the
-    // log recorded a computed 1%/s charge that delivered 0.5%/s. CHARGE_BASE_SECONDS
-    // is now genuinely seconds.
+    // log recorded a computed 1%/s charge that delivered 0.5%/s. The charge
+    // rate (CHARGE_MINUTES_BY_SITES) is now genuinely wall-clock time.
     const raw: number = spotDeltaMs() / 1000;
     frameDt = raw < DT_MIN ? DT_MIN : raw > DT_MAX ? DT_MAX : raw;
     frameNo = frameNo + 1;
@@ -21119,11 +18800,14 @@ function onOngoingGlobal(): void {
     // that both fall inside skipped ticks merge into one hold.
     if (healthFactor() >= 0.7) {
         tickNukeProbe();
+        tickTacRmg();
     }
     // Queued nuke damage and effects, and the Rorsch ammo poll: never skipped.
     safe("nuke.fx", tickNukeFx);
+    safe("fakeslot.tick", tickFakeSlot);
     // Rocket sites: launchers, radars, rockets. Never skipped.
     safe("sites.tick", tickSiteWire);
+    safe("perf.line", tickPerfLineNow);
     expireFeedRows();
     if (artActive === undefined && artQueue.length === 0) {
         return;
@@ -21170,10 +18854,10 @@ function onGameModeEnding(): void {
           activeFactoryKind[id] = here.def.kind;
           if (prevKind !== here.def.kind) {
               invalidateTab(id, FACTORY_TAB);
-              log("factory", "pid=" + id + " factory kind " + String(prevKind) + " -> " + here.def.kind
+              log("gadget", "pid=" + id + " factory kind " + String(prevKind) + " -> " + here.def.kind
                   + " (tab invalidated)");
           }
-          log("factory", "pid=" + id + " gadget fired inside " + here.def.id
+          log("gadget", "pid=" + id + " gadget fired inside " + here.def.id
               + " (owner=" + here.owner + " contested=" + here.contested + ")");
           pushPlayerFeed(eventPlayer, "buyAvailable", here.def.factoryName, 0);
           setTab(id, FACTORY_TAB, eventPlayer);
@@ -21186,11 +18870,11 @@ function onGameModeEnding(): void {
           // No feed here: firing the gadget away from a factory is the normal
           // way to open the other tabs, so it must stay quiet.
           if (here !== undefined) {
-              log("factory", "pid=" + id + " gadget fired inside " + here.def.id
+              log("gadget", "pid=" + id + " gadget fired inside " + here.def.id
                   + " (" + here.def.kind + " owner=" + here.owner
                   + " contested=" + here.contested + " - no shop)");
           } else {
-              log("factory", "pid=" + id + " gadget fired outside any building");
+              log("gadget", "pid=" + id + " gadget fired outside any building");
           }
       }
       if (menuOpen[id]) {
@@ -21224,13 +18908,16 @@ function onUIButtonEvent(eventPlayer: mod.Player, eventUIWidget: mod.UIWidget, e
         kind = "HoverOut";
         }
 
+        // The widget name is read only for the log line (LOG_LEVEL 2).
         let wname: string = "?";
-        try {
-            wname = mod.GetUIWidgetName(eventUIWidget);
-        } catch (e) {
-            wname = "<name failed>";
+        if (logTagOn("uiButton")) {
+            try {
+                wname = mod.GetUIWidgetName(eventUIWidget);
+            } catch (e) {
+                wname = "<name failed>";
+            }
+            log("uiButton", "ev=" + kind + " w=" + wname + " built=" + String(pBuilt[id]) + " open=" + String(menuOpen[id]));
         }
-        log("uiButton", "ev=" + kind + " w=" + wname + " built=" + String(pBuilt[id]) + " open=" + String(menuOpen[id]));
         if (!pBuilt[id] || !menuOpen[id]) {
             return;
         }
@@ -21306,9 +18993,12 @@ function onUIButtonEvent(eventPlayer: mod.Player, eventUIWidget: mod.UIWidget, e
                     return;
                 }
                 const give: mod.Weapons | undefined = items[i].give;
+                const gadget: mod.Gadgets | undefined = items[i].gadget;
+                const refill: mod.ResupplyTypes | undefined = items[i].resupply;
                 const veh: mod.VehicleList | undefined = items[i].vehicle;
-                if (give === undefined && veh === undefined) {
-                    playSfxPlayer("buy", eventPlayer, 1);
+                if (give === undefined && gadget === undefined && refill === undefined && veh === undefined) {
+                    playSfxPlayer("deny", eventPlayer, 1);
+                    log("shop", items[i].key + " is not for sale yet");
                     return;
                 }
 
@@ -21325,6 +19015,17 @@ function onUIButtonEvent(eventPlayer: mod.Player, eventUIWidget: mod.UIWidget, e
                     playSfxPlayer("deny", eventPlayer, 1);
                     log("shop", "denied " + items[i].key + " - not inside a matching factory you control");
                     pushPlayerFeed(eventPlayer, "dbgNoFactory", 0, 0);
+                    return;
+                }
+
+                // The Rorsch is the end-game weapon: the Prototype Factory sells it
+                // only once the buyer's team is at 100% power. The Debug tab's copy
+                // stays free and ungated for testing.
+                if (t === FACTORY_TAB && give !== undefined && mod.Equals(give, mod.Weapons.BattlePickup_Rorsch_Mk_2_SMRW)
+                    && !nukeUnlocked(teamId(eventPlayer))) {
+                    playSfxPlayer("deny", eventPlayer, 1);
+                    log("shop", "denied " + items[i].key + " - team below 100% power");
+                    pushPlayerFeed(eventPlayer, "rorschLocked", 0, 0);
                     return;
                 }
 
@@ -21352,9 +19053,35 @@ function onUIButtonEvent(eventPlayer: mod.Player, eventUIWidget: mod.UIWidget, e
                         } else {
                             mod.AddEquipment(eventPlayer, give);
                             mod.SetInventoryAmmo(eventPlayer, mod.InventorySlots.PrimaryWeapon, 900);
+                            if (mod.Equals(give, mod.Weapons.BattlePickup_MP_RMG)) {
+                                if (items[i].tacRmg === true) {
+                                    markTacRmg(eventPlayer);
+                                } else {
+                                    clearTacRmg(id);
+                                }
+                            }
                         }
                     } catch (e) {
                         log("shop", "AddEquipment failed for " + items[i].key + ": " + String(e));
+                    }
+                }
+                if (gadget !== undefined) {
+                    const slot: mod.InventorySlots | undefined = items[i].slot;
+                    try {
+                        if (slot !== undefined) {
+                            mod.AddEquipment(eventPlayer, gadget, slot);
+                        } else {
+                            mod.AddEquipment(eventPlayer, gadget);
+                        }
+                    } catch (e) {
+                        log("shop", "AddEquipment failed for " + items[i].key + ": " + String(e));
+                    }
+                }
+                if (refill !== undefined) {
+                    try {
+                        mod.Resupply(eventPlayer, refill);
+                    } catch (e) {
+                        log("shop", "Resupply failed for " + items[i].key + ": " + String(e));
                     }
                 }
                 playSfxPlayer("buy", eventPlayer, 1);
@@ -21429,6 +19156,8 @@ onPrestige((id: number, total: number) => {
 });
 configureSiteEvents();
 configureNukeEvents();
+configureTacRmgEvents();
+configureFakeSlotEvents();
 
 // Bunkers, energy points and factories each pay their own amount, and only to
 // the players who were standing on the objective when it flipped. A neutral or
@@ -21463,8 +19192,9 @@ function awardCaptureToZone(team: number, kind: AwardKind, players: mod.Player[]
         logAdmin("stats", "WARNING capture " + kind + " found " + String(humans)
             + " human(s) on the objective but paid no prestige");
     }
+    // award() has already written each capturer's row; the other rows did not
+    // change, so they are not rewritten.
     pushHeader();
-    pushAllRows();
 }
 
 // One subscription covers kills, assists and every capture, because the
@@ -21505,7 +19235,7 @@ onCaptured((def, owner, occupants) => {
     awardCaptureToZone(owner, def.kind === "energy" ? "energy" : "factory", playersFromIds(occupants));
     refreshTacticalRowsForAll();
     log("state", "area building " + def.id + " -> team " + owner
-        + " (energyMult=" + energyMultiplier(owner) + ", factory=" + factoryOwner() + ")");
+        + " (sites=" + energySitesHeld(owner) + ", factory=" + factoryOwner() + ")");
 });
 
   onBunkerCaptured((def, owner, prevOwner, cp) => {
@@ -21579,21 +19309,6 @@ Events.OnPlayerUIButtonEvent.subscribe((p: mod.Player, w: mod.UIWidget, e: mod.U
         onUIButtonEvent(p, w, e);
     });
 });
-
-function widestSections(t: number): PshSection[] {
-    const n: number = pageCount(t);
-    let best: PshSection[] = pageSections(t, 0);
-    let bestRows: number = -1;
-    for (let p: number = 0; p < n; p++) {
-        const cand: PshSection[] = pageSections(t, p);
-        const r: number = cand.length;
-        if (r > bestRows) {
-            bestRows = r;
-            best = cand;
-        }
-    }
-    return best;
-}
 
 function cellKey(id: number, t: number, s: number, i: number): string {
     const pg: number = pPage[id] === undefined ? 0 : pPage[id];

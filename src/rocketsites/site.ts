@@ -3,7 +3,7 @@ import { Timers } from "bf6-portal-utils/timers";
 import {
     ALARM_AMP, ALARM_LINGER_MS, ALARM_RANGE_M, ASSET, BEEP_AMP, BEEP_RANGE_M, BURST_LIFETIME_MS,
     LOCK_MS, MAX_ROCKETS_AIRBORNE, PILLAR_MAX_MS, PILLAR_MS, POS_MATCH_M, RADAR_DRIVE,
-    RADAR_HEALTH_MIN, RADAR_HITS, RADAR_IDLE_UPDATE_MS, RADAR_TRACK_UPDATE_MS, RADAR_MIN_STEP_DEG, RADAR_SLEW_DEG_PER_S, RADAR_SWEEP_DEG_PER_S, RADAR_TRACE_EVERY_MS, RADAR_TRACE_READS,
+    RADAR_HEALTH_MIN, RADAR_HITS, RADAR_IDLE_MIN_STEP_DEG, RADAR_IDLE_UPDATE_MS, RADAR_TRACK_UPDATE_MS, RADAR_MIN_STEP_DEG, RADAR_SLEW_DEG_PER_S, RADAR_SWEEP_DEG_PER_S, RADAR_TRACE_EVERY_MS, RADAR_TRACE_READS,
     RADAR_TURN_PILLAR, RADAR_WRECK_DELAY_MS, RADAR_YAW_OFFSET_DEG, SILO_RELOAD_MS, SITE_COOLDOWN_MS, VFX_LIFETIME_MS,
     WRECK_LIFETIME_MS
 } from "./config";
@@ -13,7 +13,7 @@ import { LOG_EVENTS, LOG_TRACE, fmt, log, logOn, safe, tryGet } from "./log";
 import { moveSfx, playAt, readPos, readRot, setTransform, soldierPos, spawnSfx, spawnVfx, stopSfx, stopVfx } from "./fx";
 import { RadarHealth } from "./shotcore";
 import { engFromRad } from "./rot";
-import { airborne, busyKeys, launchRocket, newestAim, rocketTargets } from "./rocket";
+import { airborne, busyKeys, hasRocketsFrom, launchRocket, rocketTargets } from "./rocket";
 import { SITES, SiteDef, SiloDef } from "./sitemap";
 
 // Every rocket site in sitemap.ts runs on its own: enemies of the site's
@@ -66,6 +66,11 @@ class Site {
     private nextSilo: number = 0;
     private readonly intruders: { [pid: number]: mod.Player } = {};
     private readonly watchers: Set<number> = new Set<number>();   // players in the animation zone, any team
+    // The other team's players in the animation zone: the only players whose
+    // trigger launcher.ts reads for shots at this radar.
+    readonly enemyWatchers: { [pid: number]: mod.Player } = {};
+    enemyWatcherCount: number = 0;
+    private intruderCount: number = 0;
     private readonly lock: LockCore = new LockCore(LOCK_MS, SITE_COOLDOWN_MS);
     private readonly alarmLinger: AlarmLinger = new AlarmLinger(ALARM_LINGER_MS);
     private alarm: mod.SFX | undefined;
@@ -128,12 +133,20 @@ class Site {
         return mod.GetObjId(at) === this.def.animZoneId;
     }
 
-    watch(pid: number, inside: boolean): void {
+    watch(p: mod.Player | undefined, pid: number, inside: boolean): void {
         const was: number = this.watchers.size;
         if (inside) {
             this.watchers.add(pid);
+            if (p !== undefined && this.enemyWatchers[pid] === undefined && teamOf(p) !== this.team) {
+                this.enemyWatchers[pid] = p;
+                this.enemyWatcherCount++;
+            }
         } else {
             this.watchers.delete(pid);
+            if (this.enemyWatchers[pid] !== undefined) {
+                delete this.enemyWatchers[pid];
+                this.enemyWatcherCount--;
+            }
         }
         if (was === 0 && this.watchers.size > 0) {
             this.say(LOG_EVENTS, () => "radar awake (pid " + pid + " entered the animation zone)");
@@ -148,6 +161,9 @@ class Site {
             this.say(LOG_TRACE, () => "pid " + pid + " entered the zone (site's own team, ignored)");
             return;
         }
+        if (this.intruders[pid] === undefined) {
+            this.intruderCount++;
+        }
         this.intruders[pid] = p;
         this.say(LOG_TRACE, () => "pid " + pid + " entered the zone");
     }
@@ -156,14 +172,18 @@ class Site {
         const pid: number = mod.GetObjId(p);
         if (this.intruders[pid] !== undefined) {
             delete this.intruders[pid];
+            this.intruderCount--;
             this.say(LOG_TRACE, () => "pid " + pid + " left the zone");
         }
     }
 
     gone(pid: number): void {
-        delete this.intruders[pid];
+        if (this.intruders[pid] !== undefined) {
+            delete this.intruders[pid];
+            this.intruderCount--;
+        }
         if (this.watchers.has(pid)) {
-            this.watch(pid, false);
+            this.watch(undefined, pid, false);
         }
     }
 
@@ -179,6 +199,7 @@ class Site {
             const action = memberAction(valid, alive);
             if (action === "drop") {
                 delete this.intruders[pid];
+                this.intruderCount--;
             }
             if (action !== "keep") {
                 continue;
@@ -256,6 +277,12 @@ class Site {
 
     tick(now: number, dt: number): void {
         if (this.health.destroyed) {
+            return;
+        }
+        // Nobody in either zone and nothing of this site's in the air or
+        // sounding: nothing to do (owner, 2026-10-04).
+        if (this.intruderCount === 0 && this.watchers.size === 0 && this.lock.target === null
+            && this.alarm === undefined && this.lockBeep === undefined && !hasRocketsFrom(this.n)) {
             return;
         }
         const { list, byKey } = this.liveIntruders();
@@ -378,16 +405,17 @@ class Site {
         if (this.radarParts.length === 0 || RADAR_DRIVE === "off" || this.watchers.size === 0) {
             return;
         }
+        // Only the locked target is followed. Once its rocket is launched the
+        // radar goes back to the sweep (owner, 2026-10-04: one rocket is a
+        // sure kill, and the radar cannot turn to two players at once).
         const key: string | null = this.lock.target;
-        let target: V3 | undefined = key !== null && byKey[key] !== undefined ? soldierPos(byKey[key]) : undefined;
-        if (target === undefined) {
-            target = newestAim(this.n);
-        }
+        const target: V3 | undefined = key !== null && byKey[key] !== undefined ? soldierPos(byKey[key]) : undefined;
         const wantYaw: number = target !== undefined
             ? aimDeg(this.radarAt, target).yaw + RADAR_YAW_OFFSET_DEG
             : this.radarYaw + RADAR_SWEEP_DEG_PER_S * dt;
         this.radarYaw = wrapDeg(stepAngleDeg(this.radarYaw, wantYaw, RADAR_SLEW_DEG_PER_S * dt));
-        if (this.drawnYaw !== undefined && Math.abs(wrapDeg(this.radarYaw - this.drawnYaw)) < RADAR_MIN_STEP_DEG) {
+        const minStep: number = target !== undefined ? RADAR_MIN_STEP_DEG : RADAR_IDLE_MIN_STEP_DEG;
+        if (this.drawnYaw !== undefined && Math.abs(wrapDeg(this.radarYaw - this.drawnYaw)) < minStep) {
             return;
         }
         if (now < this.nextDrawAt) {
@@ -450,7 +478,7 @@ export function onEnter(p: mod.Player, at: mod.AreaTrigger): void {
         if (s.owns(at)) {
             s.enter(p);
         } else if (s.ownsAnim(at)) {
-            s.watch(mod.GetObjId(p), true);
+            s.watch(p, mod.GetObjId(p), true);
         }
     }
 }
@@ -460,7 +488,7 @@ export function onExit(p: mod.Player, at: mod.AreaTrigger): void {
         if (s.owns(at)) {
             s.exit(p);
         } else if (s.ownsAnim(at)) {
-            s.watch(mod.GetObjId(p), false);
+            s.watch(p, mod.GetObjId(p), false);
         }
     }
 }
@@ -474,7 +502,30 @@ export function onGone(pid: number): void {
 // Separate guards: one failing site must not stop the others.
 export function tickSites(now: number, dt: number): void {
     for (const s of sites) {
-        safe("tick.site" + s.n, () => s.tick(now, dt));
+        try {
+            s.tick(now, dt);
+        } catch (e) {
+            log("site", "site " + s.n + " tick threw: " + String(e));
+        }
+    }
+}
+
+// launcher.ts: every enemy player inside the animation zone of a radar that
+// still stands, once each, with the site's team. fn is a module-level
+// function so a tick allocates nothing.
+export function forEachLauncherCandidate(fn: (pid: number, p: mod.Player) => void, seen: { [pid: number]: number }, stamp: number): void {
+    for (const s of sites) {
+        if (s.health.destroyed || s.enemyWatcherCount === 0) {
+            continue;
+        }
+        for (const k in s.enemyWatchers) {
+            const pid: number = Number(k);
+            if (seen[pid] === stamp) {
+                continue;
+            }
+            seen[pid] = stamp;
+            fn(pid, s.enemyWatchers[pid]);
+        }
     }
 }
 
