@@ -4,7 +4,7 @@
   <img src="ps_poster_1.jpg" alt="Power Struggle poster" width="420">
 </p>
 
-A Battlefield 6 Portal game mode (TypeScript) inspired by Crysis Wars' Power
+A Battlefield 6 Portal game mode (TypeScript) inspired by Crysis's Power
 Struggle. Two teams, **NATO (team 1)** and **PAX (team 2)**, fight over bunkers,
 energy sites and factories, earn prestige, break through the enemy's rocket
 sites and win by blowing up the enemy HQ with the **Rorsch** raygun.
