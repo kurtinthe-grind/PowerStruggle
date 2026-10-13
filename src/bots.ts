@@ -531,7 +531,7 @@ function readPosNow(rec: BotRec): boolean {
     return !(posScratch.x === 0 && posScratch.y === 0 && posScratch.z === 0);
 }
 
-// Vehicles: existing ones only. mod.AllVehicles() returns an opaque mod.Array
+// Vehicles: existing ones only. mod.GetAllVehicles() returns an opaque mod.Array
 // and costs an FFI to build, so the candidate list is rebuilt once per
 // BOT_VEHICLE_SCAN_MS for the whole population. A candidate exists and has
 // fewer than BOT_VEHICLE_FREE_SEATS occupants, the same availability test
@@ -553,7 +553,7 @@ function scanVehicles(nowMs: number): void {
     const seen: { [vid: number]: Vectors.Vector3 } = {};
     let arr: mod.Array | undefined;
     try {
-        arr = mod.AllVehicles();
+        arr = mod.GetAllVehicles();
     } catch (e) {
         return;
     }

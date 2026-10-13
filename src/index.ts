@@ -2753,7 +2753,7 @@ function onOngoingGlobal(): void {
 function onGameModeEnding(): void {
     destroyTeamBars();
     try {
-        const players: any[] = toArr(mod.AllPlayers());
+        const players: any[] = toArr(mod.GetAllPlayers());
         for (let i: number = 0; i < players.length; i++) {
             destroyPlayerHud(mod.GetObjId(players[i]));
         }

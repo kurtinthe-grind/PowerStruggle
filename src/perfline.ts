@@ -43,7 +43,7 @@ export function tickPerfLine(nowMs: number): void {
     }
     let vehicles: number = -1;
     try {
-        vehicles = mod.CountOf(mod.AllVehicles());
+        vehicles = mod.CountOf(mod.GetAllVehicles());
     } catch (e) {
     }
     const sites = takeStats();

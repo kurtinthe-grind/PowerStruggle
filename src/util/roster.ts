@@ -96,7 +96,7 @@ export function isConfiguredTeam(n: number): boolean {
 export function allPlayers(): mod.Player[] {
     let array: mod.Array = mod.EmptyArray();
     try {
-        array = mod.AllPlayers();
+        array = mod.GetAllPlayers();
     } catch (e) {
         return [];
     }

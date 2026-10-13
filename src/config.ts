@@ -364,7 +364,7 @@ export const BOT_NAV_SHOW: boolean = false;
 // picker; that marks half the map as threatened once fighting starts.
 export const BOT_THREAT_REACH_M: number = 90;
 
-// Vehicles (existing ones only). mod.AllVehicles() is a list FFI, so the
+// Vehicles (existing ones only). mod.GetAllVehicles() is a list FFI, so the
 // candidate scan runs once per BOT_VEHICLE_SCAN_MS for the whole population.
 // A bot on foot whose attack target is more than BOT_VEHICLE_MIN_TRIP_M away
 // walks to a free vehicle within BOT_VEHICLE_RADIUS_M (one bot per vehicle per

@@ -15,7 +15,7 @@
 > **AGENT.md §87: never guess an ObjId. Read it from the `.tscn` / `.spatial.json`.**
 > This file defines the *targets*; Godot must be authored to match.
 
-- **SDK:** Portal SDK 1.4.3.0
+- **SDK:** Portal SDK 2.1.1.0 (was 1.4.3.0 until 2026-10-13)
 - **Authority source:** `main_resources/types_original/mod/index.d.ts`
 - **Status:** Frozen 2026-09-28
 - **Companion doc:** `PowerStruggleMod_Workflow_and_Findings.md`

@@ -1635,7 +1635,7 @@ export const BOT_NAV_SHOW: boolean = false;
 // picker; that marks half the map as threatened once fighting starts.
 export const BOT_THREAT_REACH_M: number = 90;
 
-// Vehicles (existing ones only). mod.AllVehicles() is a list FFI, so the
+// Vehicles (existing ones only). mod.GetAllVehicles() is a list FFI, so the
 // candidate scan runs once per BOT_VEHICLE_SCAN_MS for the whole population.
 // A bot on foot whose attack target is more than BOT_VEHICLE_MIN_TRIP_M away
 // walks to a free vehicle within BOT_VEHICLE_RADIUS_M (one bot per vehicle per
@@ -2835,7 +2835,7 @@ export function isConfiguredTeam(n: number): boolean {
 export function allPlayers(): mod.Player[] {
     let array: mod.Array = mod.EmptyArray();
     try {
-        array = mod.AllPlayers();
+        array = mod.GetAllPlayers();
     } catch (e) {
         return [];
     }
@@ -4587,7 +4587,7 @@ export function takeSnapshot(maxAgeMs: number): void {
     serial++;
     let arr: mod.Array;
     try {
-        arr = mod.AllPlayers();
+        arr = mod.GetAllPlayers();
     } catch (e) {
         return;
     }
@@ -7470,7 +7470,7 @@ function readPosNow(rec: BotRec): boolean {
     return !(posScratch.x === 0 && posScratch.y === 0 && posScratch.z === 0);
 }
 
-// Vehicles: existing ones only. mod.AllVehicles() returns an opaque mod.Array
+// Vehicles: existing ones only. mod.GetAllVehicles() returns an opaque mod.Array
 // and costs an FFI to build, so the candidate list is rebuilt once per
 // BOT_VEHICLE_SCAN_MS for the whole population. A candidate exists and has
 // fewer than BOT_VEHICLE_FREE_SEATS occupants, the same availability test
@@ -7492,7 +7492,7 @@ function scanVehicles(nowMs: number): void {
     const seen: { [vid: number]: Vectors.Vector3 } = {};
     let arr: mod.Array | undefined;
     try {
-        arr = mod.AllVehicles();
+        arr = mod.GetAllVehicles();
     } catch (e) {
         return;
     }
@@ -13025,7 +13025,7 @@ type PadScan = {
     vehicles: number;
 };
 
-// One AllVehicles walk for every pad of a factory. GetObjId is only paid for
+// One GetAllVehicles walk for every pad of a factory. GetObjId is only paid for
 // vehicles near some pad.
 function scanPads(f: Factory): PadScan {
     const n: number = f.pads.length;
@@ -13036,7 +13036,7 @@ function scanPads(f: Factory): PadScan {
     }
     let arr: mod.Array;
     try {
-        arr = mod.AllVehicles();
+        arr = mod.GetAllVehicles();
     } catch (e) {
         return scan;
     }
@@ -13077,7 +13077,7 @@ function scanPads(f: Factory): PadScan {
 function newVehicleNear(pe: Pending): number {
     let arr: mod.Array;
     try {
-        arr = mod.AllVehicles();
+        arr = mod.GetAllVehicles();
     } catch (e) {
         return -1;
     }
@@ -15775,7 +15775,7 @@ export function tickPerfLine(nowMs: number): void {
     }
     let vehicles: number = -1;
     try {
-        vehicles = mod.CountOf(mod.AllVehicles());
+        vehicles = mod.CountOf(mod.GetAllVehicles());
     } catch (e) {
     }
     const sites = takeStats();
@@ -18819,7 +18819,7 @@ function onOngoingGlobal(): void {
 function onGameModeEnding(): void {
     destroyTeamBars();
     try {
-        const players: any[] = toArr(mod.AllPlayers());
+        const players: any[] = toArr(mod.GetAllPlayers());
         for (let i: number = 0; i < players.length; i++) {
             destroyPlayerHud(mod.GetObjId(players[i]));
         }

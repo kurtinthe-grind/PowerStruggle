@@ -247,7 +247,7 @@ type PadScan = {
     vehicles: number;
 };
 
-// One AllVehicles walk for every pad of a factory. GetObjId is only paid for
+// One GetAllVehicles walk for every pad of a factory. GetObjId is only paid for
 // vehicles near some pad.
 function scanPads(f: Factory): PadScan {
     const n: number = f.pads.length;
@@ -258,7 +258,7 @@ function scanPads(f: Factory): PadScan {
     }
     let arr: mod.Array;
     try {
-        arr = mod.AllVehicles();
+        arr = mod.GetAllVehicles();
     } catch (e) {
         return scan;
     }
@@ -299,7 +299,7 @@ function scanPads(f: Factory): PadScan {
 function newVehicleNear(pe: Pending): number {
     let arr: mod.Array;
     try {
-        arr = mod.AllVehicles();
+        arr = mod.GetAllVehicles();
     } catch (e) {
         return -1;
     }

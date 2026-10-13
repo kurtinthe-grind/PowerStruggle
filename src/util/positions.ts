@@ -35,7 +35,7 @@ export function takeSnapshot(maxAgeMs: number): void {
     serial++;
     let arr: mod.Array;
     try {
-        arr = mod.AllPlayers();
+        arr = mod.GetAllPlayers();
     } catch (e) {
         return;
     }
